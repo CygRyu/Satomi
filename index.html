@@ -1351,7 +1351,12 @@ const UI = {
     const w = WeatherEngine.current();
     const noise = w.noise;
     const html = `${w.icon} ${WeatherEngine.temp}°C <span class="sep">·</span> ${w.label} <span class="sep">·</span> ${noise}`;
-    if(this.els.env.innerHTML !== html){
+    // Only touch the DOM (and replay the little "settle" pop-in) when
+    // the weather actually changed — comparing against the raw html
+    // we last rendered, not the wrapped innerHTML, which would never
+    // match and caused a re-render (and visible flicker) every tick.
+    if(this._lastEnvHtml !== html){
+      this._lastEnvHtml = html;
       this.els.env.innerHTML = `<span class="change">${html}</span>`;
     }
   },
