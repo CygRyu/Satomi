@@ -22,7 +22,7 @@
   --rain-op:0;
   --dust-op:0.35;
   --room-glow:0.5;
-  --transition-slow:2200ms;
+  --transition-slow:3400ms;
   --font-display:'Zen Old Mincho','Noto Serif JP',Georgia,serif;
   --font-body:'Zen Kaku Gothic New','Hiragino Sans',system-ui,-apple-system,sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
@@ -38,7 +38,7 @@ body{
   color:var(--ink-0);
   font-family:var(--font-body);
   overflow-x:hidden;
-  transition:background var(--transition-slow) ease;
+  transition:background var(--transition-slow) ease, color var(--transition-slow) ease;
   -webkit-font-smoothing:antialiased;
 }
 @font-face{
@@ -88,13 +88,15 @@ header.title-block{ text-align:center; margin-bottom:38px; user-select:none; }
   font-family:var(--font-display); font-size:15px; letter-spacing:0.42em;
   color:var(--ink-1); font-weight:500; margin:0 0 6px 2px;
   cursor:default;
+  transition:color var(--transition-slow) ease;
 }
 .clock{
   font-family:var(--font-mono); font-size:44px; font-weight:300; color:var(--ink-0);
   letter-spacing:0.03em;
+  transition:color var(--transition-slow) ease;
 }
-.clock .colon{ transition:opacity .5s ease; }
-.date-line{ font-size:12px; color:var(--ink-2); margin-top:6px; letter-spacing:.05em; }
+.clock .colon{ transition:opacity .9s ease; }
+.date-line{ font-size:12px; color:var(--ink-2); margin-top:6px; letter-spacing:.05em; transition:color var(--transition-slow) ease; }
 
 .stage{
   flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;
@@ -109,7 +111,7 @@ header.title-block{ text-align:center; margin-bottom:38px; user-select:none; }
 
 .activity-text{
   font-size:17px; color:var(--ink-1); line-height:1.6; max-width:420px;
-  min-height:1.6em; transition:opacity .9s ease;
+  min-height:1.6em; transition:opacity .9s ease, color var(--transition-slow) ease;
 }
 .activity-text.swap{ opacity:0; }
 
@@ -118,7 +120,7 @@ header.title-block{ text-align:center; margin-bottom:38px; user-select:none; }
 }
 .dialogue-text{
   font-family:var(--font-display); font-size:20px; line-height:1.75; color:var(--ink-0);
-  opacity:0; transition:opacity 1.1s ease; font-weight:500;
+  opacity:0; transition:opacity 1.1s ease, color var(--transition-slow) ease; font-weight:500;
 }
 .dialogue-text.show{ opacity:1; }
 .caret{ display:inline-block; width:1px; margin-left:2px; opacity:.8; animation:blink 1s step-end infinite; }
@@ -128,16 +130,22 @@ header.title-block{ text-align:center; margin-bottom:38px; user-select:none; }
   margin-top:auto; padding-top:28px; text-align:center;
   font-family:var(--font-mono); font-size:12px; color:var(--ink-2);
   letter-spacing:.03em; opacity:.9;
+  transition:color var(--transition-slow) ease;
 }
 .env-bar .sep{ margin:0 8px; opacity:.4; }
 .env-bar span.change{ animation:settle .6s ease; }
 @keyframes settle{ from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:translateY(0);} }
+/* slow continuous breathing fade for the environment status line — toggled by user preference */
+@keyframes envBreathe{ 0%,100%{opacity:.55;} 50%{opacity:1;} }
+.env-bar.animated{ animation:envBreathe 10s ease-in-out infinite; }
+.env-bar.animated span.change{ animation:settle .6s ease; }
 
 nav.tabbar{
   position:fixed; bottom:0; left:0; right:0; z-index:5;
   display:flex; justify-content:center; gap:2px;
   background:linear-gradient(0deg, var(--bg-0) 60%, transparent);
   padding:22px 0 18px;
+  transition:background var(--transition-slow) ease;
 }
 nav.tabbar button{
   background:none; border:none; color:var(--ink-2); font-family:var(--font-body);
@@ -159,6 +167,7 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
   background:var(--bg-2); border-top:1px solid var(--line);
   border-radius:18px 18px 0 0; padding:26px 22px 34px;
   animation:slideup .35s cubic-bezier(.2,.8,.2,1);
+  transition:background var(--transition-slow) ease, border-color var(--transition-slow) ease;
 }
 @keyframes slideup{ from{transform:translateY(40px); opacity:0;} to{transform:translateY(0); opacity:1;} }
 .panel h2{
@@ -177,10 +186,10 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
   font-size:11px; padding:5px 12px; border-radius:14px; cursor:pointer; letter-spacing:.03em;
 }
 .log-filters button.active{ color:var(--bg-0); background:var(--accent); border-color:var(--accent); }
-.log-entry{ padding:11px 0; border-bottom:1px solid var(--line); }
+.log-entry{ padding:11px 0; border-bottom:1px solid var(--line); transition:border-color var(--transition-slow) ease; }
 .log-entry:last-child{ border-bottom:none; }
 .log-time{ font-family:var(--font-mono); font-size:10.5px; color:var(--accent-dim); display:block; margin-bottom:3px; }
-.log-text{ font-size:13.5px; color:var(--ink-1); line-height:1.55; }
+.log-text{ font-size:13.5px; color:var(--ink-1); line-height:1.55; transition:color var(--transition-slow) ease; }
 .log-text.dialogue{ font-family:var(--font-display); color:var(--ink-0); font-style:italic; }
 .log-text.major{ color:var(--accent); }
 .log-empty{ text-align:center; color:var(--ink-2); font-size:13px; padding:30px 0; }
@@ -197,13 +206,27 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .interact-hint{ text-align:center; color:var(--ink-2); font-size:12px; margin-top:16px; line-height:1.6; }
 
 /* settings/about */
-.stat-row{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; color:var(--ink-1);}
+.stat-row{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; color:var(--ink-1); transition:color var(--transition-slow) ease, border-color var(--transition-slow) ease;}
 .stat-row span:last-child{ color:var(--ink-0); font-family:var(--font-mono); }
 .settings-btn{
   width:100%; margin-top:10px; background:var(--bg-1); border:1px solid var(--line);
   color:var(--ink-1); padding:11px; border-radius:8px; font-size:12.5px; cursor:pointer;
+  transition:background var(--transition-slow) ease, border-color var(--transition-slow) ease, color var(--transition-slow) ease;
 }
 .settings-btn.danger{ color:#e08a8a; border-color:#4a2c2c; }
+
+/* preference toggle group (e.g. environment status animation) */
+.pref-row{ margin:18px 0 6px; }
+.pref-label{ font-size:12px; color:var(--ink-2); margin-bottom:8px; letter-spacing:.03em; }
+.pref-toggle{ display:flex; gap:6px; }
+.pref-toggle button{
+  flex:1; background:none; border:1px solid var(--line); color:var(--ink-2);
+  font-size:11.5px; padding:8px 10px; border-radius:14px; cursor:pointer; letter-spacing:.03em;
+  transition:background .3s ease, color .3s ease, border-color .3s ease;
+}
+.pref-toggle button.active{ color:var(--bg-0); background:var(--accent); border-color:var(--accent); }
+.settings-footer{ text-align:center; margin-top:26px; color:var(--ink-2); font-size:11px; line-height:1.7; letter-spacing:.03em; }
+.settings-footer strong{ display:block; color:var(--ink-1); font-size:11.5px; font-weight:500; letter-spacing:.08em; margin-bottom:2px; }
 
 /* debug */
 #debugToggle{
@@ -229,10 +252,60 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .debug-close{ position:fixed; top:16px; right:16px; background:#2a1a1a; border:1px solid #4a2c2c; color:#e0a0a0; padding:6px 12px; border-radius:5px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
 textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; border:1px solid #2a3a2a; font-family:var(--font-mono); font-size:10px; margin-top:6px;}
 
-@media(max-width:420px){ .clock{font-size:36px;} .dialogue-text{font-size:18px;} }
+@media(max-width:420px){ .clock{font-size:36px;} .dialogue-text{font-size:18px;} .splash-title{font-size:18px;} }
+
+/* ---------- splash / first-launch screen ---------- */
+.splash{
+  position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg, var(--bg-0), var(--bg-1) 55%, var(--bg-0));
+  padding:32px 24px; text-align:center;
+  transition:opacity 1.15s ease;
+}
+.splash.hide{ opacity:0; pointer-events:none; }
+.splash-inner{ max-width:420px; }
+.splash-title{
+  font-family:var(--font-display); font-size:21px; letter-spacing:.3em; color:var(--ink-0);
+  opacity:0; transition:opacity 1.3s ease; margin-bottom:26px; font-weight:500;
+}
+.splash-title.show{ opacity:1; }
+.splash-tagline{
+  font-size:14px; color:var(--ink-1); opacity:0; transition:opacity .9s ease;
+  margin-bottom:36px; letter-spacing:.03em;
+}
+.splash-tagline.show{ opacity:1; }
+.splash-desc{
+  font-family:var(--font-body); font-size:14.5px; color:var(--ink-1);
+  line-height:1.85; min-height:130px; margin-bottom:32px;
+}
+.splash-desc .line{ margin-bottom:16px; }
+.splash-desc .line:last-child{ margin-bottom:0; color:var(--ink-0); }
+.splash-enter{
+  opacity:0; transition:opacity 1s ease, border-color .3s ease;
+  background:none; border:1px solid var(--line); color:var(--ink-0);
+  font-family:var(--font-mono); font-size:13px; padding:10px 30px;
+  border-radius:22px; cursor:pointer; letter-spacing:.1em;
+}
+.splash-enter.show{ opacity:1; }
+.splash-enter:hover{ border-color:var(--accent-dim); }
+.splash-credit{
+  margin-top:20px; font-size:11px; color:var(--ink-2);
+  opacity:0; transition:opacity 1s ease; letter-spacing:.05em;
+}
+.splash-credit.show{ opacity:1; }
+
 </style>
 </head>
 <body>
+
+<div class="splash" id="splash">
+  <div class="splash-inner">
+    <div class="splash-title" id="splashTitle">STAY WITH SATOMI</div>
+    <div class="splash-tagline" id="splashTagline">A quiet virtual companion for quiet moments.</div>
+    <div class="splash-desc" id="splashDesc"></div>
+    <button class="splash-enter" id="splashEnter">[ Enter ]</button>
+    <div class="splash-credit" id="splashCredit">by CygRyu</div>
+  </div>
+</div>
 
 <div id="ambient" aria-hidden="true">
   <div id="dust"></div>
@@ -296,11 +369,22 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
   <div class="panel">
     <h2>Settings &amp; Presence</h2>
     <div id="statsList"></div>
+    <div class="pref-row">
+      <div class="pref-label">Environment status</div>
+      <div class="pref-toggle" id="envAnimToggle">
+        <button data-env-pref="animated">Animated</button>
+        <button data-env-pref="static">Static</button>
+      </div>
+    </div>
     <button class="settings-btn" id="exportBtn">Export save data</button>
     <button class="settings-btn" id="importBtn">Import save data</button>
     <input type="file" id="importFile" accept="application/json" style="display:none">
     <button class="settings-btn danger" id="resetBtn">Reset everything</button>
     <button class="panel-close" data-close="settings">Close</button>
+    <div class="settings-footer">
+      <strong>Stay with Satomi</strong>
+      A quiet virtual companion by CygRyu
+    </div>
   </div>
 </div>
 
@@ -606,6 +690,50 @@ const RNG = {
 };
 
 /* ============================================================
+   3b. COLOR HELPERS + TIME/WEATHER THEME PALETTES
+   Small hex-color mixing utilities so the ambient theme can
+   drift smoothly between time-of-day/weather palettes. Only
+   used to set CSS custom properties, which the stylesheet then
+   animates via `transition` on the properties that consume them.
+   ============================================================ */
+function hexToRgb(hex){
+  hex = hex.replace('#','');
+  if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+  const num = parseInt(hex,16);
+  return [(num>>16)&255, (num>>8)&255, num&255];
+}
+function rgbToHex(rgb){
+  return '#'+rgb.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+}
+function mixHex(hexA, hexB, t){
+  const a = hexToRgb(hexA), b = hexToRgb(hexB);
+  return rgbToHex(a.map((v,i)=> v + (b[i]-v)*t));
+}
+// Base palettes per time-of-day. Backgrounds stay dark (this is a
+// dark, quiet-room aesthetic) but drift warmer/cooler and
+// brighter/dimmer; --ink-0 (primary text) is always kept near-white
+// for legibility no matter the theme.
+const TOD_THEMES = {
+  morning:    { bg0:"#171a20", bg1:"#1d2129", bg2:"#242833", ink0:"#f4f2ec", accent:"#e0b17d", line:"#333a48" },
+  afternoon:  { bg0:"#14161c", bg1:"#191c24", bg2:"#20242e", ink0:"#eef0f4", accent:"#d8a86b", line:"#2a2f3b" },
+  evening:    { bg0:"#181410", bg1:"#1f1913", bg2:"#28211a", ink0:"#f3ece1", accent:"#e8955a", line:"#3a2f24" },
+  night:      { bg0:"#0e1016", bg1:"#141821", bg2:"#1a1f2a", ink0:"#e9ecf3", accent:"#9db3d8", line:"#232838" },
+  late_night: { bg0:"#0a0b10", bg1:"#0f121a", bg2:"#151924", ink0:"#e3e6ee", accent:"#7c93bf", line:"#1c202c" },
+};
+function weatherAdjustTheme(theme, weatherId){
+  const t = Object.assign({}, theme);
+  if(weatherId==="light_rain" || weatherId==="rain_stopping"){
+    ["bg0","bg1","bg2","accent"].forEach(k=> t[k]=mixHex(t[k], "#93958f", 0.12));
+  } else if(weatherId==="heavy_rain"){
+    ["bg0","bg1","bg2","accent"].forEach(k=> t[k]=mixHex(t[k], "#888a8d", 0.22));
+  } else if(weatherId==="thunderstorm"){
+    ["bg0","bg1","bg2"].forEach(k=> t[k]=mixHex(t[k], "#05060a", 0.35));
+    t.accent = mixHex(t.accent, "#8a8fb0", 0.3);
+  }
+  return t;
+}
+
+/* ============================================================
    4. CLOCK — real device time is the source of truth, with an
    optional debug offset for fast-forwarding.
    ============================================================ */
@@ -774,12 +902,14 @@ const ActivityEngine = {
     if(this.recentIds.length>6) this.recentIds.shift();
     StateEngine.apply(activity.effects);
     const text = RNG.pick(activity.text);
+    this.currentText = text;
     Memory.log("activity", text);
     UI.setActivityText(text);
   },
   microUpdate(){
     if(!this.current || !this.current.micro || this.current.micro.length===0) return;
     const text = RNG.pick(this.current.micro);
+    this.currentText = text;
     UI.setActivityText(text, true);
   }
 };
@@ -977,11 +1107,24 @@ const LifeThreadEngine = {
    ============================================================ */
 const Memory = {
   entries: [], // {ts, type, text}
+  currentLogDay: new Date().toDateString(),
   log(type, text){
     this.entries.push({ts:Date.now(), type, text});
     if(this.entries.length>500) this.entries.shift();
     UI.refreshLogIfOpen();
     Persistence.scheduleSave();
+  },
+  // The Life Log only ever holds the current real-time 24-hour
+  // period; at the start of a new day it starts fresh. Older
+  // entries simply aren't kept around in the normal UI.
+  checkDayRollover(){
+    const today = new Date().toDateString();
+    if(today !== this.currentLogDay){
+      this.currentLogDay = today;
+      this.entries = [];
+      UI.refreshLogIfOpen();
+      Persistence.scheduleSave();
+    }
   }
 };
 
@@ -1005,6 +1148,25 @@ const Presence = {
 };
 
 /* ============================================================
+   13b. USER PREFERENCES (localStorage-backed, UI-only settings)
+   ============================================================ */
+const Prefs = {
+  ENV_ANIM_KEY: "satomi_env_anim_pref",
+  envAnimated: true,
+  load(){
+    try{
+      const v = localStorage.getItem(this.ENV_ANIM_KEY);
+      this.envAnimated = (v === null) ? true : (v === "1");
+    }catch(e){ this.envAnimated = true; }
+  },
+  setEnvAnimated(val){
+    this.envAnimated = val;
+    try{ localStorage.setItem(this.ENV_ANIM_KEY, val ? "1" : "0"); }catch(e){}
+    UI.applyEnvAnimPref();
+  }
+};
+
+/* ============================================================
    14. PERSISTENCE
    ============================================================ */
 const Persistence = {
@@ -1018,9 +1180,16 @@ const Persistence = {
     const payload = {
       state: StateEngine.data,
       weather: {id:WeatherEngine.currentId, temp:WeatherEngine.temp, lastChange:WeatherEngine.lastChange},
+      activity: {
+        id: ActivityEngine.current ? ActivityEngine.current.id : null,
+        until: ActivityEngine.currentUntil,
+        recentIds: ActivityEngine.recentIds,
+        text: ActivityEngine.currentText || null,
+      },
       threadsActive: LifeThreadEngine.active.map(t=>({id:t.id, stageIndex:t.stageIndex, lastProgress:t.lastProgress})),
       threadsCompleted: LifeThreadEngine.completed,
       log: Memory.entries.slice(-300),
+      logDay: Memory.currentLogDay,
       presence: {
         firstOpened: Presence.firstOpened,
         daysTogether: Array.from(Presence.daysTogether),
@@ -1040,11 +1209,23 @@ const Persistence = {
       const p = JSON.parse(raw);
       Object.assign(StateEngine.data, p.state||{});
       if(p.weather){ WeatherEngine.currentId=p.weather.id; WeatherEngine.temp=p.weather.temp; WeatherEngine.lastChange=p.weather.lastChange||Date.now(); }
+      if(p.activity && p.activity.id){
+        const act = CONTENT.activities.find(a=>a.id===p.activity.id);
+        if(act){
+          // Restore the in-progress activity exactly as it was — a
+          // refresh should feel like glancing back, not a reroll.
+          ActivityEngine.current = act;
+          ActivityEngine.currentUntil = p.activity.until || 0;
+          ActivityEngine.recentIds = p.activity.recentIds || [];
+          ActivityEngine.currentText = p.activity.text || null;
+        }
+      }
       if(p.threadsActive){
         LifeThreadEngine.active = p.threadsActive.map(t=>({id:t.id, def:LIFE_THREADS.find(d=>d.id===t.id), stageIndex:t.stageIndex, lastProgress:t.lastProgress})).filter(t=>t.def);
       }
       LifeThreadEngine.completed = p.threadsCompleted||[];
       Memory.entries = p.log||[];
+      Memory.currentLogDay = p.logDay || new Date().toDateString();
       if(p.presence){
         Presence.firstOpened = p.presence.firstOpened;
         Presence.daysTogether = new Set(p.presence.daysTogether||[]);
@@ -1089,9 +1270,11 @@ const UI = {
     this.els.statsList = document.getElementById("statsList");
     this.bindNav();
     this.buildInteractOptions();
+    this.bindEnvAnimToggle();
+    this.applyEnvAnimPref();
     setInterval(()=>this.tickClock(), 1000);
     this.tickClock();
-    setInterval(()=>{ this.els.colon.style.opacity = (this.els.colon.style.opacity==="0.15"? "1":"0.15"); }, 1200);
+    setInterval(()=>{ this.els.colon.style.opacity = (this.els.colon.style.opacity==="0.15"? "1":"0.15"); }, 1000);
   },
   tickClock(){
     const {hh,mm} = Clock.formatted();
@@ -1113,7 +1296,10 @@ const UI = {
       el.innerHTML = "";
       el.classList.add("show");
       this.typewrite(el, text, ()=>{
-        const holdMs = Math.min(9000, 2600 + text.length*55);
+        // finished sentence lingers with a blinking cursor for ~2.0–3.0s
+        // (randomized so it never feels mechanically identical), then
+        // the whole line fades away.
+        const holdMs = RNG.range(2000,3000);
         setTimeout(()=>{ el.classList.remove("show"); }, holdMs);
       });
     }, 500);
@@ -1121,15 +1307,21 @@ const UI = {
   },
   typewrite(el, text, done){
     let i=0;
-    const speed = 32;
     const caret = document.createElement("span");
-    caret.className="caret"; caret.textContent="▌";
+    caret.className="caret"; caret.textContent="|";
     function step(){
       el.textContent = text.slice(0,i);
       el.appendChild(caret);
       i++;
-      if(i<=text.length){ setTimeout(step, speed); }
-      else { caret.remove(); if(done) done(); }
+      if(i<=text.length){
+        // deliberate, slightly slower typing with small natural jitter
+        const delay = 46 + RNG.range(-12,20);
+        setTimeout(step, Math.max(30, delay));
+      } else {
+        // keep the caret in place (still blinking via CSS) while the
+        // sentence lingers — it's removed only when the line fades.
+        if(done) done();
+      }
     }
     step();
   },
@@ -1167,6 +1359,17 @@ const UI = {
     const root = document.documentElement.style;
     const tod = Clock.timeOfDay();
     const w = WeatherEngine.current();
+    const base = TOD_THEMES[tod] || TOD_THEMES.afternoon;
+    const theme = weatherAdjustTheme(base, w.id);
+    root.setProperty("--bg-0", theme.bg0);
+    root.setProperty("--bg-1", theme.bg1);
+    root.setProperty("--bg-2", theme.bg2);
+    root.setProperty("--ink-0", theme.ink0);
+    root.setProperty("--ink-1", mixHex(theme.ink0, theme.bg2, 0.42));
+    root.setProperty("--ink-2", mixHex(theme.ink0, theme.bg2, 0.66));
+    root.setProperty("--accent", theme.accent);
+    root.setProperty("--accent-dim", mixHex(theme.accent, theme.bg1, 0.45));
+    root.setProperty("--line", mixHex(theme.line, theme.bg2, 0.25));
     root.setProperty("--rain-op", WeatherEngine.isRaining()? (w.id==="heavy_rain"||w.id==="thunderstorm"?"0.55":"0.3") : "0");
     let glow = 0.5;
     if(tod==="morning") glow=0.7;
@@ -1175,8 +1378,22 @@ const UI = {
     if(tod==="night") glow=0.25;
     if(tod==="late_night") glow=0.1;
     if(WeatherEngine.isRaining()) glow *= 0.6;
+    if(w.id==="clear" || w.id==="sunny") glow = Math.min(1, glow + 0.12); // subtle brighter ambient lighting
     root.setProperty("--room-glow", glow);
     root.setProperty("--dust-op", (tod==="night"||tod==="late_night")? "0.15":"0.35");
+  },
+  applyEnvAnimPref(){
+    if(this.els.env) this.els.env.classList.toggle("animated", Prefs.envAnimated);
+    document.querySelectorAll("#envAnimToggle button").forEach(b=>{
+      b.classList.toggle("active", (b.dataset.envPref==="animated") === Prefs.envAnimated);
+    });
+  },
+  bindEnvAnimToggle(){
+    document.querySelectorAll("#envAnimToggle button").forEach(btn=>{
+      btn.onclick = ()=>{
+        Prefs.setEnvAnimated(btn.dataset.envPref === "animated");
+      };
+    });
   },
   buildInteractOptions(){
     const opts = [
@@ -1338,6 +1555,7 @@ const Sim = {
     if(today !== this.lastDay){
       this.lastDay = today;
       LifeThreadEngine.dailyTick();
+      Memory.checkDayRollover();
     }
 
     WeatherEngine.maybeEvolve();
@@ -1474,6 +1692,82 @@ function buildDust(){
 }
 
 /* ============================================================
+   20b. SPLASH / FIRST-LAUNCH SCREEN
+   Shown once, only on a genuinely first launch (no existing
+   save). Runs underneath while the simulation quietly starts,
+   then fades away once the user taps Enter.
+   ============================================================ */
+const Splash = {
+  el:null,
+  sleep(ms){ return new Promise(r=>setTimeout(r, ms)); },
+  typeInto(el, text){
+    return new Promise(resolve=>{
+      let i=0;
+      const step = ()=>{
+        el.textContent = text.slice(0,i);
+        i++;
+        if(i<=text.length) setTimeout(step, 34);
+        else resolve();
+      };
+      step();
+    });
+  },
+  async run(){
+    this.el = document.getElementById("splash");
+    if(!this.el) return;
+    // Safety net: whatever happens, never let the splash permanently
+    // block the app — auto-dismiss after a generous timeout.
+    const safety = setTimeout(()=>{
+      if(this.el && this.el.parentNode) this.el.remove();
+    }, 30000);
+    try{
+      await this._sequence();
+    } finally {
+      clearTimeout(safety);
+    }
+  },
+  async _sequence(){
+    const title = document.getElementById("splashTitle");
+    const tagline = document.getElementById("splashTagline");
+    const desc = document.getElementById("splashDesc");
+    const enterBtn = document.getElementById("splashEnter");
+    const credit = document.getElementById("splashCredit");
+
+    await this.sleep(300);
+    title.classList.add("show");
+
+    await this.sleep(1300 + 700);
+    tagline.classList.add("show");
+
+    await this.sleep(900 + 900);
+    const sentences = [
+      "Satomi is a university student with a desk, a room, and a life of her own.",
+      "Study alongside her, leave her running in the background, or simply stay for a while.",
+      "There is nothing you need to accomplish."
+    ];
+    for(let i=0;i<sentences.length;i++){
+      const line = document.createElement("div");
+      line.className = "line";
+      desc.appendChild(line);
+      await this.typeInto(line, sentences[i]);
+      await this.sleep(i===sentences.length-1 ? 1900 : 750);
+    }
+
+    await this.sleep(1000);
+    enterBtn.classList.add("show");
+    credit.classList.add("show");
+
+    return new Promise(resolve=>{
+      enterBtn.onclick = ()=>{
+        this.el.classList.add("hide");
+        setTimeout(()=>{ if(this.el && this.el.parentNode) this.el.remove(); }, 1200);
+        resolve();
+      };
+    });
+  }
+};
+
+/* ============================================================
    21. BOOT
    ============================================================ */
 let titleTaps = 0, titleTapTimer=null;
@@ -1496,15 +1790,28 @@ document.getElementById("debugLoad").onclick = ()=>{
 
 function boot(){
   buildDust();
+  Prefs.load();
   const hadSave = Persistence.load();
+  Memory.checkDayRollover();
   LifeThreadEngine.init();
   UI.init();
+  if(ActivityEngine.current){
+    // A restored activity is shown immediately, with no re-roll and
+    // no fade-in flourish — refreshing should feel like glancing
+    // back, not like the page just started Satomi's life over.
+    UI.els.activity.textContent = ActivityEngine.currentText || RNG.pick(ActivityEngine.current.text);
+  }
   Sim.init();
   UI.updateEnvBar();
   if(!hadSave){
     Memory.log("major", "You open the app for the first time. Somewhere across the city, Satomi is going about her afternoon.");
+    Splash.run();
   } else {
     Memory.log("activity", "You return. Some time has passed.");
+    // No splash for a returning user — remove the overlay outright so
+    // it can't ever sit blocking the view.
+    const splashEl = document.getElementById("splash");
+    if(splashEl) splashEl.remove();
   }
   // periodic presence save
   setInterval(()=>Persistence.save(), 30000);
