@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ueno Satomi — a quiet companion</title>
+<style>
+/* ============================================================
+   TOKENS — shift subtly with time-of-day / weather via JS
+   setting CSS custom properties on :root
+   ============================================================ */
+:root{
+  --bg-0:#12141a;
+  --bg-1:#181b23;
+  --bg-2:#1f232d;
+  --ink-0:#eef0f4;
+  --ink-1:#b7bcc9;
+  --ink-2:#7d8394;
+  --accent:#d8a86b;
+  --accent-dim:#8a7256;
+  --line:#2a2f3b;
+  --rain-op:0;
+  --dust-op:0.35;
+  --room-glow:0.5;
+  --transition-slow:2200ms;
+  --font-display:'Zen Old Mincho','Noto Serif JP',Georgia,serif;
+  --font-body:'Zen Kaku Gothic New','Hiragino Sans',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  min-height:100vh;
+  background:
+    radial-gradient(ellipse 900px 600px at 70% 8%, rgba(216,168,107,calc(var(--room-glow) * 0.14)), transparent 60%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 55%, var(--bg-0));
+  color:var(--ink-0);
+  font-family:var(--font-body);
+  overflow-x:hidden;
+  transition:background var(--transition-slow) ease;
+  -webkit-font-smoothing:antialiased;
+}
+@font-face{
+  font-family:'Zen Old Mincho';
+  src:local('Hiragino Mincho ProN');
+}
+
+/* ---------- ambient layers ---------- */
+#ambient{
+  position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
+}
+#dust{position:absolute; inset:0; opacity:var(--dust-op); transition:opacity 3s ease;}
+.mote{
+  position:absolute; width:2px; height:2px; border-radius:50%;
+  background:rgba(238,240,244,0.5);
+  animation:drift linear infinite;
+}
+@keyframes drift{
+  0%{transform:translateY(0) translateX(0); opacity:0;}
+  10%{opacity:.6;}
+  90%{opacity:.4;}
+  100%{transform:translateY(-110vh) translateX(30px); opacity:0;}
+}
+#rain-layer{
+  position:absolute; inset:0; opacity:var(--rain-op); transition:opacity 2.5s ease;
+  background-image:repeating-linear-gradient(100deg, transparent 0 5px, rgba(180,200,230,0.10) 5px 6px, transparent 6px 40px);
+  animation:rainfall 0.35s linear infinite;
+}
+@keyframes rainfall{ from{background-position:0 0;} to{background-position:-60px 300px;} }
+#flash{
+  position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none;
+}
+#sweep{
+  position:absolute; top:12%; left:-20%; width:14%; height:2px;
+  background:linear-gradient(90deg, transparent, rgba(216,168,107,0.5), transparent);
+  opacity:0; filter:blur(2px);
+}
+
+/* ---------- layout ---------- */
+.wrap{
+  position:relative; z-index:1;
+  max-width:560px; margin:0 auto; padding:48px 24px 100px;
+  min-height:100vh; display:flex; flex-direction:column;
+}
+header.title-block{ text-align:center; margin-bottom:38px; user-select:none; }
+.name{
+  font-family:var(--font-display); font-size:15px; letter-spacing:0.42em;
+  color:var(--ink-1); font-weight:500; margin:0 0 6px 2px;
+  cursor:default;
+}
+.clock{
+  font-family:var(--font-mono); font-size:44px; font-weight:300; color:var(--ink-0);
+  letter-spacing:0.03em;
+}
+.clock .colon{ transition:opacity .5s ease; }
+.date-line{ font-size:12px; color:var(--ink-2); margin-top:6px; letter-spacing:.05em; }
+
+.stage{
+  flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;
+  text-align:center; min-height:260px; gap:22px; position:relative;
+}
+.presence-dot{
+  width:6px; height:6px; border-radius:50%; background:var(--accent);
+  animation:breathe 4.2s ease-in-out infinite;
+  margin:0 auto 2px;
+}
+@keyframes breathe{ 0%,100%{opacity:.35; transform:scale(1);} 50%{opacity:.9; transform:scale(1.4);} }
+
+.activity-text{
+  font-size:17px; color:var(--ink-1); line-height:1.6; max-width:420px;
+  min-height:1.6em; transition:opacity .9s ease;
+}
+.activity-text.swap{ opacity:0; }
+
+.dialogue-box{
+  min-height:96px; max-width:440px; display:flex; align-items:center; justify-content:center;
+}
+.dialogue-text{
+  font-family:var(--font-display); font-size:20px; line-height:1.75; color:var(--ink-0);
+  opacity:0; transition:opacity 1.1s ease; font-weight:500;
+}
+.dialogue-text.show{ opacity:1; }
+.caret{ display:inline-block; width:1px; margin-left:2px; opacity:.8; animation:blink 1s step-end infinite; }
+@keyframes blink{ 50%{opacity:0;} }
+
+.env-bar{
+  margin-top:auto; padding-top:28px; text-align:center;
+  font-family:var(--font-mono); font-size:12px; color:var(--ink-2);
+  letter-spacing:.03em; opacity:.9;
+}
+.env-bar .sep{ margin:0 8px; opacity:.4; }
+.env-bar span.change{ animation:settle .6s ease; }
+@keyframes settle{ from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:translateY(0);} }
+
+nav.tabbar{
+  position:fixed; bottom:0; left:0; right:0; z-index:5;
+  display:flex; justify-content:center; gap:2px;
+  background:linear-gradient(0deg, var(--bg-0) 60%, transparent);
+  padding:22px 0 18px;
+}
+nav.tabbar button{
+  background:none; border:none; color:var(--ink-2); font-family:var(--font-body);
+  font-size:12.5px; letter-spacing:.08em; padding:9px 18px; cursor:pointer;
+  border-top:1px solid transparent; transition:color .3s ease, border-color .3s ease;
+}
+nav.tabbar button:hover, nav.tabbar button.active{ color:var(--ink-0); }
+nav.tabbar button.active{ border-top-color:var(--accent); }
+
+/* ---------- panels ---------- */
+.panel-overlay{
+  position:fixed; inset:0; background:rgba(10,11,15,0.72); backdrop-filter:blur(3px);
+  z-index:20; display:none; align-items:flex-end; justify-content:center;
+}
+.panel-overlay.open{ display:flex; animation:fadein .25s ease; }
+@keyframes fadein{ from{opacity:0;} to{opacity:1;} }
+.panel{
+  width:100%; max-width:560px; max-height:82vh; overflow-y:auto;
+  background:var(--bg-2); border-top:1px solid var(--line);
+  border-radius:18px 18px 0 0; padding:26px 22px 34px;
+  animation:slideup .35s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes slideup{ from{transform:translateY(40px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+.panel h2{
+  font-family:var(--font-display); font-weight:500; font-size:15px; letter-spacing:.06em;
+  color:var(--ink-1); margin:0 0 18px; text-align:center;
+}
+.panel-close{
+  display:block; margin:24px auto 0; background:none; border:1px solid var(--line);
+  color:var(--ink-2); font-size:12px; padding:8px 20px; border-radius:20px; cursor:pointer;
+}
+
+/* log */
+.log-filters{ display:flex; gap:6px; justify-content:center; margin-bottom:18px; flex-wrap:wrap; }
+.log-filters button{
+  background:none; border:1px solid var(--line); color:var(--ink-2);
+  font-size:11px; padding:5px 12px; border-radius:14px; cursor:pointer; letter-spacing:.03em;
+}
+.log-filters button.active{ color:var(--bg-0); background:var(--accent); border-color:var(--accent); }
+.log-entry{ padding:11px 0; border-bottom:1px solid var(--line); }
+.log-entry:last-child{ border-bottom:none; }
+.log-time{ font-family:var(--font-mono); font-size:10.5px; color:var(--accent-dim); display:block; margin-bottom:3px; }
+.log-text{ font-size:13.5px; color:var(--ink-1); line-height:1.55; }
+.log-text.dialogue{ font-family:var(--font-display); color:var(--ink-0); font-style:italic; }
+.log-text.major{ color:var(--accent); }
+.log-empty{ text-align:center; color:var(--ink-2); font-size:13px; padding:30px 0; }
+
+/* interact */
+.interact-grid{ display:flex; flex-direction:column; gap:10px; }
+.interact-grid button{
+  background:var(--bg-1); border:1px solid var(--line); color:var(--ink-0);
+  padding:14px 16px; border-radius:10px; font-size:13.5px; cursor:pointer; text-align:left;
+  transition:border-color .25s ease, background .25s ease;
+}
+.interact-grid button:hover{ border-color:var(--accent-dim); background:#22262f; }
+.interact-grid button small{ display:block; color:var(--ink-2); font-size:11px; margin-top:3px; font-weight:400; }
+.interact-hint{ text-align:center; color:var(--ink-2); font-size:12px; margin-top:16px; line-height:1.6; }
+
+/* settings/about */
+.stat-row{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; color:var(--ink-1);}
+.stat-row span:last-child{ color:var(--ink-0); font-family:var(--font-mono); }
+.settings-btn{
+  width:100%; margin-top:10px; background:var(--bg-1); border:1px solid var(--line);
+  color:var(--ink-1); padding:11px; border-radius:8px; font-size:12.5px; cursor:pointer;
+}
+.settings-btn.danger{ color:#e08a8a; border-color:#4a2c2c; }
+
+/* debug */
+#debugToggle{
+  position:fixed; top:14px; right:14px; z-index:6; width:26px; height:26px;
+  background:none; border:none; color:transparent; cursor:default;
+}
+.debug-panel{
+  position:fixed; inset:0; z-index:30; background:rgba(8,9,12,0.96);
+  display:none; overflow-y:auto; font-family:var(--font-mono); color:#c9e6c9;
+  padding:20px;
+}
+.debug-panel.open{ display:block; }
+.debug-panel h2{ color:#e0e0e0; font-size:14px; letter-spacing:.1em; margin:0 0 14px; font-family:var(--font-mono);}
+.debug-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; font-size:12px; margin-bottom:18px; }
+.debug-grid div span{ color:#6f6; }
+.debug-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+.debug-actions button{
+  background:#1a2a1a; border:1px solid #2f4f2f; color:#c9e6c9; font-family:var(--font-mono);
+  font-size:11px; padding:8px 11px; border-radius:5px; cursor:pointer;
+}
+.debug-actions button:hover{ background:#254025; }
+.debug-log{ font-size:10.5px; color:#8fae8f; max-height:200px; overflow-y:auto; white-space:pre-wrap; border-top:1px solid #2a3a2a; padding-top:10px;}
+.debug-close{ position:fixed; top:16px; right:16px; background:#2a1a1a; border:1px solid #4a2c2c; color:#e0a0a0; padding:6px 12px; border-radius:5px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
+textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; border:1px solid #2a3a2a; font-family:var(--font-mono); font-size:10px; margin-top:6px;}
+
+@media(max-width:420px){ .clock{font-size:36px;} .dialogue-text{font-size:18px;} }
+</style>
+</head>
+<body>
+
+<div id="ambient" aria-hidden="true">
+  <div id="dust"></div>
+  <div id="rain-layer"></div>
+  <div id="sweep"></div>
+  <div id="flash"></div>
+</div>
+
+<div class="wrap">
+  <header class="title-block" id="titleBlock">
+    <div class="name">UENO SATOMI</div>
+    <div class="clock" id="clockDisplay">--<span class="colon">:</span>--</div>
+    <div class="date-line" id="dateLine"></div>
+  </header>
+
+  <main class="stage">
+    <div class="presence-dot"></div>
+    <div class="activity-text" id="activityText">…</div>
+    <div class="dialogue-box">
+      <div class="dialogue-text" id="dialogueText"></div>
+    </div>
+  </main>
+
+  <div class="env-bar" id="envBar">· · ·</div>
+</div>
+
+<nav class="tabbar">
+  <button data-panel="log" class="tab-btn">LIFE LOG</button>
+  <button data-panel="interact" class="tab-btn">INTERACT</button>
+  <button data-panel="settings" class="tab-btn">SETTINGS</button>
+</nav>
+
+<!-- LOG PANEL -->
+<div class="panel-overlay" id="overlay-log">
+  <div class="panel">
+    <h2>Life Log</h2>
+    <div class="log-filters" id="logFilters">
+      <button data-filter="all" class="active">All</button>
+      <button data-filter="dialogue">Dialogue</button>
+      <button data-filter="activity">Activities</button>
+      <button data-filter="environment">Environment</button>
+      <button data-filter="major">Life Events</button>
+    </div>
+    <div id="logList"></div>
+    <button class="panel-close" data-close="log">Close</button>
+  </div>
+</div>
+
+<!-- INTERACT PANEL -->
+<div class="panel-overlay" id="overlay-interact">
+  <div class="panel">
+    <h2>Interact</h2>
+    <div class="interact-grid" id="interactGrid"></div>
+    <div class="interact-hint">She may respond now, later, or simply continue what she's doing.</div>
+    <button class="panel-close" data-close="interact">Close</button>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="panel-overlay" id="overlay-settings">
+  <div class="panel">
+    <h2>Settings &amp; Presence</h2>
+    <div id="statsList"></div>
+    <button class="settings-btn" id="exportBtn">Export save data</button>
+    <button class="settings-btn" id="importBtn">Import save data</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+    <button class="settings-btn danger" id="resetBtn">Reset everything</button>
+    <button class="panel-close" data-close="settings">Close</button>
+  </div>
+</div>
+
+<!-- hidden debug entry: tap the name 6 times, or press Ctrl+Shift+D -->
+<button id="debugToggle" aria-label="dev"></button>
+
+<div class="debug-panel" id="debugPanel">
+  <button class="debug-close" id="debugClose">CLOSE [Ctrl+Shift+D]</button>
+  <h2>◆ DEBUG / DEVELOPER MODE</h2>
+  <div class="debug-grid" id="debugGrid"></div>
+  <div class="debug-actions" id="debugActions"></div>
+  <div>
+    <div style="font-size:11px;color:#6f6;margin-bottom:4px;">export / import (paste JSON, then Load)</div>
+    <textarea class="debug-io" id="debugIO"></textarea>
+    <div style="margin-top:6px;"><button id="debugLoad" style="background:#1a2a1a;border:1px solid #2f4f2f;color:#c9e6c9;padding:6px 10px;font-family:monospace;font-size:11px;border-radius:4px;">Load JSON above</button></div>
+  </div>
+  <div style="font-size:11px;color:#6f6;margin:16px 0 4px;">event log (debug)</div>
+  <div class="debug-log" id="debugEventLog"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   1. CONTENT REGISTRY
+   Every gameplay-facing fact lives here. The engine below never
+   references specific dialogue/activity text directly — it only
+   asks these registries "what fits right now?"
+   ============================================================ */
+
+const CHARACTER = {
+  name: "Ueno Satomi",
+  age: 21,
+  year: "3rd year",
+  major: "Comparative Literature",
+  university: "a mid-size university in Tokyo",
+  hometown: "Kanazawa",
+  livingSituation: "a small one-room apartment near campus, lives alone",
+  family: "parents and a younger brother (Ren, 16) still in Kanazawa; calls her mother most Sundays",
+  hobbies: ["reading novels in translation", "collecting postcards", "small sketching in the margins of notebooks", "watching detective dramas"],
+  favoriteFoods: ["onigiri with salmon", "cold soba in summer", "convenience-store egg sandwiches", "her mother's curry"],
+  dislikedFoods: ["natto", "very bitter coffee"],
+  favoriteDrinks: ["hojicha", "canned coffee (Boss, black)", "barley tea in summer"],
+  musicTaste: "quiet city pop and lo-fi instrumentals while studying",
+  academicStrengths: ["essay writing", "close reading", "memorizing quotations"],
+  academicWeaknesses: ["statistics", "public speaking", "early morning lectures"],
+  personality: ["a little introverted", "dry sense of humor once comfortable", "overthinks small social moments", "stubborn about finishing what she starts, eventually"],
+  habits: ["taps her pen against her notebook when thinking", "reads the same paragraph twice without noticing", "keeps receipts she means to throw away"],
+  fears: ["falling behind her classmates", "saying something awkward and replaying it for days", "running out of savings before the semester ends"],
+  aspirations: ["study abroad for a semester, maybe Vienna", "eventually work in publishing or translation"],
+  financial: "tight but manageable; part-time job covers rent with little left over",
+  job: "part-time at a small neighborhood café, evening shifts three times a week",
+  friends: ["Mio (childhood friend, different university)", "Kana (classmate, sits next to her in seminar)"],
+  favoriteSeason: "autumn",
+  procrastinates: ["laundry", "replying to group chats", "starting essays until the week they're due"],
+  proudOf: ["finishing her first full novel in English", "never missing a shift despite exams"],
+  embarrassingHabits: ["talks to herself when she thinks no one's around", "has strong opinions about pen brands"],
+};
+
+// --- weather registry: id, temp range, mood modifiers, transitions it can lead to ---
+const WEATHER_STATES = [
+  { id:"clear", label:"Clear", icon:"☀", tempRange:[20,29], noise:"quiet", moodMod:{mood:+2}, next:["sunny","clear","cloudy"] },
+  { id:"sunny", label:"Sunny", icon:"☀", tempRange:[24,32], noise:"quiet", moodMod:{mood:+3}, next:["clear","hot","cloudy"] },
+  { id:"cloudy", label:"Cloudy", icon:"☁", tempRange:[18,25], noise:"quiet", moodMod:{mood:0}, next:["overcast","clear","light_rain"] },
+  { id:"overcast", label:"Overcast", icon:"☁", tempRange:[16,22], noise:"quiet", moodMod:{mood:-1}, next:["light_rain","cloudy"] },
+  { id:"light_rain", label:"Light Rain", icon:"🌦", tempRange:[15,21], noise:"soft patter", moodMod:{mood:-1,focus:+2}, next:["heavy_rain","overcast","rain_stopping"] },
+  { id:"heavy_rain", label:"Heavy Rain", icon:"🌧", tempRange:[14,19], noise:"steady rain", moodMod:{mood:-2}, next:["thunderstorm","light_rain"] },
+  { id:"thunderstorm", label:"Thunderstorm", icon:"⛈", tempRange:[14,19], noise:"thunder", moodMod:{mood:-2,stress:+3}, next:["heavy_rain","rain_stopping"] },
+  { id:"rain_stopping", label:"Clearing", icon:"🌤", tempRange:[16,22], noise:"dripping", moodMod:{mood:+1}, next:["cloudy","clear"] },
+  { id:"windy", label:"Windy", icon:"🌬", tempRange:[15,22], noise:"wind against glass", moodMod:{mood:0}, next:["clear","cloudy"] },
+  { id:"foggy", label:"Foggy", icon:"🌫", tempRange:[13,18], noise:"muffled", moodMod:{mood:-1}, next:["cloudy","clear"] },
+  { id:"hot", label:"Hot", icon:"🌞", tempRange:[30,35], noise:"quiet", moodMod:{mood:-1,energy:-2}, next:["sunny","clear"] },
+  { id:"cold", label:"Cold", icon:"❄", tempRange:[2,9], noise:"quiet", moodMod:{mood:-1}, next:["clear","cloudy","windy"] },
+];
+
+// --- activities: id, category, text[], duration seconds, requirements/effects, time & context tags ---
+const ACTIVITIES = [
+  { id:"study_notes", category:"study", text:["Satomi is writing notes in her notebook.","Satomi is carefully copying something from her textbook.","Satomi is reviewing her notes from seminar."], micro:["Satomi flips to a new page.","Satomi underlines a line twice.","Satomi pauses to reread a sentence."], duration:[240,900], tod:["morning","afternoon","evening"], weekday:"any", effects:{energy:-4,focus:-2,boredom:-3,motivation:-1} },
+  { id:"study_reading", category:"study", text:["Satomi is reading an assigned novel for seminar.","Satomi is highlighting a passage."], micro:["Satomi turns a page slowly.","Satomi rereads the same paragraph.","Satomi dog-ears a page."], duration:[300,1200], tod:["afternoon","evening","night"], weekday:"any", effects:{energy:-3,focus:-3,boredom:-4} },
+  { id:"essay_writing", category:"study", text:["Satomi is staring at a mostly blank document.","Satomi is slowly writing her essay."], micro:["Satomi deletes a sentence.","Satomi rereads what she just wrote.","Satomi stretches her fingers."], duration:[200,700], tod:["afternoon","evening","night"], weekday:"any", effects:{energy:-5,focus:-4,stress:+2,motivation:-2} },
+  { id:"stats_homework", category:"study", text:["Satomi is struggling through a statistics worksheet."], micro:["Satomi sighs at the page.","Satomi rechecks a formula."], duration:[180,500], tod:["afternoon","evening"], weekday:"any", effects:{energy:-5,focus:-3,stress:+4} },
+  { id:"break_stretch", category:"break", text:["Satomi is taking a short break.","Satomi leans back in her chair."], micro:["Satomi rolls her shoulders.","Satomi stares at the ceiling for a moment."], duration:[60,240], tod:["any"], weekday:"any", effects:{energy:+3,focus:+5,boredom:+1,stress:-2} },
+  { id:"tea_making", category:"break", text:["Satomi gets up to make tea."], micro:["Satomi waits for the kettle.","Satomi warms her hands on the cup."], duration:[120,300], tod:["any"], weekday:"any", effects:{energy:+2,hunger:-2,stress:-2} },
+  { id:"phone_check", category:"break", text:["Satomi checks her phone."], micro:["Satomi scrolls slowly.","Satomi types a short reply.","Satomi puts the phone face-down again."], duration:[30,180], tod:["any"], weekday:"any", effects:{socialNeed:-3,boredom:-2,focus:-1} },
+  { id:"desk_organize", category:"break", text:["Satomi is tidying her desk."], micro:["Satomi stacks some loose papers.","Satomi finds a pen she'd been looking for."], duration:[90,240], tod:["any"], weekday:"any", effects:{boredom:-1} },
+  { id:"window_watch", category:"observe", text:["Satomi looks out the window for a while."], micro:["Satomi watches something pass by outside."], duration:[30,150], tod:["any"], weekday:"any", effects:{stress:-1,boredom:+1} },
+  { id:"breakfast", category:"meal", text:["Satomi is eating a simple breakfast."], micro:["Satomi sips her drink between bites."], duration:[300,700], tod:["morning"], weekday:"any", effects:{hunger:-30,energy:+8} },
+  { id:"lunch", category:"meal", text:["Satomi is eating lunch."], micro:["Satomi checks her phone between bites."], duration:[400,900], tod:["afternoon"], weekday:"any", effects:{hunger:-35,energy:+6} },
+  { id:"dinner", category:"meal", text:["Satomi is making dinner.","Satomi is eating dinner."], micro:["Satomi tastes the food, adjusts the seasoning.","Satomi eats slowly, unhurried."], duration:[500,1100], tod:["evening"], weekday:"any", effects:{hunger:-40,energy:+10,stress:-2} },
+  { id:"snack", category:"meal", text:["Satomi is having a small snack."], micro:["Satomi eats it slowly, one piece at a time."], duration:[120,300], tod:["any"], weekday:"any", effects:{hunger:-15,energy:+3} },
+  { id:"commute_out", category:"routine", text:["Satomi is getting ready to leave for university."], micro:["Satomi checks she has everything.","Satomi ties her shoes."], duration:[180,420], tod:["morning"], weekday:"weekday", effects:{energy:-2} },
+  { id:"at_university", category:"university", text:["Satomi is at a lecture.","Satomi is in seminar, half-listening.","Satomi is between classes, sitting in the courtyard."], micro:["Satomi jots something down.","Satomi glances at the clock."], duration:[600,1800], tod:["morning","afternoon"], weekday:"weekday", effects:{energy:-3,focus:-2,socialNeed:-2,boredom:-2} },
+  { id:"commute_home", category:"routine", text:["Satomi is on the train home.","Satomi is walking back to her apartment."], micro:["Satomi looks out at the passing streets."], duration:[300,900], tod:["afternoon","evening"], weekday:"any", effects:{energy:-2,stress:-1} },
+  { id:"prep_for_work", category:"work", text:["Satomi is getting ready for her shift."], micro:["Satomi ties her apron string in the mirror."], duration:[180,360], tod:["afternoon","evening"], weekday:"any", effects:{energy:-2,stress:+1} },
+  { id:"at_work", category:"work", text:["Satomi is working her shift at the café."], micro:["Satomi wipes down a counter.","Satomi restocks napkins."], duration:[900,2400], tod:["evening"], weekday:"any", effects:{energy:-8,focus:-2,socialNeed:-4,stress:+1} },
+  { id:"return_from_work", category:"routine", text:["Satomi just got back from her shift, tired."], micro:["Satomi drops her bag by the door."], duration:[60,180], tod:["evening","night"], weekday:"any", effects:{energy:-2,sleepiness:+3} },
+  { id:"reading_book", category:"hobby", text:["Satomi is reading a novel for herself, not for class."], micro:["Satomi smiles slightly at a line.","Satomi turns the page carefully."], duration:[300,1200], tod:["evening","night"], weekday:"any", effects:{boredom:-5,stress:-2,energy:-2} },
+  { id:"sketching", category:"hobby", text:["Satomi is sketching something small in the margin of a notebook."], micro:["Satomi erases a line and tries again."], duration:[180,500], tod:["evening","night"], weekday:"any", effects:{boredom:-3,stress:-2} },
+  { id:"listening_music", category:"hobby", text:["Satomi has music playing quietly while she works."], micro:["Satomi hums along without noticing."], duration:[600,1800], tod:["any"], weekday:"any", effects:{stress:-1,boredom:-1} },
+  { id:"laundry_avoidance", category:"chore", text:["Satomi glances at the pile of laundry and decides not today."], micro:[], duration:[20,60], tod:["evening","night"], weekday:"any", effects:{stress:+1} },
+  { id:"laundry_doing", category:"chore", text:["Satomi is finally doing her laundry."], micro:["Satomi folds a shirt.","Satomi checks her phone while waiting."], duration:[300,700], tod:["afternoon","weekend"], weekday:"any", effects:{stress:-1,motivation:+2} },
+  { id:"phone_call_family", category:"social", text:["Satomi is on the phone with her mother."], micro:["Satomi laughs quietly at something.","Satomi paces slowly while talking."], duration:[300,900], tod:["evening"], weekday:"weekend", effects:{socialNeed:-8,stress:-2} },
+  { id:"relaxing_phone", category:"break", text:["Satomi is relaxing, scrolling through her phone."], micro:["Satomi smiles faintly at something.","Satomi switches apps."], duration:[180,600], tod:["night","late_night"], weekday:"any", effects:{boredom:-3,socialNeed:-2,sleepiness:+1} },
+  { id:"getting_sleepy", category:"routine", text:["Satomi is fighting off sleepiness at her desk."], micro:["Satomi's eyes drift half-shut.","Satomi rubs her eyes."], duration:[60,240], tod:["late_night"], weekday:"any", effects:{sleepiness:+4,focus:-4} },
+  { id:"preparing_bed", category:"routine", text:["Satomi is getting ready for bed."], micro:["Satomi sets an alarm.","Satomi turns off the lamp."], duration:[180,420], tod:["late_night"], weekday:"any", effects:{sleepiness:+2,energy:+1} },
+  { id:"sleeping", category:"routine", text:["Satomi has gone to sleep."], micro:[], duration:[3600,3600], tod:["late_night"], weekday:"any", effects:{sleepiness:-60,energy:+30,stress:-10} },
+  { id:"weekend_lazing", category:"break", text:["Satomi is lazing around, in no hurry to do anything.","Satomi is still in pajamas, scrolling idly."], micro:["Satomi stretches out on the floor cushion."], duration:[300,900], tod:["morning","afternoon"], weekday:"weekend", effects:{energy:+3,boredom:+3,stress:-2} },
+  { id:"meeting_friend", category:"social", text:["Satomi is out meeting a friend."], micro:[], duration:[1200,3000], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-15,stress:-3,energy:-3} },
+];
+
+// --- dialogue: explicit lines with contextual weighting ---
+const DIALOGUE = [
+  // self_talk
+  {id:"st01",category:"self_talk",mood:["tired"],context:["study","essay_writing"],text:["Why does one page feel like ten today...","I really should take a break soon.","My brain has just... stopped."],weight:5},
+  {id:"st02",category:"self_talk",mood:["any"],context:["study_notes"],text:["Okay. Focus.","Right, where was I.","One more page, then I'll stop."],weight:4},
+  {id:"st03",category:"self_talk",mood:["any"],context:["any"],text:["Hm.","...huh.","Wait, what was I doing."],weight:3},
+  {id:"st04",category:"self_talk",mood:["stressed"],context:["essay_writing","stats_homework"],text:["This is due when.","I should not have left this until now.","Okay, okay, it's fine. Probably."],weight:4},
+  {id:"st05",category:"self_talk",mood:["relaxed"],context:["reading_book","sketching"],text:["This is nice.","I could stay like this for a while.","I like quiet evenings like this."],weight:3},
+
+  // environment_reaction
+  {id:"er01",category:"environment_reaction",mood:["any"],context:["weather:light_rain","weather:heavy_rain"],text:["Oh, it's raining.","I hope I don't need to go out later.","I like the sound of rain, actually."],weight:5},
+  {id:"er02",category:"environment_reaction",mood:["any"],context:["weather:thunderstorm"],text:["That was loud.","I don't love thunderstorms.","Hope the power doesn't go out."],weight:4},
+  {id:"er03",category:"environment_reaction",mood:["any"],context:["env:motorcycle"],text:["That was loud.","Someone's in a hurry."],weight:3},
+  {id:"er04",category:"environment_reaction",mood:["any"],context:["env:phone_notification"],text:["Oh.","Who's texting now."],weight:3},
+  {id:"er05",category:"environment_reaction",mood:["any"],context:["weather:cold"],text:["It's cold today.","I should turn the heater on."],weight:3},
+  {id:"er06",category:"environment_reaction",mood:["any"],context:["weather:hot"],text:["It's too hot for this.","I need something cold to drink."],weight:3},
+
+  // player_direct
+  {id:"pd01",category:"player_direct",mood:["any"],context:["any"],text:["You're still there, huh.","Do you ever get tired of watching me study?","It's nice having you around, even if you don't say much."],weight:2},
+  {id:"pd02",category:"player_direct",mood:["tired"],context:["any"],text:["Do you ever feel like studying is harder when you're tired?","Is it just me, or does time slow down when you're exhausted?"],weight:2},
+  {id:"pd03",category:"player_direct",mood:["any"],context:["any"],text:["Coffee or tea — which do you prefer?","What do you usually do when you need a break?"],weight:1},
+
+  // study
+  {id:"study01",category:"study",mood:["any"],context:["study_notes","study_reading"],text:["This professor really likes long readings.","I wonder if this will be on the exam.","Kana said this chapter was important, so I'm trusting her."],weight:4},
+  {id:"study02",category:"study",mood:["stressed"],context:["exam_near"],text:["The exam is getting close.","I should really start reviewing properly.","I keep putting off the hard chapters."],weight:5},
+
+  // university
+  {id:"uni01",category:"university",mood:["any"],context:["at_university"],text:["This lecture hall is freezing as usual.","I should've sat closer to the front.","Kana's saving me a seat, I think."],weight:3},
+
+  // work
+  {id:"work01",category:"work",mood:["any"],context:["prep_for_work","at_work"],text:["I have a shift later.","Hope it's not too busy tonight.","My manager keeps rescheduling the shift board, it's confusing."],weight:4},
+  {id:"work02",category:"work",mood:["tired"],context:["return_from_work"],text:["That shift ran long.","My feet hurt.","At least I get a bit of extra pay this week."],weight:3},
+
+  // food
+  {id:"food01",category:"food",mood:["any"],context:["hungry"],text:["I'm getting hungry.","What should I even make tonight.","I really want onigiri right now."],weight:4},
+  {id:"food02",category:"food",mood:["any"],context:["breakfast","lunch","dinner","snack"],text:["This is good.","I should cook like this more often.","Natto again? No thank you."],weight:3},
+
+  // weather
+  {id:"weather01",category:"weather",mood:["any"],context:["weather:clear","weather:sunny"],text:["It's nice out today.","I should open the window.","Maybe I'll go outside later, for once."],weight:3},
+
+  // sleep
+  {id:"sleep01",category:"sleep",mood:["sleepy"],context:["late_night"],text:["I should really go to sleep soon.","My eyes keep closing on their own.","Just a little more, then bed."],weight:5},
+  {id:"sleep02",category:"sleep",mood:["sleepy"],context:["night"],text:["It's getting late already.","Where did the evening go."],weight:3},
+
+  // hobbies
+  {id:"hobby01",category:"hobbies",mood:["relaxed"],context:["reading_book"],text:["This part of the book is really good.","I didn't expect that twist.","I should recommend this to Mio."],weight:3},
+  {id:"hobby02",category:"hobbies",mood:["any"],context:["sketching"],text:["That didn't come out right.","I'm not really good at this, but I like doing it anyway."],weight:2},
+
+  // friends
+  {id:"friend01",category:"friends",mood:["any"],context:["phone_check"],text:["Mio sent something funny again.","Kana's asking about the assignment.","I should reply properly later."],weight:3},
+  {id:"friend02",category:"friends",mood:["any"],context:["weekend"],text:["I'm meeting Mio this weekend.","It's been a while since we last talked properly."],weight:2},
+
+  // family
+  {id:"family01",category:"family",mood:["any"],context:["phone_call_family"],text:["My mom worries too much.","My brother's exams are coming up too.","I should visit Kanazawa again soon."],weight:3},
+
+  // casual / thoughtful
+  {id:"cas01",category:"casual",mood:["any"],context:["any"],text:["I wonder what time it is.","This chair is really not comfortable.","I need a new pen, this one's almost out of ink."],weight:3},
+  {id:"thoughtful01",category:"thoughtful",mood:["relaxed"],context:["any"],text:["Sometimes I wonder if I'm actually going anywhere with all this.","I want to study abroad someday. Vienna, maybe.","I like days like this, even the boring parts."],weight:2},
+
+  // complaint / humor
+  {id:"complaint01",category:"complaint",mood:["stressed"],context:["stats_homework"],text:["I hate statistics.","Why do I need this for a literature degree.","Numbers and I do not get along."],weight:3},
+  {id:"humor01",category:"humor",mood:["any"],context:["any"],text:["I just talked to myself out loud again, didn't I.","If overthinking were a class I'd have a perfect grade.","Don't tell anyone I do this."],weight:2},
+
+  // small_observation
+  {id:"obs01",category:"small_observation",mood:["any"],context:["any"],text:["This pen is running out of ink.","I really need to clean my desk one of these days.","My tea's gone cold already."],weight:3},
+
+  // deep_personal / important_life_event (rare)
+  {id:"deep01",category:"deep_personal",mood:["stressed"],context:["exam_near"],text:["Sometimes I worry I'm not cut out for this.","I don't tell people this, but I get nervous about falling behind."],weight:1},
+  {id:"life01",category:"important_life_event",mood:["any"],context:["thread_complete"],text:["I finally finished it.","Okay. Done. That felt good."],weight:1},
+];
+
+// --- procedural dialogue building blocks ---
+const DIALOGUE_PARTS = {
+  openings:["Honestly...","I just realized...","You know...","I wonder...","Maybe I'm just tired, but...","Come to think of it..."],
+  topicsByContext:{
+    weather_rain:["how calming the rain sounds","whether I'll need an umbrella later","how the rain always makes the room feel smaller"],
+    study:["how much reading is left","whether I'm actually retaining any of this","how long I've been sitting here"],
+    work:["how busy the café gets on weekends","whether I should ask for more hours","how my feet hurt after a shift"],
+    night:["how late it's gotten","whether I should just sleep already","how the apartment feels quieter at night"],
+    hungry:["what I even have left to eat","whether instant food counts as cooking","how I keep forgetting to grocery shop"],
+  },
+  endings:["Do you ever feel that way?","Is that just me?","Anyway.","I should stop thinking about it.","Not that it matters much."],
+};
+
+// --- environmental events ---
+const ENVIRONMENTAL_EVENTS = [
+  { id:"motorcycle", text:"A motorcycle passes outside.", tod:["any"], weight:4, reactChance:0.35 },
+  { id:"car_passing", text:"A car passes on the street below.", tod:["any"], weight:5, reactChance:0.1 },
+  { id:"distant_conversation", text:"Muffled voices pass by outside.", tod:["afternoon","evening"], weight:3, reactChance:0.15 },
+  { id:"birds", text:"Birds are calling outside.", tod:["morning"], weight:4, reactChance:0.1 },
+  { id:"rain_window", text:"Rain taps steadily against the window.", tod:["any"], weight:5, weatherOnly:["light_rain","heavy_rain"], reactChance:0.15 },
+  { id:"thunder", text:"Thunder rumbles in the distance.", tod:["any"], weight:3, weatherOnly:["thunderstorm"], reactChance:0.5 },
+  { id:"construction", text:"Distant construction noise drifts in.", tod:["morning","afternoon"], weight:2, reactChance:0.2 },
+  { id:"neighbor_noise", text:"A door closes somewhere in the building.", tod:["any"], weight:3, reactChance:0.1 },
+  { id:"school_bell", text:"A distant school bell rings.", tod:["afternoon"], weight:2, reactChance:0.05 },
+  { id:"evening_insects", text:"Evening insects hum faintly outside.", tod:["evening","night"], weight:3, seasonOnly:["summer","autumn"], reactChance:0.1 },
+  { id:"ac_hum", text:"The air conditioner hums quietly.", tod:["any"], weight:2, reactChance:0 },
+  { id:"fan_whir", text:"A small fan whirs on the desk.", tod:["any"], weight:2, reactChance:0 },
+  { id:"phone_notification", text:"Her phone buzzes with a notification.", tod:["any"], weight:5, reactChance:0.3 },
+  { id:"clock_tick", text:"The clock on the wall ticks quietly.", tod:["night","late_night"], weight:2, reactChance:0 },
+  { id:"kettle_whistle", text:"A kettle whistles somewhere nearby.", tod:["any"], weight:1, reactChance:0.1 },
+  { id:"wind_gust", text:"Wind rattles the window gently.", tod:["any"], weight:3, weatherOnly:["windy"], reactChance:0.2 },
+  { id:"page_flutter", text:"A breeze flutters the pages of her notebook.", tod:["any"], weight:2, reactChance:0.15 },
+  { id:"street_music", text:"Faint music drifts up from a passing car.", tod:["evening","night"], weight:2, reactChance:0.1 },
+  { id:"rain_stop_drip", text:"Water drips from the eaves as the rain lets up.", tod:["any"], weight:2, weatherOnly:["rain_stopping"], reactChance:0.1 },
+  { id:"lightning_flash", text:"Lightning briefly lights the room.", tod:["any"], weight:2, weatherOnly:["thunderstorm"], reactChance:0.4, visual:"flash" },
+  { id:"train_rumble", text:"A distant train rumbles past.", tod:["any"], weight:3, reactChance:0.05 },
+  { id:"cat_meow", text:"A stray cat meows somewhere below the window.", tod:["afternoon","evening"], weight:2, reactChance:0.3 },
+];
+
+// --- life threads: id, title, stages[] with text + min days between progress ---
+const LIFE_THREADS = [
+  { id:"comp_lit_essay", title:"Comparative Literature essay", stages:[
+      "I really need to start my essay.",
+      "Okay. Today I'm actually going to work on it.",
+      "*Several pages of notes are scattered across the desk.*",
+      "I think I'm finally getting somewhere with this.",
+      "Submitted. Finally.",
+    ], minDaysBetween:1, category:"study" },
+  { id:"umbrella", title:"the broken umbrella", stages:[
+      "My umbrella broke again. I should replace it.",
+      "I keep forgetting to buy a new umbrella.",
+      "Bought a new umbrella on the way back from work.",
+    ], minDaysBetween:2, category:"life" },
+  { id:"friend_meetup", title:"plans with Mio", stages:[
+      "Mio wants to meet up sometime this week.",
+      "We're figuring out a day that works.",
+      "Meeting Mio this weekend, finally.",
+      "That was a good day. I needed that.",
+    ], minDaysBetween:1, category:"social" },
+  { id:"savings_goal", title:"saving up for a new bag", stages:[
+      "I've been eyeing a new bag, but it's a bit expensive.",
+      "Put a little more aside from this week's pay.",
+      "Getting closer to being able to afford it.",
+      "Finally bought it. Small victory.",
+    ], minDaysBetween:3, category:"life" },
+  { id:"exam_prep", title:"upcoming exam", stages:[
+      "There's an exam coming up in a couple of weeks.",
+      "Started making a review schedule.",
+      "Studying is going slower than planned.",
+      "The exam is tomorrow. I hope I'm ready.",
+      "It's over. I think it went okay.",
+    ], minDaysBetween:2, category:"study" },
+];
+
+// --- season pools (extend later) ---
+const SEASONS = [
+  { id:"spring", label:"Spring", months:[3,4,5], weatherBias:["clear","cloudy","light_rain"], note:"new semester energy, mild weather" },
+  { id:"summer", label:"Summer", months:[6,7,8], weatherBias:["hot","sunny","clear"], note:"heat, fans, summer break looms" },
+  { id:"autumn", label:"Autumn", months:[9,10,11], weatherBias:["cloudy","light_rain","windy"], note:"cooler air, assignments pile up" },
+  { id:"winter", label:"Winter", months:[12,1,2], weatherBias:["cold","clear","overcast"], note:"short days, exam season" },
+];
+
+/* ============================================================
+   2. REGISTRATION HELPERS (for future content additions)
+   ============================================================ */
+const CONTENT = {
+  activities: ACTIVITIES,
+  dialogue: DIALOGUE,
+  environmentalEvents: ENVIRONMENTAL_EVENTS,
+  lifeThreads: LIFE_THREADS,
+  weather: WEATHER_STATES,
+  seasons: SEASONS,
+  parts: DIALOGUE_PARTS,
+};
+function registerActivity(a){ CONTENT.activities.push(a); }
+function registerDialogue(d){ CONTENT.dialogue.push(d); }
+function registerEvent(e){ CONTENT.environmentalEvents.push(e); }
+function registerLifeThread(t){ CONTENT.lifeThreads.push(t); }
+function registerWeather(w){ CONTENT.weather.push(w); }
+window.SatomiContent = { CONTENT, registerActivity, registerDialogue, registerEvent, registerLifeThread, registerWeather };
+
+/* ============================================================
+   3. RNG / RANDOMIZATION UTILITIES
+   ============================================================ */
+const RNG = {
+  range(min,max){ return Math.random()*(max-min)+min; },
+  intRange(min,max){ return Math.floor(this.range(min,max+1)); },
+  chance(p){ return Math.random() < p; },
+  pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; },
+  weightedPick(items, weightFn){
+    const weights = items.map(weightFn);
+    const total = weights.reduce((a,b)=>a+b,0);
+    if(total<=0) return items.length? RNG.pick(items): null;
+    let r = Math.random()*total;
+    for(let i=0;i<items.length;i++){
+      r -= weights[i];
+      if(r<=0) return items[i];
+    }
+    return items[items.length-1];
+  }
+};
+
+/* ============================================================
+   4. CLOCK — real device time is the source of truth, with an
+   optional debug offset for fast-forwarding.
+   ============================================================ */
+const Clock = {
+  offsetMs: 0, // debug time travel
+  now(){ return new Date(Date.now() + this.offsetMs); },
+  hour(){ return this.now().getHours(); },
+  minute(){ return this.now().getMinutes(); },
+  weekdayIndex(){ return this.now().getDay(); }, // 0 sun..6 sat
+  isWeekend(){ const d=this.weekdayIndex(); return d===0||d===6; },
+  timeOfDay(){
+    const h = this.hour();
+    if(h>=5 && h<11) return "morning";
+    if(h>=11 && h<17) return "afternoon";
+    if(h>=17 && h<21) return "evening";
+    if(h>=21 && h<24) return "night";
+    return "late_night"; // 0-5
+  },
+  season(){
+    const m = this.now().getMonth()+1;
+    return SEASONS.find(s=>s.months.includes(m)) || SEASONS[0];
+  },
+  formatted(){
+    const d=this.now();
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mm = String(d.getMinutes()).padStart(2,"0");
+    return {hh,mm};
+  },
+  dateString(){
+    const d=this.now();
+    const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    return `${days[d.getDay()]} · ${d.getMonth()+1}/${d.getDate()}`;
+  }
+};
+
+/* ============================================================
+   5. STATE ENGINE — Satomi's invisible internal variables
+   ============================================================ */
+const StateEngine = {
+  data: {
+    energy:70, focus:70, stress:20, hunger:20, boredom:20, socialNeed:20,
+    sleepiness:10, motivation:60, mood:60,
+  },
+  clamp(v){ return Math.max(0, Math.min(100, v)); },
+  apply(effects){
+    if(!effects) return;
+    for(const k in effects){
+      if(k in this.data) this.data[k] = this.clamp(this.data[k] + effects[k]);
+    }
+  },
+  tickNatural(minutesElapsed){
+    // slow natural drift over real elapsed time
+    const m = minutesElapsed;
+    this.data.hunger = this.clamp(this.data.hunger + m*0.12);
+    this.data.boredom = this.clamp(this.data.boredom + m*0.06);
+    this.data.socialNeed = this.clamp(this.data.socialNeed + m*0.05);
+    this.data.energy = this.clamp(this.data.energy - m*0.04);
+    const tod = Clock.timeOfDay();
+    if(tod==="night") this.data.sleepiness = this.clamp(this.data.sleepiness + m*0.15);
+    if(tod==="late_night") this.data.sleepiness = this.clamp(this.data.sleepiness + m*0.35);
+    if(tod==="morning" && this.data.sleepiness>0) this.data.sleepiness = this.clamp(this.data.sleepiness - m*0.2);
+  },
+  currentMoodTag(){
+    const d=this.data;
+    if(d.sleepiness>70) return "sleepy";
+    if(d.stress>65) return "stressed";
+    if(d.energy<25) return "tired";
+    if(d.mood>65 && d.stress<35) return "relaxed";
+    return "neutral";
+  },
+  moodMatches(tags){
+    if(!tags || tags.includes("any")) return true;
+    return tags.includes(this.currentMoodTag());
+  }
+};
+
+/* ============================================================
+   6. WEATHER ENGINE
+   ============================================================ */
+const WeatherEngine = {
+  currentId: "cloudy",
+  temp: 22,
+  lastChange: Date.now(),
+  current(){ return WEATHER_STATES.find(w=>w.id===this.currentId) || WEATHER_STATES[0]; },
+  maybeEvolve(){
+    // evolve slowly: only allow a transition roughly every 20-70 minutes of real time
+    const elapsedMin = (Date.now()-this.lastChange)/60000;
+    const threshold = RNG.range(20,70);
+    if(elapsedMin < threshold) return false;
+    const cur = this.current();
+    const nextId = RNG.pick(cur.next);
+    this.set(nextId);
+    return true;
+  },
+  set(id){
+    const w = WEATHER_STATES.find(x=>x.id===id);
+    if(!w) return;
+    this.currentId = id;
+    this.temp = Math.round(RNG.range(w.tempRange[0], w.tempRange[1]));
+    this.lastChange = Date.now();
+    StateEngine.apply(w.moodMod);
+  },
+  isRaining(){ return ["light_rain","heavy_rain","thunderstorm"].includes(this.currentId); },
+};
+
+/* ============================================================
+   7. SCHEDULE — probability tables per time-of-day/weekday
+   ============================================================ */
+const Schedule = {
+  candidatePool(){
+    const tod = Clock.timeOfDay();
+    const weekend = Clock.isWeekend();
+    return CONTENT.activities.filter(a=>{
+      const todOk = a.tod.includes("any") || a.tod.includes(tod);
+      const wkOk = a.weekday==="any" || (a.weekday==="weekday" && !weekend) || (a.weekday==="weekend" && weekend);
+      return todOk && wkOk;
+    });
+  }
+};
+
+/* ============================================================
+   8. ACTIVITY ENGINE
+   ============================================================ */
+const ActivityEngine = {
+  current:null,
+  currentUntil:0,
+  recentIds:[],
+  score(activity){
+    let score = 1;
+    const s = StateEngine.data;
+    // steer toward what the state "needs"
+    if(activity.category==="meal" && s.hunger>55) score += (s.hunger-55)/8;
+    if(activity.category==="break" && (s.energy<35 || s.focus<35)) score += 3;
+    if(activity.category==="routine" && activity.id==="sleeping" && s.sleepiness>75) score += 6;
+    if(activity.category==="study" && s.motivation>40 && Clock.timeOfDay()!=="late_night") score += 1.5;
+    if(activity.category==="work" && ActivityEngine.isWorkWindow()) score += 4;
+    if(activity.category==="university" && Clock.timeOfDay()==="morning" && !Clock.isWeekend()) score += 3;
+    if(this.recentIds.includes(activity.id)) score *= 0.3; // anti-repetition
+    return Math.max(0.05, score);
+  },
+  isWorkWindow(){
+    // pretend Satomi works Tue/Thu/Sat evenings
+    const d = Clock.weekdayIndex();
+    const tod = Clock.timeOfDay();
+    return [2,4,6].includes(d) && (tod==="evening");
+  },
+  pickNext(){
+    const pool = Schedule.candidatePool();
+    if(pool.length===0) return null;
+    const choice = RNG.weightedPick(pool, a=>this.score(a));
+    return choice;
+  },
+  advanceIfNeeded(){
+    if(!this.current || Date.now() > this.currentUntil){
+      const next = this.pickNext();
+      if(next){
+        this.setActivity(next);
+      }
+    }
+  },
+  setActivity(activity){
+    this.current = activity;
+    const durSec = RNG.range(activity.duration[0], activity.duration[1]);
+    this.currentUntil = Date.now() + durSec*1000;
+    this.recentIds.push(activity.id);
+    if(this.recentIds.length>6) this.recentIds.shift();
+    StateEngine.apply(activity.effects);
+    const text = RNG.pick(activity.text);
+    Memory.log("activity", text);
+    UI.setActivityText(text);
+  },
+  microUpdate(){
+    if(!this.current || !this.current.micro || this.current.micro.length===0) return;
+    const text = RNG.pick(this.current.micro);
+    UI.setActivityText(text, true);
+  }
+};
+
+/* ============================================================
+   9. DIALOGUE ENGINE
+   ============================================================ */
+const DialogueEngine = {
+  recentLineIds:[],
+  lastSpokenAt:0,
+  minGapMs: 45*1000,
+
+  contextTags(){
+    const tags = [];
+    if(ActivityEngine.current) tags.push(ActivityEngine.current.id);
+    tags.push("weather:"+WeatherEngine.currentId);
+    tags.push(Clock.timeOfDay());
+    if(Clock.isWeekend()) tags.push("weekend");
+    if(StateEngine.data.hunger>60) tags.push("hungry");
+    const exam = LifeThreadEngine.active.find(t=>t.def.id==="exam_prep");
+    if(exam) tags.push("exam_near");
+    return tags;
+  },
+  scoreLine(line){
+    if(!StateEngine.moodMatches(line.mood)) return 0;
+    let score = line.weight || 1;
+    const ctx = this.contextTags();
+    const matches = line.context.filter(c=>c==="any" || ctx.includes(c)).length;
+    if(line.context.includes("any")) score += 0.5;
+    else if(matches>0) score += matches*2.5;
+    else score *= 0.15; // context mismatch - rare but not impossible
+    if(this.recentLineIds.includes(line.id)) score *= 0.1;
+    return Math.max(0.01, score);
+  },
+  pickLine(){
+    const candidates = CONTENT.dialogue;
+    const scored = candidates.map(l=>({l, s:this.scoreLine(l)})).filter(x=>x.s>0.02);
+    if(scored.length===0) return null;
+    const chosen = RNG.weightedPick(scored, x=>x.s).l;
+    return chosen;
+  },
+  proceduralLine(){
+    const parts = CONTENT.parts;
+    const ctx = this.contextTags();
+    let topicPool = null;
+    if(WeatherEngine.isRaining()) topicPool = parts.topicsByContext.weather_rain;
+    else if(ctx.includes("hungry")) topicPool = parts.topicsByContext.hungry;
+    else if(ActivityEngine.current && ActivityEngine.current.category==="study") topicPool = parts.topicsByContext.study;
+    else if(ActivityEngine.current && ActivityEngine.current.category==="work") topicPool = parts.topicsByContext.work;
+    else if(Clock.timeOfDay()==="night"||Clock.timeOfDay()==="late_night") topicPool = parts.topicsByContext.night;
+    if(!topicPool) return null;
+    const opening = RNG.pick(parts.openings);
+    const topic = RNG.pick(topicPool);
+    const ending = RNG.pick(parts.endings);
+    return `${opening} I keep thinking about ${topic}. ${ending}`;
+  },
+  probabilityToSpeak(){
+    const sinceLast = Date.now()-this.lastSpokenAt;
+    if(sinceLast < this.minGapMs) return 0;
+    let p = 0.28; // base
+    const s = StateEngine.data;
+    if(s.socialNeed>60) p += 0.15;
+    if(s.stress>60) p += 0.08;
+    if(s.boredom>60) p += 0.1;
+    if(ActivityEngine.current && ActivityEngine.current.category==="break") p += 0.1;
+    if(Clock.timeOfDay()==="late_night") p -= 0.08;
+    return Math.max(0.03, Math.min(0.75, p));
+  },
+  maybeSpeak(){
+    if(!RNG.chance(this.probabilityToSpeak())) return false;
+    let line = this.pickLine();
+    let text;
+    if(line){
+      text = RNG.pick(line.text);
+      this.recentLineIds.push(line.id);
+      if(this.recentLineIds.length>10) this.recentLineIds.shift();
+    } else {
+      text = this.proceduralLine();
+    }
+    if(!text) return false;
+    this.lastSpokenAt = Date.now();
+    UI.speak(text);
+    Memory.log("dialogue", text);
+    return true;
+  }
+};
+
+/* ============================================================
+   10. EVENT ENGINE — environmental micro events
+   ============================================================ */
+const EventEngine = {
+  recentIds:[],
+  eligiblePool(){
+    const tod = Clock.timeOfDay();
+    const season = Clock.season().id;
+    return CONTENT.environmentalEvents.filter(e=>{
+      const todOk = e.tod.includes("any") || e.tod.includes(tod);
+      const weatherOk = !e.weatherOnly || e.weatherOnly.includes(WeatherEngine.currentId);
+      const seasonOk = !e.seasonOnly || e.seasonOnly.includes(season);
+      return todOk && weatherOk && seasonOk;
+    });
+  },
+  score(e){
+    let s = e.weight;
+    if(this.recentIds.includes(e.id)) s *= 0.25;
+    return Math.max(0.05,s);
+  },
+  trigger(forcedId){
+    const pool = forcedId ? CONTENT.environmentalEvents.filter(e=>e.id===forcedId) : this.eligiblePool();
+    if(pool.length===0) return null;
+    const ev = RNG.weightedPick(pool, e=>this.score(e));
+    this.recentIds.push(ev.id);
+    if(this.recentIds.length>8) this.recentIds.shift();
+    Memory.log("environment", ev.text);
+    UI.flashEnv(ev.text);
+    if(ev.visual==="flash") UI.lightningFlash();
+    if(RNG.chance(ev.reactChance||0)){
+      setTimeout(()=>{ DialogueEngine.reactTo(ev); }, RNG.range(600,2200));
+    }
+    return ev;
+  }
+};
+DialogueEngine.reactTo = function(ev){
+  const ctxKey = "env:"+ev.id;
+  const matches = CONTENT.dialogue.filter(l=>l.context.includes(ctxKey));
+  let text;
+  if(matches.length && RNG.chance(0.6)){
+    const l = RNG.pick(matches);
+    text = RNG.pick(l.text);
+  } else if(RNG.chance(0.4)){
+    text = null; // sometimes Satomi just glances, no words — handled by UI micro cue
+    UI.setActivityText("Satomi glances toward the sound.", true);
+    return;
+  } else return;
+  if(text){
+    this.lastSpokenAt = Date.now();
+    UI.speak(text);
+    Memory.log("dialogue", text);
+  }
+};
+
+/* ============================================================
+   11. LIFE THREAD ENGINE
+   ============================================================ */
+const LifeThreadEngine = {
+  active: [], // {def, stageIndex, lastProgress, id}
+  completed: [],
+  init(){
+    if(this.active.length===0 && this.completed.length===0){
+      // seed with two starting threads
+      this.startThread("comp_lit_essay");
+      this.startThread("umbrella");
+    }
+  },
+  startThread(id){
+    const def = LIFE_THREADS.find(t=>t.id===id);
+    if(!def) return;
+    if(this.active.find(t=>t.id===id) || this.completed.includes(id)) return;
+    this.active.push({id, def, stageIndex:0, lastProgress:Date.now()});
+    Memory.log("major", `A new thread begins: ${def.title}.`);
+  },
+  dailyTick(){
+    // called once per detected new simulated calendar day
+    this.active.forEach(t=>{
+      const daysSince = (Date.now()-t.lastProgress)/86400000;
+      if(daysSince >= t.def.minDaysBetween && RNG.chance(0.5)){
+        this.progress(t);
+      }
+    });
+    // occasionally start a new thread if fewer than 3 active
+    if(this.active.length<3 && RNG.chance(0.3)){
+      const pool = LIFE_THREADS.filter(d=>!this.active.find(a=>a.id===d.id) && !this.completed.includes(d.id));
+      if(pool.length) this.startThread(RNG.pick(pool).id);
+    }
+  },
+  progress(t){
+    t.stageIndex++;
+    t.lastProgress = Date.now();
+    const text = t.def.stages[t.stageIndex];
+    if(t.stageIndex >= t.def.stages.length-1){
+      Memory.log("major", text);
+      this.completed.push(t.id);
+      this.active = this.active.filter(a=>a.id!==t.id);
+    } else {
+      Memory.log("major", text);
+    }
+    if(RNG.chance(0.5)){
+      UI.speak(text.replace(/^\*|\*$/g,""));
+    }
+  }
+};
+
+/* ============================================================
+   12. MEMORY / LIFE LOG
+   ============================================================ */
+const Memory = {
+  entries: [], // {ts, type, text}
+  log(type, text){
+    this.entries.push({ts:Date.now(), type, text});
+    if(this.entries.length>500) this.entries.shift();
+    UI.refreshLogIfOpen();
+    Persistence.scheduleSave();
+  }
+};
+
+/* ============================================================
+   13. STATS / PRESENCE
+   ============================================================ */
+const Presence = {
+  firstOpened: null,
+  daysTogether: new Set(),
+  conversations: 0,
+  majorEventsWitnessed: 0,
+  totalTimeMs: 0,
+  lastTickAt: Date.now(),
+  registerTick(){
+    const nowDay = new Date().toDateString();
+    this.daysTogether.add(nowDay);
+    const now = Date.now();
+    this.totalTimeMs += (now - this.lastTickAt);
+    this.lastTickAt = now;
+  }
+};
+
+/* ============================================================
+   14. PERSISTENCE
+   ============================================================ */
+const Persistence = {
+  KEY: "satomi_companion_save_v1",
+  saveTimer:null,
+  scheduleSave(){
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(()=>this.save(), 800);
+  },
+  save(){
+    const payload = {
+      state: StateEngine.data,
+      weather: {id:WeatherEngine.currentId, temp:WeatherEngine.temp, lastChange:WeatherEngine.lastChange},
+      threadsActive: LifeThreadEngine.active.map(t=>({id:t.id, stageIndex:t.stageIndex, lastProgress:t.lastProgress})),
+      threadsCompleted: LifeThreadEngine.completed,
+      log: Memory.entries.slice(-300),
+      presence: {
+        firstOpened: Presence.firstOpened,
+        daysTogether: Array.from(Presence.daysTogether),
+        conversations: Presence.conversations,
+        majorEventsWitnessed: Presence.majorEventsWitnessed,
+        totalTimeMs: Presence.totalTimeMs,
+      },
+      savedAt: Date.now(),
+    };
+    try{ localStorage.setItem(this.KEY, JSON.stringify(payload)); }catch(e){ console.warn("save failed", e); }
+  },
+  load(){
+    let raw;
+    try{ raw = localStorage.getItem(this.KEY); }catch(e){ return false; }
+    if(!raw) return false;
+    try{
+      const p = JSON.parse(raw);
+      Object.assign(StateEngine.data, p.state||{});
+      if(p.weather){ WeatherEngine.currentId=p.weather.id; WeatherEngine.temp=p.weather.temp; WeatherEngine.lastChange=p.weather.lastChange||Date.now(); }
+      if(p.threadsActive){
+        LifeThreadEngine.active = p.threadsActive.map(t=>({id:t.id, def:LIFE_THREADS.find(d=>d.id===t.id), stageIndex:t.stageIndex, lastProgress:t.lastProgress})).filter(t=>t.def);
+      }
+      LifeThreadEngine.completed = p.threadsCompleted||[];
+      Memory.entries = p.log||[];
+      if(p.presence){
+        Presence.firstOpened = p.presence.firstOpened;
+        Presence.daysTogether = new Set(p.presence.daysTogether||[]);
+        Presence.conversations = p.presence.conversations||0;
+        Presence.majorEventsWitnessed = p.presence.majorEventsWitnessed||0;
+        Presence.totalTimeMs = p.presence.totalTimeMs||0;
+      }
+      return true;
+    }catch(e){ console.warn("load failed", e); return false; }
+  },
+  exportJSON(){
+    this.save();
+    return localStorage.getItem(this.KEY);
+  },
+  importJSON(str){
+    try{
+      JSON.parse(str); // validate
+      localStorage.setItem(this.KEY, str);
+      return true;
+    }catch(e){ return false; }
+  },
+  reset(){
+    localStorage.removeItem(this.KEY);
+  }
+};
+
+/* ============================================================
+   15. UI — pure rendering, no simulation logic
+   ============================================================ */
+const UI = {
+  els:{},
+  logFilter:"all",
+  init(){
+    this.els.clock = document.getElementById("clockDisplay");
+    this.els.colon = document.querySelector(".colon");
+    this.els.date = document.getElementById("dateLine");
+    this.els.activity = document.getElementById("activityText");
+    this.els.dialogue = document.getElementById("dialogueText");
+    this.els.env = document.getElementById("envBar");
+    this.els.logList = document.getElementById("logList");
+    this.els.interactGrid = document.getElementById("interactGrid");
+    this.els.statsList = document.getElementById("statsList");
+    this.bindNav();
+    this.buildInteractOptions();
+    setInterval(()=>this.tickClock(), 1000);
+    this.tickClock();
+    setInterval(()=>{ this.els.colon.style.opacity = (this.els.colon.style.opacity==="0.15"? "1":"0.15"); }, 1200);
+  },
+  tickClock(){
+    const {hh,mm} = Clock.formatted();
+    this.els.clock.innerHTML = `${hh}<span class="colon">:</span>${mm}`;
+    this.els.date.textContent = Clock.dateString();
+  },
+  setActivityText(text, isMicro){
+    const el = this.els.activity;
+    el.classList.add("swap");
+    setTimeout(()=>{
+      el.textContent = text;
+      el.classList.remove("swap");
+    }, isMicro? 350:550);
+  },
+  speak(text){
+    const el = this.els.dialogue;
+    el.classList.remove("show");
+    setTimeout(()=>{
+      el.innerHTML = "";
+      el.classList.add("show");
+      this.typewrite(el, text, ()=>{
+        const holdMs = Math.min(9000, 2600 + text.length*55);
+        setTimeout(()=>{ el.classList.remove("show"); }, holdMs);
+      });
+    }, 500);
+    Presence.conversations++;
+  },
+  typewrite(el, text, done){
+    let i=0;
+    const speed = 32;
+    const caret = document.createElement("span");
+    caret.className="caret"; caret.textContent="▌";
+    function step(){
+      el.textContent = text.slice(0,i);
+      el.appendChild(caret);
+      i++;
+      if(i<=text.length){ setTimeout(step, speed); }
+      else { caret.remove(); if(done) done(); }
+    }
+    step();
+  },
+  flashEnv(text){
+    // subtle: briefly note environment change without stealing focus (no-op visually beyond log + rare sweep)
+    if(RNG.chance(0.25)) this.lightSweep();
+  },
+  lightSweep(){
+    const sweep = document.getElementById("sweep");
+    sweep.style.transition="none";
+    sweep.style.left="-20%"; sweep.style.opacity="0";
+    requestAnimationFrame(()=>{
+      sweep.style.transition="left 2.6s ease, opacity 2.6s ease";
+      sweep.style.left="110%"; sweep.style.opacity="0.6";
+      setTimeout(()=>{ sweep.style.opacity="0"; }, 2400);
+    });
+  },
+  lightningFlash(){
+    const f = document.getElementById("flash");
+    f.style.transition="none"; f.style.opacity="0.5";
+    requestAnimationFrame(()=>{
+      f.style.transition="opacity 0.6s ease";
+      f.style.opacity="0";
+    });
+  },
+  updateEnvBar(){
+    const w = WeatherEngine.current();
+    const noise = w.noise;
+    const html = `${w.icon} ${WeatherEngine.temp}°C <span class="sep">·</span> ${w.label} <span class="sep">·</span> ${noise}`;
+    if(this.els.env.innerHTML !== html){
+      this.els.env.innerHTML = `<span class="change">${html}</span>`;
+    }
+  },
+  applyAmbientTheme(){
+    const root = document.documentElement.style;
+    const tod = Clock.timeOfDay();
+    const w = WeatherEngine.current();
+    root.setProperty("--rain-op", WeatherEngine.isRaining()? (w.id==="heavy_rain"||w.id==="thunderstorm"?"0.55":"0.3") : "0");
+    let glow = 0.5;
+    if(tod==="morning") glow=0.7;
+    if(tod==="afternoon") glow=0.9;
+    if(tod==="evening") glow=0.5;
+    if(tod==="night") glow=0.25;
+    if(tod==="late_night") glow=0.1;
+    if(WeatherEngine.isRaining()) glow *= 0.6;
+    root.setProperty("--room-glow", glow);
+    root.setProperty("--dust-op", (tod==="night"||tod==="late_night")? "0.15":"0.35");
+  },
+  buildInteractOptions(){
+    const opts = [
+      {label:"Say hello", hint:"A small greeting.", action:()=>Interactions.sayHello()},
+      {label:"Encourage her", hint:"Offer a bit of support.", action:()=>Interactions.encourage()},
+      {label:"Ask how she's doing", hint:"Check in, gently.", action:()=>Interactions.askHow()},
+      {label:"Stay quiet", hint:"Just be present.", action:()=>Interactions.stayQuiet()},
+    ];
+    this.els.interactGrid.innerHTML="";
+    opts.forEach(o=>{
+      const btn=document.createElement("button");
+      btn.innerHTML = `${o.label}<small>${o.hint}</small>`;
+      btn.onclick = ()=>{ o.action(); Panels.close("interact"); };
+      this.els.interactGrid.appendChild(btn);
+    });
+  },
+  bindNav(){
+    document.querySelectorAll(".tab-btn").forEach(btn=>{
+      btn.onclick = ()=> Panels.open(btn.dataset.panel);
+    });
+    document.querySelectorAll("[data-close]").forEach(btn=>{
+      btn.onclick = ()=> Panels.close(btn.dataset.close);
+    });
+    document.querySelectorAll("#logFilters button").forEach(btn=>{
+      btn.onclick = ()=>{
+        document.querySelectorAll("#logFilters button").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        this.logFilter = btn.dataset.filter;
+        this.renderLog();
+      };
+    });
+  },
+  refreshLogIfOpen(){
+    if(document.getElementById("overlay-log").classList.contains("open")) this.renderLog();
+  },
+  renderLog(){
+    const list = this.els.logList;
+    const filtered = Memory.entries.slice().reverse().filter(e=> this.logFilter==="all" || e.type===this.logFilter);
+    if(filtered.length===0){
+      list.innerHTML = `<div class="log-empty">Nothing here yet.</div>`;
+      return;
+    }
+    list.innerHTML = filtered.slice(0,150).map(e=>{
+      const d = new Date(e.ts);
+      const hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+      const cls = e.type==="dialogue"?"dialogue":(e.type==="major"?"major":"");
+      return `<div class="log-entry"><span class="log-time">${hh}:${mm}</span><div class="log-text ${cls}">${escapeHtml(e.text)}</div></div>`;
+    }).join("");
+  },
+  renderStats(){
+    const days = Presence.daysTogether.size;
+    const hours = (Presence.totalTimeMs/3600000).toFixed(1);
+    const rows = [
+      ["Days together", days],
+      ["Time spent together", hours+" hrs"],
+      ["Conversations", Presence.conversations],
+      ["Major events witnessed", Presence.majorEventsWitnessed],
+      ["Active life threads", LifeThreadEngine.active.length],
+      ["Completed threads", LifeThreadEngine.completed.length],
+    ];
+    this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
+  }
+};
+function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+const Panels = {
+  open(name){
+    document.getElementById("overlay-"+name).classList.add("open");
+    if(name==="log") UI.renderLog();
+    if(name==="settings") UI.renderStats();
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.panel===name));
+  },
+  close(name){
+    document.getElementById("overlay-"+name).classList.remove("open");
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  }
+};
+document.querySelectorAll(".panel-overlay").forEach(ov=>{
+  ov.addEventListener("click", (e)=>{ if(e.target===ov) ov.classList.remove("open"); });
+});
+
+/* ============================================================
+   16. PLAYER INTERACTIONS
+   ============================================================ */
+const Interactions = {
+  sayHello(){
+    StateEngine.apply({socialNeed:-6});
+    Memory.log("activity", "You say hello.");
+    if(RNG.chance(0.7)){
+      setTimeout(()=>{ UI.speak(RNG.pick(["Oh — hi.","Hey.","Hi there."])); Memory.log("dialogue", "(response to hello)"); }, RNG.range(500,2500));
+    }
+  },
+  encourage(){
+    StateEngine.apply({motivation:+8, stress:-4});
+    Memory.log("activity", "You offer some encouragement.");
+    if(RNG.chance(0.55)){
+      setTimeout(()=>{ UI.speak(RNG.pick(["Thanks. I needed that.","Haha, thank you.","...that actually helped, a little."])); }, RNG.range(800,3000));
+    }
+  },
+  askHow(){
+    Memory.log("activity", "You ask how she's doing.");
+    if(RNG.chance(0.6)){
+      const mood = StateEngine.currentMoodTag();
+      const responses = {
+        tired:"Honestly? Pretty tired.",
+        stressed:"A bit stressed, if I'm being honest.",
+        sleepy:"Sleepy. Very sleepy.",
+        relaxed:"Pretty good, actually.",
+        neutral:"I'm okay. Just getting through the day."
+      };
+      setTimeout(()=>{ UI.speak(responses[mood]||responses.neutral); }, RNG.range(600,2600));
+    } else {
+      Memory.log("activity", "She doesn't answer right away — maybe later.");
+    }
+  },
+  stayQuiet(){
+    Memory.log("activity", "You stay quiet, just present.");
+    StateEngine.apply({socialNeed:-2, stress:-1});
+  }
+};
+
+/* ============================================================
+   17. SIMULATION LOOP
+   ============================================================ */
+const Sim = {
+  lastTick: Date.now(),
+  lastDialogueDecision: Date.now(),
+  lastEventDecision: Date.now(),
+  lastMicroDecision: Date.now(),
+  lastDay: new Date().toDateString(),
+  nextDialogueGapMs: 20000,
+  nextEventGapMs: 30000,
+  nextMicroGapMs: 15000,
+
+  init(){
+    Presence.firstOpened = Presence.firstOpened || Date.now();
+    ActivityEngine.advanceIfNeeded();
+    UI.updateEnvBar();
+    UI.applyAmbientTheme();
+    this.scheduleNextGaps();
+    setInterval(()=>this.tick(), 4000);
+  },
+  scheduleNextGaps(){
+    this.nextDialogueGapMs = RNG.range(20,55)*1000;
+    this.nextEventGapMs = RNG.range(25,70)*1000;
+    this.nextMicroGapMs = RNG.range(15,45)*1000;
+  },
+  tick(){
+    const now = Date.now();
+    const minutesElapsed = (now-this.lastTick)/60000;
+    this.lastTick = now;
+
+    // catch up naturally even after backgrounding (elapsed real time, capped)
+    StateEngine.tickNatural(Math.min(minutesElapsed, 180));
+    Presence.registerTick();
+
+    // day rollover
+    const today = new Date().toDateString();
+    if(today !== this.lastDay){
+      this.lastDay = today;
+      LifeThreadEngine.dailyTick();
+    }
+
+    WeatherEngine.maybeEvolve();
+    UI.updateEnvBar();
+    UI.applyAmbientTheme();
+    ActivityEngine.advanceIfNeeded();
+
+    if(now-this.lastMicroDecision > this.nextMicroGapMs){
+      this.lastMicroDecision = now;
+      this.nextMicroGapMs = RNG.range(15,45)*1000;
+      if(RNG.chance(0.5)) ActivityEngine.microUpdate();
+    }
+    if(now-this.lastEventDecision > this.nextEventGapMs){
+      this.lastEventDecision = now;
+      this.nextEventGapMs = RNG.range(25,70)*1000;
+      if(RNG.chance(0.55)) EventEngine.trigger();
+    }
+    if(now-this.lastDialogueDecision > this.nextDialogueGapMs){
+      this.lastDialogueDecision = now;
+      this.nextDialogueGapMs = RNG.range(20,55)*1000;
+      DialogueEngine.maybeSpeak();
+    }
+    Persistence.scheduleSave();
+  }
+};
+
+/* ============================================================
+   18. DEBUG / DEVELOPER MODE
+   ============================================================ */
+const Debug = {
+  open:false,
+  log:[],
+  note(msg){ this.log.unshift(`[${new Date().toLocaleTimeString()}] ${msg}`); this.log=this.log.slice(0,60); this.render(); },
+  toggle(){
+    this.open = !this.open;
+    document.getElementById("debugPanel").classList.toggle("open", this.open);
+    if(this.open) this.render();
+  },
+  render(){
+    const grid = document.getElementById("debugGrid");
+    const s = StateEngine.data;
+    const rows = [
+      ["time", Clock.formatted().hh+":"+Clock.formatted().mm+" ("+Clock.timeOfDay()+")"],
+      ["weekday", Clock.isWeekend()?"weekend":"weekday"],
+      ["weather", WeatherEngine.currentId+" "+WeatherEngine.temp+"°C"],
+      ["activity", ActivityEngine.current? ActivityEngine.current.id : "-"],
+      ["mood", StateEngine.currentMoodTag()],
+      ["energy", Math.round(s.energy)], ["focus", Math.round(s.focus)],
+      ["stress", Math.round(s.stress)], ["hunger", Math.round(s.hunger)],
+      ["boredom", Math.round(s.boredom)], ["socialNeed", Math.round(s.socialNeed)],
+      ["sleepiness", Math.round(s.sleepiness)], ["motivation", Math.round(s.motivation)],
+      ["active threads", LifeThreadEngine.active.map(t=>t.id).join(", ")||"-"],
+    ];
+    grid.innerHTML = rows.map(([k,v])=>`<div>${k}: <span>${v}</span></div>`).join("");
+    document.getElementById("debugEventLog").textContent = this.log.join("\n");
+  },
+  actions(){
+    return [
+      ["+1 Hour", ()=>{ Clock.offsetMs += 3600000; this.note("time +1h"); ActivityEngine.currentUntil=0; ActivityEngine.advanceIfNeeded(); UI.tickClock(); this.render(); }],
+      ["+6 Hours", ()=>{ Clock.offsetMs += 6*3600000; this.note("time +6h"); ActivityEngine.currentUntil=0; ActivityEngine.advanceIfNeeded(); UI.tickClock(); this.render(); }],
+      ["+1 Day", ()=>{ Clock.offsetMs += 86400000; LifeThreadEngine.dailyTick(); this.note("time +1 day, thread tick"); UI.tickClock(); this.render(); }],
+      ["Force Rain", ()=>{ WeatherEngine.set("light_rain"); this.note("weather -> light_rain"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
+      ["Force Storm", ()=>{ WeatherEngine.set("thunderstorm"); this.note("weather -> thunderstorm"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
+      ["Clear Weather", ()=>{ WeatherEngine.set("clear"); this.note("weather -> clear"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
+      ["Force Tired", ()=>{ StateEngine.data.energy=15; StateEngine.data.sleepiness=80; this.note("forced tired mood"); this.render(); }],
+      ["Force Stressed", ()=>{ StateEngine.data.stress=85; this.note("forced stressed mood"); this.render(); }],
+      ["Force Relaxed", ()=>{ StateEngine.data.mood=90; StateEngine.data.stress=10; this.note("forced relaxed mood"); this.render(); }],
+      ["Trigger Dialogue", ()=>{ const ok=DialogueEngine.maybeSpeak(); if(!ok) UI.speak(DialogueEngine.proceduralLine()||"..."); this.note("forced dialogue"); }],
+      ["Trigger Event", ()=>{ EventEngine.trigger(); this.note("forced environmental event"); }],
+      ["Progress a Thread", ()=>{ const t=LifeThreadEngine.active[0]; if(t){ LifeThreadEngine.progress(t); this.note("progressed "+t.id);} this.render(); }],
+      ["View State (console)", ()=>{ console.log(JSON.parse(JSON.stringify(StateEngine.data))); this.note("state logged to console"); }],
+      ["Reset Save", ()=>{ if(confirm("Reset all save data?")){ Persistence.reset(); location.reload(); } }],
+    ];
+  },
+  initActions(){
+    const wrap = document.getElementById("debugActions");
+    wrap.innerHTML="";
+    this.actions().forEach(([label,fn])=>{
+      const b=document.createElement("button");
+      b.textContent=label; b.onclick=fn;
+      wrap.appendChild(b);
+    });
+  }
+};
+
+/* ============================================================
+   19. SETTINGS PANEL WIRING
+   ============================================================ */
+document.getElementById("exportBtn").onclick = ()=>{
+  const data = Persistence.exportJSON();
+  const blob = new Blob([data], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "satomi_save.json";
+  a.click();
+};
+document.getElementById("importBtn").onclick = ()=> document.getElementById("importFile").click();
+document.getElementById("importFile").onchange = (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    if(Persistence.importJSON(reader.result)){
+      alert("Save imported. Reloading.");
+      location.reload();
+    } else {
+      alert("That file couldn't be read as a valid save.");
+    }
+  };
+  reader.readAsText(file);
+};
+document.getElementById("resetBtn").onclick = ()=>{
+  if(confirm("This will erase Satomi's memory and progress. Continue?")){
+    Persistence.reset();
+    location.reload();
+  }
+};
+
+/* ============================================================
+   20. DUST PARTICLES (purely decorative, generated once)
+   ============================================================ */
+function buildDust(){
+  const dust = document.getElementById("dust");
+  const n = 18;
+  for(let i=0;i<n;i++){
+    const m = document.createElement("div");
+    m.className="mote";
+    m.style.left = RNG.range(0,100)+"vw";
+    m.style.bottom = "-10px";
+    m.style.animationDuration = RNG.range(18,40)+"s";
+    m.style.animationDelay = "-"+RNG.range(0,40)+"s";
+    dust.appendChild(m);
+  }
+}
+
+/* ============================================================
+   21. BOOT
+   ============================================================ */
+let titleTaps = 0, titleTapTimer=null;
+document.getElementById("titleBlock").addEventListener("click", ()=>{
+  titleTaps++;
+  clearTimeout(titleTapTimer);
+  titleTapTimer = setTimeout(()=>{ titleTaps=0; }, 1500);
+  if(titleTaps>=6){ titleTaps=0; Debug.toggle(); Debug.initActions(); }
+});
+document.getElementById("debugClose").onclick = ()=> Debug.toggle();
+window.addEventListener("keydown", (e)=>{
+  if(e.ctrlKey && e.shiftKey && (e.key==="D"||e.key==="d")){ Debug.toggle(); Debug.initActions(); }
+});
+document.getElementById("debugLoad").onclick = ()=>{
+  const txt = document.getElementById("debugIO").value.trim();
+  if(!txt) return;
+  if(Persistence.importJSON(txt)){ Debug.note("save loaded from textarea, reloading"); setTimeout(()=>location.reload(), 400); }
+  else Debug.note("invalid JSON, not loaded");
+};
+
+function boot(){
+  buildDust();
+  const hadSave = Persistence.load();
+  LifeThreadEngine.init();
+  UI.init();
+  Sim.init();
+  UI.updateEnvBar();
+  if(!hadSave){
+    Memory.log("major", "You open the app for the first time. Somewhere across the city, Satomi is going about her afternoon.");
+  } else {
+    Memory.log("activity", "You return. Some time has passed.");
+  }
+  // periodic presence save
+  setInterval(()=>Persistence.save(), 30000);
+  window.addEventListener("visibilitychange", ()=>{
+    if(document.visibilityState==="visible"){
+      Sim.lastTick = Date.now(); // avoid one giant catch-up jump beyond cap already handled
+    } else {
+      Persistence.save();
+    }
+  });
+  window.addEventListener("beforeunload", ()=>Persistence.save());
+}
+document.addEventListener("DOMContentLoaded", boot);
+
+})();
+</script>
+</body>
+</html>
