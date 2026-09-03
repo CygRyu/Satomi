@@ -510,10 +510,10 @@ const ACTIVITIES = [
   { id:"dinner", category:"meal", text:["Satomi is making dinner.","Satomi is eating dinner."], micro:["Satomi tastes the food, adjusts the seasoning.","Satomi eats slowly, unhurried."], duration:[500,1100], tod:["evening"], weekday:"any", effects:{hunger:-40,energy:+10,stress:-2} },
   { id:"snack", category:"meal", text:["Satomi is having a small snack."], micro:["Satomi eats it slowly, one piece at a time."], duration:[120,300], tod:["any"], weekday:"any", effects:{hunger:-15,energy:+3} },
   { id:"commute_out", category:"routine", text:["Satomi is getting ready to leave for university."], micro:["Satomi checks she has everything.","Satomi ties her shoes."], duration:[180,420], tod:["morning"], weekday:"weekday", effects:{energy:-2} },
-  { id:"at_university", category:"university", text:["Satomi is at a lecture.","Satomi is in seminar, half-listening.","Satomi is between classes, sitting in the courtyard."], micro:["Satomi jots something down.","Satomi glances at the clock."], duration:[600,1800], tod:["morning","afternoon"], weekday:"weekday", effects:{energy:-3,focus:-2,socialNeed:-2,boredom:-2} },
+  { id:"at_university", category:"university", awayLength:"brief", text:["Satomi is at a lecture.","Satomi is in seminar, half-listening.","Satomi is between classes, sitting in the courtyard."], micro:["Satomi jots something down.","Satomi glances at the clock."], duration:[600,1800], tod:["morning","afternoon"], weekday:"weekday", effects:{energy:-3,focus:-2,socialNeed:-2,boredom:-2} },
   { id:"commute_home", category:"routine", text:["Satomi is on the train home.","Satomi is walking back to her apartment."], micro:["Satomi looks out at the passing streets."], duration:[300,900], tod:["afternoon","evening"], weekday:"any", effects:{energy:-2,stress:-1} },
   { id:"prep_for_work", category:"work", text:["Satomi is getting ready for her shift."], micro:["Satomi ties her apron string in the mirror."], duration:[180,360], tod:["afternoon","evening"], weekday:"any", effects:{energy:-2,stress:+1} },
-  { id:"at_work", category:"work", text:["Satomi is working her shift at the café."], micro:["Satomi wipes down a counter.","Satomi restocks napkins."], duration:[900,2400], tod:["evening"], weekday:"any", effects:{energy:-8,focus:-2,socialNeed:-4,stress:+1} },
+  { id:"at_work", category:"work", awayLength:"normal", text:["Satomi is working her shift at the café."], micro:["Satomi wipes down a counter.","Satomi restocks napkins."], duration:[900,2400], tod:["evening"], weekday:"any", effects:{energy:-8,focus:-2,socialNeed:-4,stress:+1} },
   { id:"return_from_work", category:"routine", text:["Satomi just got back from her shift, tired."], micro:["Satomi drops her bag by the door."], duration:[60,180], tod:["evening","night"], weekday:"any", effects:{energy:-2,sleepiness:+3} },
   { id:"reading_book", category:"hobby", text:["Satomi is reading a novel for herself, not for class."], micro:["Satomi smiles slightly at a line.","Satomi turns the page carefully."], duration:[300,1200], tod:["evening","night"], weekday:"any", effects:{boredom:-5,stress:-2,energy:-2} },
   { id:"sketching", category:"hobby", text:["Satomi is sketching something small in the margin of a notebook."], micro:["Satomi erases a line and tries again."], duration:[180,500], tod:["evening","night"], weekday:"any", effects:{boredom:-3,stress:-2} },
@@ -526,7 +526,26 @@ const ACTIVITIES = [
   { id:"preparing_bed", category:"routine", text:["Satomi is getting ready for bed."], micro:["Satomi sets an alarm.","Satomi turns off the lamp."], duration:[180,420], tod:["late_night"], weekday:"any", effects:{sleepiness:+2,energy:+1} },
   { id:"sleeping", category:"routine", text:["Satomi has gone to sleep."], micro:[], duration:[3600,3600], tod:["late_night"], weekday:"any", effects:{sleepiness:-60,energy:+30,stress:-10} },
   { id:"weekend_lazing", category:"break", text:["Satomi is lazing around, in no hurry to do anything.","Satomi is still in pajamas, scrolling idly."], micro:["Satomi stretches out on the floor cushion."], duration:[300,900], tod:["morning","afternoon"], weekday:"weekend", effects:{energy:+3,boredom:+3,stress:-2} },
-  { id:"meeting_friend", category:"social", text:["Satomi is out meeting a friend."], micro:[], duration:[1200,3000], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-15,stress:-3,energy:-3} },
+  { id:"meeting_friend", category:"social", awayLength:"normal", text:["Satomi is out meeting a friend."], micro:[], duration:[1200,3000], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-15,stress:-3,energy:-3} },
+
+  // --- occasional outings: Satomi is away from the apartment.
+  // Scored deliberately low in ActivityEngine.score() so they stay
+  // uncommon; picked through the exact same Schedule/pickNext path
+  // as everything else above, so tod/weekday filtering, anti-repeat,
+  // and persistence (current id + until timestamp) all come for free. ---
+  { id:"away_downstairs_shop", category:"away", awayLength:"brief", text:["Satomi has gone to grab something from the shop downstairs."], micro:[], duration:[300,1800], tod:["morning","afternoon","evening"], weekday:"any", effects:{hunger:-5} },
+  { id:"away_walk", category:"away", awayLength:"brief", text:["Satomi went out for a short walk."], micro:[], duration:[300,1500], tod:["afternoon","evening"], weekday:"any", effects:{stress:-3,boredom:-2} },
+  { id:"away_coffee", category:"away", awayLength:"brief", text:["Satomi popped out for coffee."], micro:[], duration:[300,1500], tod:["morning","afternoon"], weekday:"any", effects:{energy:+2} },
+  { id:"away_pickup", category:"away", awayLength:"brief", text:["Satomi went to pick something up nearby."], micro:[], duration:[300,1800], tod:["afternoon","evening"], weekday:"any", effects:{} },
+  { id:"away_nearby_shop", category:"away", awayLength:"brief", text:["Satomi is at a nearby shop."], micro:[], duration:[300,1800], tod:["afternoon","evening"], weekday:"any", effects:{} },
+  { id:"away_library", category:"away", awayLength:"normal", text:["Satomi is studying at the library."], micro:[], duration:[1800,6000], tod:["afternoon"], weekday:"weekday", effects:{focus:+3,boredom:-2} },
+  { id:"away_errands", category:"away", awayLength:"normal", text:["Satomi is out running errands."], micro:[], duration:[1800,5400], tod:["afternoon"], weekday:"any", effects:{} },
+  { id:"away_lunch_out", category:"away", awayLength:"normal", text:["Satomi went out to get lunch."], micro:[], duration:[1800,4200], tod:["afternoon"], weekday:"any", effects:{hunger:-30,energy:+5} },
+  { id:"away_campus", category:"away", awayLength:"normal", text:["Satomi is spending some time around campus."], micro:[], duration:[1800,5400], tod:["morning","afternoon"], weekday:"weekday", effects:{socialNeed:-3} },
+  { id:"away_bookstore", category:"away", awayLength:"normal", text:["Satomi wandered into a bookstore and lost track of time."], micro:[], duration:[1800,5400], tod:["afternoon"], weekday:"weekend", effects:{boredom:-4,stress:-2} },
+  { id:"away_afternoon_library", category:"away", awayLength:"long", text:["Satomi is spending the whole afternoon at the library."], micro:[], duration:[7200,12600], tod:["afternoon"], weekday:"weekday", effects:{focus:+5,energy:-4} },
+  { id:"away_visiting", category:"away", awayLength:"long", text:["Satomi went to visit someone for the afternoon."], micro:[], duration:[7200,14400], tod:["afternoon"], weekday:"weekend", effects:{socialNeed:-10,stress:-3} },
+  { id:"away_across_tokyo", category:"away", awayLength:"long", text:["Satomi went somewhere across Tokyo and will be out for a while."], micro:[], duration:[7200,14400], tod:["afternoon"], weekday:"weekend", effects:{energy:-5} },
 ];
 
 // --- dialogue: explicit lines with contextual weighting ---
@@ -637,6 +656,16 @@ const ENVIRONMENTAL_EVENTS = [
   { id:"lightning_flash", text:"Lightning briefly lights the room.", tod:["any"], weight:2, weatherOnly:["thunderstorm"], reactChance:0.4, visual:"flash" },
   { id:"train_rumble", text:"A distant train rumbles past.", tod:["any"], weight:3, reactChance:0.05 },
   { id:"cat_meow", text:"A stray cat meows somewhere below the window.", tod:["afternoon","evening"], weight:2, reactChance:0.3 },
+  // --- traces of her presence: only eligible while she's away (see
+  // EventEngine.eligiblePool), reusing the exact same event pipeline
+  // as every other ambient event above ---
+  { id:"trace_tea_cup", text:"A half-finished cup of hojicha sits by the window.", tod:["any"], weight:3, awayOnly:true, reactChance:0 },
+  { id:"trace_open_book", text:"Her book is still open on the desk, waiting.", tod:["any"], weight:3, awayOnly:true, reactChance:0 },
+  { id:"trace_notebook", text:"A notebook lies open, mid-sentence.", tod:["any"], weight:2, awayOnly:true, reactChance:0 },
+  { id:"trace_lamp", text:"The desk lamp is still on, left in a hurry.", tod:["any"], weight:2, awayOnly:true, reactChance:0 },
+  { id:"trace_cardigan", text:"Her cardigan is draped over the back of the chair.", tod:["any"], weight:2, awayOnly:true, reactChance:0 },
+  { id:"trace_bag", text:"A small shopping bag sits by the door from earlier.", tod:["any"], weight:2, awayOnly:true, reactChance:0 },
+  { id:"trace_sketchbook", text:"Her sketchbook is left open to an unfinished page.", tod:["any"], weight:2, awayOnly:true, reactChance:0 },
 ];
 
 // --- life threads: id, title, stages[] with text + min days between progress ---
@@ -895,7 +924,26 @@ const ActivityEngine = {
   current:null,
   currentUntil:0,
   recentIds:[],
+  // --- Satomi-away feature: extends the existing activity engine
+  // rather than duplicating it. See section notes below. ---
+  EXTRA_AWAY_IDS:["at_university","at_work","meeting_friend"], // pre-existing activities that already represent her being out
+  awayCooldownUntil:0, // no new "away" pick is eligible before this real-time timestamp
+  isAwayActivity(a){
+    return !!a && a.id!=="sleeping" && (a.category==="away" || this.EXTRA_AWAY_IDS.includes(a.id));
+  },
+  inAwayCooldown(){ return Date.now() < (this.awayCooldownUntil||0); },
   score(activity){
+    if(activity.category==="away"){
+      // Deliberately conservative: cooldown after any away-ish stretch,
+      // and never pick another away activity immediately after one
+      // ends (guards against back-to-back absences even when a long
+      // gap between page loads causes an expired activity to be
+      // replaced in one jump on boot).
+      if(this.inAwayCooldown() || this.isAwayActivity(this.current)) return 0.001;
+      let base = activity.awayLength==="brief" ? 0.35 : activity.awayLength==="normal" ? 0.12 : 0.03;
+      if(this.recentIds.includes(activity.id)) base *= 0.25;
+      return base;
+    }
     let score = 1;
     const s = StateEngine.data;
     // steer toward what the state "needs"
@@ -929,6 +977,10 @@ const ActivityEngine = {
     }
   },
   setActivity(activity){
+    const prev = this.current;
+    const wasAway = this.isAwayActivity(prev);
+    const isAway = this.isAwayActivity(activity);
+
     this.current = activity;
     const durSec = RNG.range(activity.duration[0], activity.duration[1]);
     this.currentUntil = Date.now() + durSec*1000;
@@ -939,12 +991,64 @@ const ActivityEngine = {
     this.currentText = text;
     Memory.log("activity", text);
     UI.setActivityText(text);
+
+    // Satomi-away feature: fires only at this natural activity boundary,
+    // never mid-interaction. Subtle and occasional by design (section 6/7).
+    if(isAway && !wasAway){
+      const hint = Availability.departureHint(activity.awayLength);
+      if(hint) Memory.log("activity", hint);
+    } else if(wasAway && !isAway){
+      this.awayCooldownUntil = Date.now() + RNG.range(2,4)*3600000; // 2-4 real hours before another absence can be rolled
+      if(RNG.chance(0.4)) Memory.log("activity", Availability.returnCue());
+    }
   },
   microUpdate(){
     if(!this.current || !this.current.micro || this.current.micro.length===0) return;
     const text = RNG.pick(this.current.micro);
     this.currentText = text;
     UI.setActivityText(text, true);
+  }
+};
+
+/* ============================================================
+   8b. AVAILABILITY — Satomi being away from the apartment
+   Deliberately a thin read layer, not a parallel state machine:
+   "away/asleep/home" is derived live from ActivityEngine.current,
+   which is already the thing that gets persisted (id + until
+   timestamp) and already survives refresh without rerolling.
+   ============================================================ */
+const Availability = {
+  isAway(){ return ActivityEngine.isAwayActivity(ActivityEngine.current); },
+  isSleeping(){ return !!ActivityEngine.current && ActivityEngine.current.id==="sleeping"; },
+  isHome(){ return !this.isAway() && !this.isSleeping(); },
+  departureHint(length){
+    // Sometimes no estimate at all — a real person doesn't give you a countdown.
+    if(!RNG.chance(0.65)) return null;
+    const pools = {
+      brief:["She'll probably be back soon.","Shouldn't be long."],
+      normal:["She'll probably be back later.","No telling exactly when she'll be back."],
+      long:["She might be out for a while.","She should be back this evening."],
+    };
+    const pool = pools[length] || pools.normal;
+    return RNG.pick(pool);
+  },
+  returnCue(){
+    return RNG.pick([
+      "The front door clicks softly.",
+      "Satomi slips off her shoes.",
+      "She sets something down by the door.",
+      "Satomi is back.",
+      "She looks a little tired.",
+      "Satomi returns with a convenience-store bag.",
+      "She quietly settles back into the room.",
+    ]);
+  },
+  absenceLine(){
+    return RNG.pick([
+      "There's no one here to respond.",
+      "The room stays quiet.",
+      "Satomi isn't here right now.",
+    ]);
   }
 };
 
@@ -1043,7 +1147,8 @@ const EventEngine = {
       const todOk = e.tod.includes("any") || e.tod.includes(tod);
       const weatherOk = !e.weatherOnly || e.weatherOnly.includes(WeatherEngine.currentId);
       const seasonOk = !e.seasonOnly || e.seasonOnly.includes(season);
-      return todOk && weatherOk && seasonOk;
+      const awayOk = !e.awayOnly || Availability.isAway();
+      return todOk && weatherOk && seasonOk && awayOk;
     });
   },
   score(e){
@@ -1361,6 +1466,7 @@ const Persistence = {
         until: ActivityEngine.currentUntil,
         recentIds: ActivityEngine.recentIds,
         text: ActivityEngine.currentText || null,
+        awayCooldownUntil: ActivityEngine.awayCooldownUntil || 0,
       },
       threadsActive: LifeThreadEngine.active.map(t=>({id:t.id, stageIndex:t.stageIndex, lastProgress:t.lastProgress})),
       threadsCompleted: LifeThreadEngine.completed,
@@ -1389,15 +1495,18 @@ const Persistence = {
         if(typeof p.audio.musicVolume==="number") Music.setVolume(p.audio.musicVolume);
         if(typeof p.audio.ambientVolume==="number") WeatherAudio.setVolume(p.audio.ambientVolume);
       }
-      if(p.activity && p.activity.id){
-        const act = CONTENT.activities.find(a=>a.id===p.activity.id);
-        if(act){
-          // Restore the in-progress activity exactly as it was — a
-          // refresh should feel like glancing back, not a reroll.
-          ActivityEngine.current = act;
-          ActivityEngine.currentUntil = p.activity.until || 0;
-          ActivityEngine.recentIds = p.activity.recentIds || [];
-          ActivityEngine.currentText = p.activity.text || null;
+      if(p.activity){
+        ActivityEngine.awayCooldownUntil = p.activity.awayCooldownUntil || 0;
+        if(p.activity.id){
+          const act = CONTENT.activities.find(a=>a.id===p.activity.id);
+          if(act){
+            // Restore the in-progress activity exactly as it was — a
+            // refresh should feel like glancing back, not a reroll.
+            ActivityEngine.current = act;
+            ActivityEngine.currentUntil = p.activity.until || 0;
+            ActivityEngine.recentIds = p.activity.recentIds || [];
+            ActivityEngine.currentText = p.activity.text || null;
+          }
         }
       }
       if(p.threadsActive){
@@ -1672,6 +1781,10 @@ document.querySelectorAll(".panel-overlay").forEach(ov=>{
    ============================================================ */
 const Interactions = {
   sayHello(){
+    if(!Availability.isHome()){
+      Memory.log("activity", Availability.isSleeping() ? "She doesn't stir." : Availability.absenceLine());
+      return;
+    }
     StateEngine.apply({socialNeed:-6});
     Memory.log("activity", "You say hello.");
     if(RNG.chance(0.7)){
@@ -1679,6 +1792,10 @@ const Interactions = {
     }
   },
   encourage(){
+    if(!Availability.isHome()){
+      Memory.log("activity", Availability.isSleeping() ? "She doesn't stir." : Availability.absenceLine());
+      return;
+    }
     StateEngine.apply({motivation:+8, stress:-4});
     Memory.log("activity", "You offer some encouragement.");
     if(RNG.chance(0.55)){
@@ -1686,6 +1803,10 @@ const Interactions = {
     }
   },
   askHow(){
+    if(!Availability.isHome()){
+      Memory.log("activity", Availability.isSleeping() ? "She's asleep — no answer." : Availability.absenceLine());
+      return;
+    }
     Memory.log("activity", "You ask how she's doing.");
     if(RNG.chance(0.6)){
       const mood = StateEngine.currentMoodTag();
@@ -1768,7 +1889,7 @@ const Sim = {
     if(now-this.lastDialogueDecision > this.nextDialogueGapMs){
       this.lastDialogueDecision = now;
       this.nextDialogueGapMs = RNG.range(20,55)*1000;
-      DialogueEngine.maybeSpeak();
+      if(Availability.isHome()) DialogueEngine.maybeSpeak();
     }
     Persistence.scheduleSave();
   }
@@ -1794,6 +1915,8 @@ const Debug = {
       ["weekday", Clock.isWeekend()?"weekend":"weekday"],
       ["weather", WeatherEngine.currentId+" "+WeatherEngine.temp+"°C"],
       ["activity", ActivityEngine.current? ActivityEngine.current.id : "-"],
+      ["availability", Availability.isSleeping() ? "sleeping" : Availability.isAway() ? "away ("+(ActivityEngine.current.awayLength||"?")+")" : "home"],
+      ["away cooldown", ActivityEngine.inAwayCooldown() ? Math.round((ActivityEngine.awayCooldownUntil-Date.now())/60000)+"m left" : "-"],
       ["mood", StateEngine.currentMoodTag()],
       ["energy", Math.round(s.energy)], ["focus", Math.round(s.focus)],
       ["stress", Math.round(s.stress)], ["hunger", Math.round(s.hunger)],
@@ -1819,6 +1942,11 @@ const Debug = {
       ["Trigger Event", ()=>{ EventEngine.trigger(); this.note("forced environmental event"); }],
       ["Progress a Thread", ()=>{ const t=LifeThreadEngine.active[0]; if(t){ LifeThreadEngine.progress(t); this.note("progressed "+t.id);} this.render(); }],
       ["View State (console)", ()=>{ console.log(JSON.parse(JSON.stringify(StateEngine.data))); this.note("state logged to console"); }],
+      ["Force Away (Brief)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_coffee"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
+      ["Force Away (Normal)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_library"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
+      ["Force Away (Long)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_visiting"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
+      ["Force Return Home", ()=>{ const a=CONTENT.activities.find(x=>x.id==="break_stretch"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced return home");} this.render(); }],
+      ["Clear Away Cooldown", ()=>{ ActivityEngine.awayCooldownUntil=0; this.note("away cooldown cleared"); this.render(); }],
       ["Reset Save", ()=>{ if(confirm("Reset all save data?")){ Persistence.reset(); location.reload(); } }],
     ];
   },
