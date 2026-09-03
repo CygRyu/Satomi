@@ -1053,6 +1053,37 @@ const Availability = {
 };
 
 /* ============================================================
+   8c. BIRTHDAY — a once-a-year, one-time interaction
+   Derived from Clock (so it respects debug time-travel) rather
+   than a separate timer, and gated through Availability (so it
+   never invents a parallel home/away/asleep system). Persisted
+   as a single "last greeted year" — that alone is enough to
+   know whether this year's Feb 8 has been used, and it quietly
+   re-arms itself every year with no year-specific data at all.
+   ============================================================ */
+const Birthday = {
+  MONTH: 2, // February. Clock.now().getMonth() is 0-indexed, so compare against +1.
+  DAY: 8,
+  lastGreetedYear: 0, // 0 = never greeted; safe default for saves that predate this feature
+  isToday(){
+    const d = Clock.now();
+    return (d.getMonth()+1)===this.MONTH && d.getDate()===this.DAY;
+  },
+  alreadyGreetedThisYear(){
+    return this.lastGreetedYear === Clock.now().getFullYear();
+  },
+  // The single source of truth for whether the special interaction
+  // should be offered right now. Not today, already used this year,
+  // or Satomi isn't actually available (away/asleep) → no.
+  isAvailable(){
+    return this.isToday() && !this.alreadyGreetedThisYear() && Availability.isHome();
+  },
+  markGreeted(){
+    this.lastGreetedYear = Clock.now().getFullYear();
+  }
+};
+
+/* ============================================================
    9. DIALOGUE ENGINE
    ============================================================ */
 const DialogueEngine = {
@@ -1470,6 +1501,7 @@ const Persistence = {
       },
       threadsActive: LifeThreadEngine.active.map(t=>({id:t.id, stageIndex:t.stageIndex, lastProgress:t.lastProgress})),
       threadsCompleted: LifeThreadEngine.completed,
+      birthday: { lastGreetedYear: Birthday.lastGreetedYear },
       log: Memory.entries.slice(-300),
       logDay: Memory.currentLogDay,
       presence: {
@@ -1513,6 +1545,9 @@ const Persistence = {
         LifeThreadEngine.active = p.threadsActive.map(t=>({id:t.id, def:LIFE_THREADS.find(d=>d.id===t.id), stageIndex:t.stageIndex, lastProgress:t.lastProgress})).filter(t=>t.def);
       }
       LifeThreadEngine.completed = p.threadsCompleted||[];
+      // Missing on older saves → 0, which is never the current year,
+      // so it safely defaults to "not greeted this year".
+      Birthday.lastGreetedYear = (p.birthday && typeof p.birthday.lastGreetedYear==="number") ? p.birthday.lastGreetedYear : 0;
       Memory.entries = p.log||[];
       Memory.currentLogDay = p.logDay || new Date().toDateString();
       if(p.presence){
@@ -1689,11 +1724,17 @@ const UI = {
     root.setProperty("--dust-op", (tod==="night"||tod==="late_night")? "0.15":"0.35");
   },
   buildInteractOptions(){
+    // The fourth slot is normally "Stay quiet". On Feb 8, if Satomi is
+    // available and hasn't been greeted yet this year, it's replaced
+    // by the birthday interaction — same slot, no extra button.
+    const fourth = Birthday.isAvailable()
+      ? {label:"Wish Satomi a Happy Birthday", hint:"Just for today.", action:()=>Interactions.wishBirthday()}
+      : {label:"Stay quiet", hint:"Just be present.", action:()=>Interactions.stayQuiet()};
     const opts = [
       {label:"Say hello", hint:"A small greeting.", action:()=>Interactions.sayHello()},
       {label:"Encourage her", hint:"Offer a bit of support.", action:()=>Interactions.encourage()},
       {label:"Ask how she's doing", hint:"Check in, gently.", action:()=>Interactions.askHow()},
-      {label:"Stay quiet", hint:"Just be present.", action:()=>Interactions.stayQuiet()},
+      fourth,
     ];
     this.els.interactGrid.innerHTML="";
     opts.forEach(o=>{
@@ -1721,6 +1762,9 @@ const UI = {
   },
   refreshLogIfOpen(){
     if(document.getElementById("overlay-log").classList.contains("open")) this.renderLog();
+  },
+  refreshInteractGridIfOpen(){
+    if(document.getElementById("overlay-interact").classList.contains("open")) this.buildInteractOptions();
   },
   renderLog(){
     const list = this.els.logList;
@@ -1764,6 +1808,7 @@ const Panels = {
   open(name){
     document.getElementById("overlay-"+name).classList.add("open");
     if(name==="log") UI.renderLog();
+    if(name==="interact") UI.buildInteractOptions();
     if(name==="settings"){ UI.renderStats(); UI.syncAudioSliders(); }
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.panel===name));
   },
@@ -1825,6 +1870,23 @@ const Interactions = {
   stayQuiet(){
     Memory.log("activity", "You stay quiet, just present.");
     StateEngine.apply({socialNeed:-2, stress:-1});
+  },
+  wishBirthday(){
+    // Guard against a stale click (e.g. the panel was left open and she
+    // stepped out, or someone else's tab already used it) rather than
+    // trusting the button was rendered a moment ago.
+    if(!Birthday.isAvailable()) return;
+    Birthday.markGreeted();
+    Memory.log("activity", "You wish Satomi a happy birthday.");
+    UI.speak(RNG.pick([
+      "Thank you. That's very sweet of you.",
+      "Oh… thank you. I'm glad you remembered.",
+      "Thank you. I didn't expect that.",
+      "Ah… right. It's my birthday today.",
+      "Thank you. That makes today feel a little nicer.",
+    ]));
+    Persistence.scheduleSave();
+    UI.refreshInteractGridIfOpen();
   }
 };
 
@@ -1875,6 +1937,10 @@ const Sim = {
     UI.updateEnvBar();
     UI.applyAmbientTheme();
     ActivityEngine.advanceIfNeeded();
+    // Keeps the interact panel's fourth button correct if it's left open
+    // across midnight, or across Satomi leaving/returning home — no page
+    // reload needed, this just rides the existing tick.
+    UI.refreshInteractGridIfOpen();
 
     if(now-this.lastMicroDecision > this.nextMicroGapMs){
       this.lastMicroDecision = now;
@@ -1917,6 +1983,8 @@ const Debug = {
       ["activity", ActivityEngine.current? ActivityEngine.current.id : "-"],
       ["availability", Availability.isSleeping() ? "sleeping" : Availability.isAway() ? "away ("+(ActivityEngine.current.awayLength||"?")+")" : "home"],
       ["away cooldown", ActivityEngine.inAwayCooldown() ? Math.round((ActivityEngine.awayCooldownUntil-Date.now())/60000)+"m left" : "-"],
+      ["Birthday", "Feb 8"],
+      ["Birthday Greeting", !Birthday.isToday() ? "Not Active" : (Birthday.alreadyGreetedThisYear() ? "Greeted" : (Availability.isHome() ? "Available" : "Not Active (away/asleep)"))],
       ["mood", StateEngine.currentMoodTag()],
       ["energy", Math.round(s.energy)], ["focus", Math.round(s.focus)],
       ["stress", Math.round(s.stress)], ["hunger", Math.round(s.hunger)],
@@ -1932,6 +2000,15 @@ const Debug = {
       ["+1 Hour", ()=>{ Clock.offsetMs += 3600000; this.note("time +1h"); ActivityEngine.currentUntil=0; ActivityEngine.advanceIfNeeded(); UI.tickClock(); this.render(); }],
       ["+6 Hours", ()=>{ Clock.offsetMs += 6*3600000; this.note("time +6h"); ActivityEngine.currentUntil=0; ActivityEngine.advanceIfNeeded(); UI.tickClock(); this.render(); }],
       ["+1 Day", ()=>{ Clock.offsetMs += 86400000; LifeThreadEngine.dailyTick(); this.note("time +1 day, thread tick"); UI.tickClock(); this.render(); }],
+      ["Jump to Birthday", ()=>{
+        const now = Clock.now();
+        let target = new Date(now.getFullYear(), Birthday.MONTH-1, Birthday.DAY, 9, 0, 0);
+        if(target <= now) target = new Date(now.getFullYear()+1, Birthday.MONTH-1, Birthday.DAY, 9, 0, 0);
+        Clock.offsetMs += (target - now);
+        ActivityEngine.currentUntil=0; ActivityEngine.advanceIfNeeded();
+        UI.tickClock(); UI.refreshInteractGridIfOpen(); this.note("jumped to Feb 8"); this.render();
+      }],
+      ["Reset Birthday (this year)", ()=>{ Birthday.lastGreetedYear=0; Persistence.scheduleSave(); UI.refreshInteractGridIfOpen(); this.note("birthday greeting reset"); this.render(); }],
       ["Force Rain", ()=>{ WeatherEngine.set("light_rain"); this.note("weather -> light_rain"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
       ["Force Storm", ()=>{ WeatherEngine.set("thunderstorm"); this.note("weather -> thunderstorm"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
       ["Clear Weather", ()=>{ WeatherEngine.set("clear"); this.note("weather -> clear"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
