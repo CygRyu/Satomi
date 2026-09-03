@@ -316,8 +316,9 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
   font-family:var(--font-body); font-size:14.5px; color:var(--ink-1);
   line-height:1.85; min-height:130px; margin-bottom:32px;
 }
-.splash-desc .line{ margin-bottom:16px; }
+.splash-desc .line{ margin-bottom:16px; opacity:0; transition:opacity 1.05s ease; }
 .splash-desc .line:last-child{ margin-bottom:0; color:var(--ink-0); }
+.splash-desc .line.show{ opacity:1; }
 .splash-enter{
   opacity:0; transition:opacity 1s ease, border-color .3s ease;
   background:none; border:1px solid var(--line); color:var(--ink-0);
@@ -2126,17 +2127,20 @@ function buildDust(){
 const Splash = {
   el:null,
   sleep(ms){ return new Promise(r=>setTimeout(r, ms)); },
-  typeInto(el, text){
-    return new Promise(resolve=>{
-      let i=0;
-      const step = ()=>{
-        el.textContent = text.slice(0,i);
-        i++;
-        if(i<=text.length) setTimeout(step, 34);
-        else resolve();
-      };
-      step();
-    });
+  // Fades a sentence into the reused .line element, holds it, then fades
+  // it back out. Text is swapped while the element is invisible, so only
+  // one sentence is ever on screen and nothing is typed character-by-character.
+  async fadeSentence(el, text, hold){
+    el.classList.remove("show");
+    el.textContent = text;
+    // Force a reflow so the browser registers the opacity:0 state before
+    // we add "show" — otherwise the fade-in transition can get skipped.
+    void el.offsetWidth;
+    el.classList.add("show");
+    await this.sleep(1050); // fade in
+    await this.sleep(hold);
+    el.classList.remove("show");
+    await this.sleep(1050); // fade out
   },
   async run(){
     this.el = document.getElementById("splash");
@@ -2171,19 +2175,19 @@ const Splash = {
       "Study alongside her, leave her running in the background, or simply stay for a while.",
       "Sometimes, it's nice to have someone around."
     ];
-    // Single persistent element for the active segment — typeInto's first
-    // frame always resets textContent to "" before typing forward, so
-    // reusing this element across sentences naturally replaces the
-    // previous segment instead of leaving it stacked above the new one.
+    // Single persistent element for the active segment — each sentence
+    // fades in, holds, and fades out in place before the next one takes
+    // its turn, so only one sentence is ever visible at a time.
     const line = document.createElement("div");
     line.className = "line";
     desc.appendChild(line);
     for(let i=0;i<sentences.length;i++){
-      await this.typeInto(line, sentences[i]);
-      await this.sleep(i===sentences.length-1 ? 2600 : 1300);
+      const isLast = i===sentences.length-1;
+      await this.fadeSentence(line, sentences[i], isLast ? 3200 : 2100);
+      if(!isLast) await this.sleep(400); // brief gap before the next sentence
     }
 
-    await this.sleep(1400);
+    await this.sleep(1200);
     enterBtn.classList.add("show");
     credit.classList.add("show");
 
