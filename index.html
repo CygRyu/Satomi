@@ -2145,16 +2145,7 @@ const Splash = {
   async run(){
     this.el = document.getElementById("splash");
     if(!this.el) return;
-    // Safety net: whatever happens, never let the splash permanently
-    // block the app — auto-dismiss after a generous timeout.
-    const safety = setTimeout(()=>{
-      if(this.el && this.el.parentNode) this.el.remove();
-    }, 30000);
-    try{
-      await this._sequence();
-    } finally {
-      clearTimeout(safety);
-    }
+    await this._sequence();
   },
   async _sequence(){
     const title = document.getElementById("splashTitle");
@@ -2192,7 +2183,16 @@ const Splash = {
     credit.classList.add("show");
 
     return new Promise(resolve=>{
+      // Safety net: never let the splash permanently block the app if a
+      // click somehow doesn't register. This only starts counting once
+      // Enter is actually visible, so it never races the cinematic intro
+      // above — the player always gets a full, unhurried window to press it.
+      const safety = setTimeout(()=>{
+        if(this.el && this.el.parentNode) this.el.remove();
+        resolve();
+      }, 30000);
       enterBtn.onclick = ()=>{
+        clearTimeout(safety);
         this.el.classList.add("hide");
         setTimeout(()=>{ if(this.el && this.el.parentNode) this.el.remove(); }, 1200);
         // Entering the main screen is a real user gesture, so this is the
