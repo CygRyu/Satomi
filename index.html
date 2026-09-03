@@ -1951,10 +1951,14 @@ const Splash = {
       "Study alongside her, leave her running in the background, or simply stay for a while.",
       "There is nothing you need to accomplish."
     ];
+    // Single persistent element for the active segment — typeInto's first
+    // frame always resets textContent to "" before typing forward, so
+    // reusing this element across sentences naturally replaces the
+    // previous segment instead of leaving it stacked above the new one.
+    const line = document.createElement("div");
+    line.className = "line";
+    desc.appendChild(line);
     for(let i=0;i<sentences.length;i++){
-      const line = document.createElement("div");
-      line.className = "line";
-      desc.appendChild(line);
       await this.typeInto(line, sentences[i]);
       await this.sleep(i===sentences.length-1 ? 1900 : 750);
     }
