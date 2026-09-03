@@ -213,6 +213,28 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .settings-footer{ text-align:center; margin-top:26px; color:var(--ink-2); font-size:11px; line-height:1.7; letter-spacing:.03em; }
 .settings-footer strong{ display:block; color:var(--ink-1); font-size:11.5px; font-weight:500; letter-spacing:.08em; margin-bottom:2px; }
 
+/* audio settings */
+.audio-settings{ margin-top:22px; padding-top:16px; border-top:1px solid var(--line); transition:border-color var(--transition-slow) ease; }
+.audio-settings-label{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em; color:var(--ink-2); margin-bottom:14px; text-align:center; transition:color var(--transition-slow) ease; }
+.audio-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.audio-row:last-child{ margin-bottom:0; }
+.audio-row label{ font-size:12.5px; color:var(--ink-1); letter-spacing:.02em; transition:color var(--transition-slow) ease; }
+.audio-row input[type="range"]{
+  -webkit-appearance:none; appearance:none; width:100%; height:3px;
+  background:var(--line); border-radius:2px; outline:none; cursor:pointer;
+  transition:background var(--transition-slow) ease;
+}
+.audio-row input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%;
+  background:var(--accent); cursor:pointer; border:none; margin-top:-5.5px;
+}
+.audio-row input[type="range"]::-moz-range-thumb{
+  width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; border:none;
+}
+.audio-row input[type="range"]::-moz-range-track{
+  background:var(--line); height:3px; border-radius:2px;
+}
+
 /* music toggle */
 .music-toggle{
   position:fixed; top:14px; right:14px; z-index:8; width:30px; height:30px;
@@ -316,6 +338,9 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
 </div>
 
 <audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
+<audio id="audioLightRain" src="light_rain.mp3" loop preload="auto"></audio>
+<audio id="audioHeavyRain" src="heavy_rain.mp3" loop preload="auto"></audio>
+<audio id="audioThunderstorm" src="thunderstorm.mp3" loop preload="auto"></audio>
 <button class="music-toggle" id="musicToggle" aria-label="Toggle music" aria-pressed="false" title="Music"></button>
 
 <div class="wrap">
@@ -373,6 +398,17 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
   <div class="panel">
     <h2>Settings &amp; Presence</h2>
     <div id="statsList"></div>
+    <div class="audio-settings">
+      <div class="audio-settings-label">AUDIO</div>
+      <div class="audio-row">
+        <label for="musicVolumeSlider">Music</label>
+        <input type="range" id="musicVolumeSlider" min="0" max="100" value="70">
+      </div>
+      <div class="audio-row">
+        <label for="ambientVolumeSlider">Ambient Sounds</label>
+        <input type="range" id="ambientVolumeSlider" min="0" max="100" value="55">
+      </div>
+    </div>
     <button class="settings-btn" id="exportBtn">Export save data</button>
     <button class="settings-btn" id="importBtn">Import save data</button>
     <input type="file" id="importFile" accept="application/json" style="display:none">
@@ -832,6 +868,7 @@ const WeatherEngine = {
     this.temp = Math.round(RNG.range(w.tempRange[0], w.tempRange[1]));
     this.lastChange = Date.now();
     StateEngine.apply(w.moodMod);
+    WeatherAudio.setWeather(id);
   },
   isRaining(){ return ["light_rain","heavy_rain","thunderstorm"].includes(this.currentId); },
 };
@@ -1150,6 +1187,7 @@ const Presence = {
 const Music = {
   KEY: "satomi_music_pref",
   enabled: true,
+  volume: 0.7, // independent of `enabled` — the main-page toggle mutes/unmutes without touching this
   el: null,
   btn: null,
   _resumeBound: false,
@@ -1159,8 +1197,16 @@ const Music = {
     let pref;
     try{ pref = localStorage.getItem(this.KEY); }catch(e){ pref = null; }
     this.enabled = (pref === null) ? true : (pref === "1");
+    if(this.el) this.el.volume = this.volume;
     this.applyBtn();
     if(this.btn) this.btn.onclick = ()=> this.toggle();
+  },
+  // Sets the slider-controlled volume. This is the level music plays at
+  // whenever the main-page toggle has it ON; toggling OFF just pauses
+  // playback (see toggle()) and never touches this value.
+  setVolume(v){
+    this.volume = Math.max(0, Math.min(1, v));
+    if(this.el) this.el.volume = this.volume;
   },
   applyBtn(){
     if(!this.btn) return;
@@ -1204,6 +1250,93 @@ const Music = {
 };
 
 /* ============================================================
+   13c. WEATHER AMBIENT AUDIO
+   Drives ambient loops off WeatherEngine's existing state/ids —
+   no parallel weather system. Only reacts when the weather id
+   actually changes (see WeatherEngine.set), never on every tick.
+   ============================================================ */
+const WeatherAudio = {
+  MAP: { light_rain:"light_rain", heavy_rain:"heavy_rain", thunderstorm:"thunderstorm" },
+  els: {},
+  current: null,      // weather id whose track is the active/target track, or null for silence
+  volume: 0.55,
+  FADE_MS: 1500,
+  _fadeTimer: null,
+  _fading: false,
+  _fadeGen: 0,
+  _resumeBound: false,
+  init(){
+    this.els.light_rain = document.getElementById("audioLightRain");
+    this.els.heavy_rain = document.getElementById("audioHeavyRain");
+    this.els.thunderstorm = document.getElementById("audioThunderstorm");
+    Object.values(this.els).forEach(el=>{ if(el) el.volume = 0; });
+  },
+  // Ambient Sounds slider. Never restarts playback — just rescales
+  // whichever track is currently audible (or about to be).
+  setVolume(v){
+    this.volume = Math.max(0, Math.min(1, v));
+    if(this.current && this.els[this.current] && !this._fading){
+      this.els[this.current].volume = this.volume;
+    }
+  },
+  // Called from WeatherEngine.set() whenever the weather actually
+  // changes. No-ops if the mapped track is already the current one,
+  // so it's safe to call redundantly.
+  setWeather(weatherId){
+    const targetKey = this.MAP[weatherId] ? weatherId : null;
+    if(targetKey === this.current) return;
+    const oldKey = this.current;
+    this.current = targetKey;
+    this._crossfade(oldKey, targetKey);
+  },
+  _crossfade(oldKey, newKey){
+    const oldEl = oldKey ? this.els[oldKey] : null;
+    const newEl = newKey ? this.els[newKey] : null;
+    const gen = ++this._fadeGen;
+    if(newEl){
+      newEl.volume = 0;
+      const p = newEl.play();
+      if(p && p.catch) p.catch(()=>{ this._armResumeOnGesture(); });
+    }
+    const steps = 24, stepMs = this.FADE_MS/steps;
+    let i = 0;
+    clearInterval(this._fadeTimer);
+    this._fading = true;
+    this._fadeTimer = setInterval(()=>{
+      if(gen !== this._fadeGen){ clearInterval(this._fadeTimer); return; }
+      i++;
+      const t = i/steps;
+      if(oldEl && oldEl!==newEl) oldEl.volume = Math.max(0, this.volume*(1-t));
+      if(newEl) newEl.volume = Math.min(this.volume, this.volume*t);
+      if(i>=steps){
+        clearInterval(this._fadeTimer);
+        this._fading = false;
+        if(oldEl && oldEl!==newEl){ oldEl.pause(); oldEl.currentTime = 0; }
+        if(newEl) newEl.volume = this.volume;
+      }
+    }, stepMs);
+  },
+  // Mirrors Music's autoplay-unlock pattern, kept separate so weather
+  // audio and music can each recover independently.
+  _armResumeOnGesture(){
+    if(this._resumeBound) return;
+    this._resumeBound = true;
+    const resume = ()=>{
+      document.removeEventListener("pointerdown", resume);
+      document.removeEventListener("keydown", resume);
+      this._resumeBound = false;
+      const el = this.current ? this.els[this.current] : null;
+      if(el){
+        const p = el.play();
+        if(p && p.catch) p.catch(()=>{});
+      }
+    };
+    document.addEventListener("pointerdown", resume, {once:true});
+    document.addEventListener("keydown", resume, {once:true});
+  }
+};
+
+/* ============================================================
    14. PERSISTENCE
    ============================================================ */
 const Persistence = {
@@ -1217,6 +1350,7 @@ const Persistence = {
     const payload = {
       state: StateEngine.data,
       weather: {id:WeatherEngine.currentId, temp:WeatherEngine.temp, lastChange:WeatherEngine.lastChange},
+      audio: {musicVolume:Music.volume, ambientVolume:WeatherAudio.volume},
       activity: {
         id: ActivityEngine.current ? ActivityEngine.current.id : null,
         until: ActivityEngine.currentUntil,
@@ -1246,6 +1380,10 @@ const Persistence = {
       const p = JSON.parse(raw);
       Object.assign(StateEngine.data, p.state||{});
       if(p.weather){ WeatherEngine.currentId=p.weather.id; WeatherEngine.temp=p.weather.temp; WeatherEngine.lastChange=p.weather.lastChange||Date.now(); }
+      if(p.audio){
+        if(typeof p.audio.musicVolume==="number") Music.setVolume(p.audio.musicVolume);
+        if(typeof p.audio.ambientVolume==="number") WeatherAudio.setVolume(p.audio.ambientVolume);
+      }
       if(p.activity && p.activity.id){
         const act = CONTENT.activities.find(a=>a.id===p.activity.id);
         if(act){
@@ -1496,6 +1634,14 @@ const UI = {
       ["Completed threads", LifeThreadEngine.completed.length],
     ];
     this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
+  },
+  // Reflects current volumes onto the sliders. Only ever touches the
+  // slider's displayed value — never fires oninput, never restarts audio.
+  syncAudioSliders(){
+    const m = document.getElementById("musicVolumeSlider");
+    const a = document.getElementById("ambientVolumeSlider");
+    if(m) m.value = Math.round(Music.volume*100);
+    if(a) a.value = Math.round(WeatherAudio.volume*100);
   }
 };
 function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
@@ -1504,7 +1650,7 @@ const Panels = {
   open(name){
     document.getElementById("overlay-"+name).classList.add("open");
     if(name==="log") UI.renderLog();
-    if(name==="settings") UI.renderStats();
+    if(name==="settings"){ UI.renderStats(); UI.syncAudioSliders(); }
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.panel===name));
   },
   close(name){
@@ -1714,6 +1860,20 @@ document.getElementById("resetBtn").onclick = ()=>{
     location.reload();
   }
 };
+const musicVolumeSlider = document.getElementById("musicVolumeSlider");
+const ambientVolumeSlider = document.getElementById("ambientVolumeSlider");
+if(musicVolumeSlider){
+  musicVolumeSlider.oninput = ()=>{
+    Music.setVolume(musicVolumeSlider.value/100);
+    Persistence.scheduleSave();
+  };
+}
+if(ambientVolumeSlider){
+  ambientVolumeSlider.oninput = ()=>{
+    WeatherAudio.setVolume(ambientVolumeSlider.value/100);
+    Persistence.scheduleSave();
+  };
+}
 
 /* ============================================================
    20. DUST PARTICLES (purely decorative, generated once)
@@ -1835,7 +1995,9 @@ document.getElementById("debugLoad").onclick = ()=>{
 function boot(){
   buildDust();
   Music.init();
+  WeatherAudio.init();
   const hadSave = Persistence.load();
+  UI.syncAudioSliders(); // reflect any restored volumes now that load() has run
   Memory.checkDayRollover();
   LifeThreadEngine.init();
   UI.init();
@@ -1847,6 +2009,10 @@ function boot(){
   }
   Sim.init();
   UI.updateEnvBar();
+  // Start (or resume) the ambient track matching the current/restored
+  // weather. Same autoplay handling as music: if the browser blocks it,
+  // WeatherAudio quietly arms itself to retry on the first interaction.
+  WeatherAudio.setWeather(WeatherEngine.currentId);
   if(!hadSave){
     Memory.log("major", "You open the app for the first time. Somewhere across the city, Satomi is going about her afternoon.");
     Splash.run(); // music starts on the splash's Enter click, not before
