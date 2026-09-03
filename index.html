@@ -2159,17 +2159,17 @@ const Splash = {
     const enterBtn = document.getElementById("splashEnter");
     const credit = document.getElementById("splashCredit");
 
-    await this.sleep(300);
+    await this.sleep(500);
     title.classList.add("show");
 
-    await this.sleep(1300 + 700);
+    await this.sleep(1800);
     tagline.classList.add("show");
 
-    await this.sleep(900 + 900);
+    await this.sleep(1400);
     const sentences = [
       "Satomi is a university student with a desk, a room, and a life of her own.",
       "Study alongside her, leave her running in the background, or simply stay for a while.",
-      "There is nothing you need to accomplish."
+      "Sometimes, it's nice to have someone around."
     ];
     // Single persistent element for the active segment — typeInto's first
     // frame always resets textContent to "" before typing forward, so
@@ -2180,10 +2180,10 @@ const Splash = {
     desc.appendChild(line);
     for(let i=0;i<sentences.length;i++){
       await this.typeInto(line, sentences[i]);
-      await this.sleep(i===sentences.length-1 ? 1900 : 750);
+      await this.sleep(i===sentences.length-1 ? 2600 : 1300);
     }
 
-    await this.sleep(1000);
+    await this.sleep(1400);
     enterBtn.classList.add("show");
     credit.classList.add("show");
 
