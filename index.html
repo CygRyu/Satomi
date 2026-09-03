@@ -171,17 +171,27 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .panel-overlay{
   position:fixed; inset:0; background:rgba(10,11,15,0.72); backdrop-filter:blur(3px);
   z-index:20; display:none; align-items:flex-end; justify-content:center;
+  overscroll-behavior-y:contain;
 }
 .panel-overlay.open{ display:flex; animation:fadein .25s ease; }
 @keyframes fadein{ from{opacity:0;} to{opacity:1;} }
 .panel{
   width:100%; max-width:560px; max-height:82vh; overflow-y:auto;
+  overscroll-behavior-y:contain;
   background:var(--bg-2); border-top:1px solid var(--line);
-  border-radius:18px 18px 0 0; padding:26px 22px 34px;
+  border-radius:18px 18px 0 0; padding:0 22px 34px;
   animation:slideup .35s cubic-bezier(.2,.8,.2,1);
   transition:background var(--transition-slow) ease, border-color var(--transition-slow) ease;
 }
+.panel.dragging{ transition:none; }
 @keyframes slideup{ from{transform:translateY(40px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+.panel-handle{
+  display:flex; align-items:center; justify-content:center; gap:4px;
+  padding:14px 0 16px; margin:0 -22px 8px; cursor:grab; touch-action:none;
+}
+.panel-handle span{
+  width:4px; height:4px; border-radius:50%; background:var(--ink-2); opacity:.55;
+}
 .panel h2{
   font-family:var(--font-display); font-weight:500; font-size:15px; letter-spacing:.06em;
   color:var(--ink-1); margin:0 0 18px; text-align:center;
@@ -200,7 +210,9 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .log-filters button.active{ color:var(--bg-0); background:var(--accent); border-color:var(--accent); }
 .log-entry{ padding:11px 0; border-bottom:1px solid var(--line); transition:border-color var(--transition-slow) ease; }
 .log-entry:last-child{ border-bottom:none; }
-.log-time{ font-family:var(--font-mono); font-size:10.5px; color:var(--accent-dim); display:block; margin-bottom:3px; }
+.log-entry-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:3px; }
+.log-time{ font-family:var(--font-mono); font-size:10.5px; color:var(--accent-dim); }
+.log-date{ opacity:.75; margin-right:5px; }
 .log-text{ font-size:13.5px; color:var(--ink-1); line-height:1.55; transition:color var(--transition-slow) ease; }
 .log-text.dialogue{ font-family:var(--font-display); color:var(--ink-0); font-style:italic; }
 .log-text.major{ color:var(--accent); }
@@ -390,6 +402,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
 <!-- LOG PANEL -->
 <div class="panel-overlay" id="overlay-log">
   <div class="panel">
+    <div class="panel-handle" aria-hidden="true"><span></span><span></span><span></span></div>
     <h2>Life Log</h2>
     <div class="log-filters" id="logFilters">
       <button data-filter="all" class="active">All</button>
@@ -406,6 +419,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
 <!-- INTERACT PANEL -->
 <div class="panel-overlay" id="overlay-interact">
   <div class="panel">
+    <div class="panel-handle" aria-hidden="true"><span></span><span></span><span></span></div>
     <h2>Interact</h2>
     <div class="interact-grid" id="interactGrid"></div>
     <div class="interact-hint">She may respond now, later, or simply continue what she's doing.</div>
@@ -416,6 +430,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
 <!-- SETTINGS PANEL -->
 <div class="panel-overlay" id="overlay-settings">
   <div class="panel">
+    <div class="panel-handle" aria-hidden="true"><span></span><span></span><span></span></div>
     <h2>Settings &amp; Presence</h2>
     <div id="statsList"></div>
     <div class="audio-settings">
@@ -1296,17 +1311,19 @@ const LifeThreadEngine = {
    12. MEMORY / LIFE LOG
    ============================================================ */
 const Memory = {
-  entries: [], // {ts, type, text}
+  entries: [], // {id, ts, type, text}
   currentLogDay: new Date().toDateString(),
+  _nextId: 1,
   log(type, text){
-    this.entries.push({ts:Date.now(), type, text});
-    if(this.entries.length>500) this.entries.shift();
+    this.entries.push({id:this._nextId++, ts:Date.now(), type, text});
+    if(this.entries.length>500){
+      this.entries.shift();
+    }
     UI.refreshLogIfOpen();
     Persistence.scheduleSave();
   },
   // The Life Log only ever holds the current real-time 24-hour
-  // period; at the start of a new day it starts fresh. Older
-  // entries simply aren't kept around in the normal UI.
+  // period; at the start of a new day it starts fresh.
   checkDayRollover(){
     const today = new Date().toDateString();
     if(today !== this.currentLogDay){
@@ -1315,6 +1332,10 @@ const Memory = {
       UI.refreshLogIfOpen();
       Persistence.scheduleSave();
     }
+  },
+  // Entries to persist: the most recent ones up to the save budget.
+  entriesForSave(){
+    return this.entries.slice(-300);
   }
 };
 
@@ -1522,7 +1543,7 @@ const Persistence = {
       threadsActive: LifeThreadEngine.active.map(t=>({id:t.id, stageIndex:t.stageIndex, lastProgress:t.lastProgress})),
       threadsCompleted: LifeThreadEngine.completed,
       birthday: { lastGreetedYear: Birthday.lastGreetedYear },
-      log: Memory.entries.slice(-300),
+      log: Memory.entriesForSave(),
       logDay: Memory.currentLogDay,
       presence: {
         firstOpened: Presence.firstOpened,
@@ -1568,7 +1589,15 @@ const Persistence = {
       // Missing on older saves → 0, which is never the current year,
       // so it safely defaults to "not greeted this year".
       Birthday.lastGreetedYear = (p.birthday && typeof p.birthday.lastGreetedYear==="number") ? p.birthday.lastGreetedYear : 0;
-      Memory.entries = p.log||[];
+      // Older saves may lack id fields — backfill so entries have
+      // something stable to key off of.
+      let maxId = 0;
+      Memory.entries = (p.log||[]).map(e=>{
+        const id = typeof e.id==="number" ? e.id : ++maxId;
+        if(id>maxId) maxId = id;
+        return {id, ts:e.ts, type:e.type, text:e.text};
+      });
+      Memory._nextId = maxId+1;
       Memory.currentLogDay = p.logDay || new Date().toDateString();
       if(p.presence){
         Presence.firstOpened = p.presence.firstOpened;
@@ -1788,17 +1817,23 @@ const UI = {
   },
   renderLog(){
     const list = this.els.logList;
-    const filtered = Memory.entries.slice().reverse().filter(e=> this.logFilter==="all" || e.type===this.logFilter);
-    if(filtered.length===0){
+    const matches = e => this.logFilter==="all" || e.type===this.logFilter;
+    const entries = Memory.entries.filter(matches).slice().reverse();
+    if(entries.length===0){
       list.innerHTML = `<div class="log-empty">Nothing here yet.</div>`;
       return;
     }
-    list.innerHTML = filtered.slice(0,150).map(e=>{
+    const renderEntry = e=>{
       const d = new Date(e.ts);
       const hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+      const showDate = e.type==="major";
+      const dateStr = showDate ? `<span class="log-date">${d.getMonth()+1}/${String(d.getDate()).padStart(2,"0")}</span>` : "";
       const cls = e.type==="dialogue"?"dialogue":(e.type==="major"?"major":"");
-      return `<div class="log-entry"><span class="log-time">${hh}:${mm}</span><div class="log-text ${cls}">${escapeHtml(e.text)}</div></div>`;
-    }).join("");
+      return `<div class="log-entry">`
+        + `<div class="log-entry-head"><span class="log-time">${dateStr}${hh}:${mm}</span></div>`
+        + `<div class="log-text ${cls}">${escapeHtml(e.text)}</div></div>`;
+    };
+    list.innerHTML = entries.slice(0,150).map(renderEntry).join("");
   },
   renderStats(){
     const days = Presence.daysTogether.size;
@@ -1826,6 +1861,10 @@ function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; 
 
 const Panels = {
   open(name){
+    const panel = document.querySelector("#overlay-"+name+" .panel");
+    // Clear any leftover drag transform from a cancelled swipe before showing.
+    panel.classList.remove("dragging");
+    panel.style.transform = "";
     document.getElementById("overlay-"+name).classList.add("open");
     if(name==="log") UI.renderLog();
     if(name==="interact") UI.buildInteractOptions();
@@ -1840,6 +1879,45 @@ const Panels = {
 document.querySelectorAll(".panel-overlay").forEach(ov=>{
   ov.addEventListener("click", (e)=>{ if(e.target===ov) ov.classList.remove("open"); });
 });
+
+/* ---------- drag-down-to-close, via the little dotted handle ---------- */
+(function setupPanelDrag(){
+  const CLOSE_THRESHOLD = 90; // px of downward drag before it counts as "close"
+  document.querySelectorAll(".panel-overlay").forEach(overlay=>{
+    const panel = overlay.querySelector(".panel");
+    const handle = overlay.querySelector(".panel-handle");
+    if(!panel || !handle) return;
+    const name = overlay.id.replace("overlay-", "");
+    let dragging=false, startY=0, deltaY=0;
+
+    const onMove = (e)=>{
+      if(!dragging) return;
+      const y = e.touches ? e.touches[0].clientY : e.clientY;
+      deltaY = Math.max(0, y-startY); // only allow dragging downward
+      panel.style.transform = `translateY(${deltaY}px)`;
+    };
+    const onEnd = ()=>{
+      if(!dragging) return;
+      dragging = false;
+      panel.classList.remove("dragging");
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onEnd);
+      document.removeEventListener("pointercancel", onEnd);
+      if(deltaY > CLOSE_THRESHOLD){
+        Panels.close(name);
+      } else {
+        panel.style.transform = "";
+      }
+    };
+    handle.addEventListener("pointerdown", (e)=>{
+      dragging = true; startY = e.clientY; deltaY = 0;
+      panel.classList.add("dragging");
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onEnd);
+      document.addEventListener("pointercancel", onEnd);
+    });
+  });
+})();
 
 /* ============================================================
    16. PLAYER INTERACTIONS
