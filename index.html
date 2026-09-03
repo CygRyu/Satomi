@@ -706,6 +706,13 @@ const ENVIRONMENTAL_EVENTS = [
   { id:"trace_sketchbook", text:"Her sketchbook is left open to an unfinished page.", tod:["any"], weight:2, awayOnly:true, reactChance:0 },
 ];
 
+// --- FEATURE FLAGS ------------------------------------------------
+// Life Threads are temporarily disabled. The complete engine/data remain in
+// this file so the feature can be revived later by setting this back to true.
+const FEATURES = {
+  LIFE_THREADS: false,
+};
+
 // --- life threads: id, title, stages[] with text + min days between progress ---
 const LIFE_THREADS = [
   { id:"comp_lit_essay", title:"Comparative Literature essay", stages:[
@@ -1531,11 +1538,17 @@ const WeatherAudio = {
 const Persistence = {
   KEY: "satomi_companion_save_v1",
   saveTimer:null,
+  isResetting:false,
   scheduleSave(){
+    if(this.isResetting) return;
     clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(()=>this.save(), 800);
   },
   save(){
+    // A reset triggers a reload, which normally fires beforeunload and could
+    // immediately recreate the save we just deleted. Never persist while a
+    // factory reset is in progress.
+    if(this.isResetting) return;
     const payload = {
       state: StateEngine.data,
       weather: {id:WeatherEngine.currentId, temp:WeatherEngine.temp, lastChange:WeatherEngine.lastChange},
@@ -1547,8 +1560,11 @@ const Persistence = {
         text: ActivityEngine.currentText || null,
         awayCooldownUntil: ActivityEngine.awayCooldownUntil || 0,
       },
-      threadsActive: LifeThreadEngine.active.map(t=>({id:t.id, stageIndex:t.stageIndex, lastProgress:t.lastProgress})),
-      threadsCompleted: LifeThreadEngine.completed,
+      // Retained only when the feature is enabled; old saves remain compatible.
+      ...(FEATURES.LIFE_THREADS ? {
+        threadsActive: LifeThreadEngine.active.map(t=>({id:t.id, stageIndex:t.stageIndex, lastProgress:t.lastProgress})),
+        threadsCompleted: LifeThreadEngine.completed,
+      } : {}),
       birthday: { lastGreetedYear: Birthday.lastGreetedYear },
       log: Memory.entriesForSave(),
       logDay: Memory.currentLogDay,
@@ -1589,10 +1605,16 @@ const Persistence = {
           }
         }
       }
-      if(p.threadsActive){
-        LifeThreadEngine.active = p.threadsActive.map(t=>({id:t.id, def:LIFE_THREADS.find(d=>d.id===t.id), stageIndex:t.stageIndex, lastProgress:t.lastProgress})).filter(t=>t.def);
+      if(FEATURES.LIFE_THREADS){
+        if(p.threadsActive){
+          LifeThreadEngine.active = p.threadsActive.map(t=>({id:t.id, def:LIFE_THREADS.find(d=>d.id===t.id), stageIndex:t.stageIndex, lastProgress:t.lastProgress})).filter(t=>t.def);
+        }
+        LifeThreadEngine.completed = p.threadsCompleted||[];
+      } else {
+        // Keep the dormant feature completely inactive even when loading an old save.
+        LifeThreadEngine.active = [];
+        LifeThreadEngine.completed = [];
       }
-      LifeThreadEngine.completed = p.threadsCompleted||[];
       // Missing on older saves → 0, which is never the current year,
       // so it safely defaults to "not greeted this year".
       Birthday.lastGreetedYear = (p.birthday && typeof p.birthday.lastGreetedYear==="number") ? p.birthday.lastGreetedYear : 0;
@@ -1628,7 +1650,16 @@ const Persistence = {
     }catch(e){ return false; }
   },
   reset(){
-    localStorage.removeItem(this.KEY);
+    // Factory reset: cancel pending writes, erase every persistence key used
+    // by this app, and prevent unload/visibility handlers from recreating them.
+    this.isResetting = true;
+    clearTimeout(this.saveTimer);
+    try{
+      localStorage.removeItem(this.KEY);
+      localStorage.removeItem(Music.KEY);
+    }catch(e){
+      console.warn("reset failed", e);
+    }
   }
 };
 
@@ -1854,8 +1885,6 @@ const UI = {
       ["Time spent together", hours+" hrs"],
       ["Conversations", Presence.conversations],
       ["Major events witnessed", Presence.majorEventsWitnessed],
-      ["Active life threads", LifeThreadEngine.active.length],
-      ["Completed threads", LifeThreadEngine.completed.length],
     ];
     this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
   },
@@ -2038,7 +2067,7 @@ const Sim = {
     const today = new Date().toDateString();
     if(today !== this.lastDay){
       this.lastDay = today;
-      LifeThreadEngine.dailyTick();
+      if(FEATURES.LIFE_THREADS) LifeThreadEngine.dailyTick();
       Memory.checkDayRollover();
     }
 
@@ -2099,7 +2128,7 @@ const Debug = {
       ["stress", Math.round(s.stress)], ["hunger", Math.round(s.hunger)],
       ["boredom", Math.round(s.boredom)], ["socialNeed", Math.round(s.socialNeed)],
       ["sleepiness", Math.round(s.sleepiness)], ["motivation", Math.round(s.motivation)],
-      ["active threads", LifeThreadEngine.active.map(t=>t.id).join(", ")||"-"],
+      ...(FEATURES.LIFE_THREADS ? [["active threads", LifeThreadEngine.active.map(t=>t.id).join(", ")||"-"]] : []),
     ];
     grid.innerHTML = rows.map(([k,v])=>`<div>${k}: <span>${v}</span></div>`).join("");
     document.getElementById("debugEventLog").textContent = this.log.join("\n");
@@ -2108,7 +2137,7 @@ const Debug = {
     return [
       ["+1 Hour", ()=>{ Clock.offsetMs += 3600000; this.note("time +1h"); ActivityEngine.currentUntil=0; ActivityEngine.advanceIfNeeded(); UI.tickClock(); this.render(); }],
       ["+6 Hours", ()=>{ Clock.offsetMs += 6*3600000; this.note("time +6h"); ActivityEngine.currentUntil=0; ActivityEngine.advanceIfNeeded(); UI.tickClock(); this.render(); }],
-      ["+1 Day", ()=>{ Clock.offsetMs += 86400000; LifeThreadEngine.dailyTick(); this.note("time +1 day, thread tick"); UI.tickClock(); this.render(); }],
+      ["+1 Day", ()=>{ Clock.offsetMs += 86400000; if(FEATURES.LIFE_THREADS) LifeThreadEngine.dailyTick(); this.note("time +1 day"); UI.tickClock(); this.render(); }],
       ["Jump to Birthday", ()=>{
         const now = Clock.now();
         let target = new Date(now.getFullYear(), Birthday.MONTH-1, Birthday.DAY, 9, 0, 0);
@@ -2126,7 +2155,7 @@ const Debug = {
       ["Force Relaxed", ()=>{ StateEngine.data.mood=90; StateEngine.data.stress=10; this.note("forced relaxed mood"); this.render(); }],
       ["Trigger Dialogue", ()=>{ const ok=DialogueEngine.maybeSpeak(); if(!ok) UI.speak(DialogueEngine.proceduralLine()||"..."); this.note("forced dialogue"); }],
       ["Trigger Event", ()=>{ EventEngine.trigger(); this.note("forced environmental event"); }],
-      ["Progress a Thread", ()=>{ const t=LifeThreadEngine.active[0]; if(t){ LifeThreadEngine.progress(t); this.note("progressed "+t.id);} this.render(); }],
+      ...(FEATURES.LIFE_THREADS ? [["Progress a Thread", ()=>{ const t=LifeThreadEngine.active[0]; if(t){ LifeThreadEngine.progress(t); this.note("progressed "+t.id);} this.render(); }]] : []),
       ["View State (console)", ()=>{ console.log(JSON.parse(JSON.stringify(StateEngine.data))); this.note("state logged to console"); }],
       ["Force Away (Brief)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_coffee"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
       ["Force Away (Normal)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_library"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
@@ -2174,9 +2203,11 @@ document.getElementById("importFile").onchange = (e)=>{
   reader.readAsText(file);
 };
 document.getElementById("resetBtn").onclick = ()=>{
-  if(confirm("This will erase Satomi's memory and progress. Continue?")){
+  if(confirm("Reset everything? This will permanently erase all life logs, entries, progress, statistics, incremented values, and app preferences. Satomi will restart exactly like a first-ever launch.")){
     Persistence.reset();
-    location.reload();
+    // Give the storage deletion a moment to complete before reloading.
+    // The isResetting guard also blocks beforeunload from saving stale state.
+    setTimeout(()=>location.reload(), 50);
   }
 };
 const musicVolumeSlider = document.getElementById("musicVolumeSlider");
@@ -2325,7 +2356,8 @@ function boot(){
   const hadSave = Persistence.load();
   UI.syncAudioSliders(); // reflect any restored volumes now that load() has run
   Memory.checkDayRollover();
-  LifeThreadEngine.init();
+  if(FEATURES.LIFE_THREADS) LifeThreadEngine.init();
+  else { LifeThreadEngine.active = []; LifeThreadEngine.completed = []; }
   UI.init();
   if(ActivityEngine.current){
     // A restored activity is shown immediately, with no re-roll and
