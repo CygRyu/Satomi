@@ -2,8 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Ueno Satomi — a quiet companion</title>
+<meta name="description" content="A quiet virtual companion for quiet moments.">
+
+<!-- PWA: installability -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#12141a">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+
+<!-- iOS home-screen support (Safari doesn't read the manifest for these) -->
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Satomi">
+
+<!-- Android/Chrome standalone status bar -->
+<meta name="mobile-web-app-capable" content="yes">
 <style>
 /* ============================================================
    TOKENS — shift subtly with time-of-day / weather via JS
@@ -2256,6 +2272,16 @@ function boot(){
 document.addEventListener("DOMContentLoaded", boot);
 
 })();
+</script>
+<script>
+// PWA: register service worker (offline support + installability)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {
+      // quietly ignore — the app still works without offline caching
+    });
+  });
+}
 </script>
 </body>
 </html>
