@@ -1264,12 +1264,13 @@ const WeatherAudio = {
   _fadeTimer: null,
   _fading: false,
   _fadeGen: 0,
-  _resumeBound: false,
+  _unlockBound: false,
   init(){
     this.els.light_rain = document.getElementById("audioLightRain");
     this.els.heavy_rain = document.getElementById("audioHeavyRain");
     this.els.thunderstorm = document.getElementById("audioThunderstorm");
     Object.values(this.els).forEach(el=>{ if(el) el.volume = 0; });
+    this._armUnlock();
   },
   // Ambient Sounds slider. Never restarts playback — just rescales
   // whichever track is currently audible (or about to be).
@@ -1296,7 +1297,7 @@ const WeatherAudio = {
     if(newEl){
       newEl.volume = 0;
       const p = newEl.play();
-      if(p && p.catch) p.catch(()=>{ this._armResumeOnGesture(); });
+      if(p && p.catch) p.catch(()=>{}); // silently wait for the unlock listener below
     }
     const steps = 24, stepMs = this.FADE_MS/steps;
     let i = 0;
@@ -1316,23 +1317,27 @@ const WeatherAudio = {
       }
     }, stepMs);
   },
-  // Mirrors Music's autoplay-unlock pattern, kept separate so weather
-  // audio and music can each recover independently.
-  _armResumeOnGesture(){
-    if(this._resumeBound) return;
-    this._resumeBound = true;
-    const resume = ()=>{
-      document.removeEventListener("pointerdown", resume);
-      document.removeEventListener("keydown", resume);
-      this._resumeBound = false;
+  // Weather changes triggered automatically (natural evolution on a
+  // sim tick, or restoring a saved rainy weather on boot) aren't user
+  // gestures, so the browser is very likely to block that first
+  // play() call. Rather than betting on catching one specific retry
+  // window, this listens persistently and simply resumes the current
+  // track any time it finds it unexpectedly paused. It costs nothing
+  // once audio is actually flowing, since play() on an already-playing
+  // element is a safe no-op.
+  _armUnlock(){
+    if(this._unlockBound) return;
+    this._unlockBound = true;
+    const tryResume = ()=>{
       const el = this.current ? this.els[this.current] : null;
-      if(el){
+      if(el && el.paused){
         const p = el.play();
         if(p && p.catch) p.catch(()=>{});
       }
     };
-    document.addEventListener("pointerdown", resume, {once:true});
-    document.addEventListener("keydown", resume, {once:true});
+    document.addEventListener("pointerdown", tryResume);
+    document.addEventListener("keydown", tryResume);
+    document.addEventListener("touchstart", tryResume, {passive:true});
   }
 };
 
@@ -2032,6 +2037,8 @@ function boot(){
   window.addEventListener("visibilitychange", ()=>{
     if(document.visibilityState==="visible"){
       Sim.lastTick = Date.now(); // avoid one giant catch-up jump beyond cap already handled
+      Memory.checkDayRollover(); // background tabs can have their timers throttled,
+                                  // so a date change might not have been caught yet
     } else {
       Persistence.save();
     }
