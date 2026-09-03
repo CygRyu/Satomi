@@ -34,6 +34,7 @@
   --ink-2:#7d8394;
   --accent:#d8a86b;
   --accent-dim:#8a7256;
+  --accent-bright:#ffcf8a;
   --line:#2a2f3b;
   --rain-op:0;
   --dust-op:0.35;
@@ -208,14 +209,16 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
   font-size:11px; padding:5px 12px; border-radius:14px; cursor:pointer; letter-spacing:.03em;
 }
 .log-filters button.active{ color:var(--bg-0); background:var(--accent); border-color:var(--accent); }
-.log-entry{ padding:11px 0; border-bottom:1px solid var(--line); transition:border-color var(--transition-slow) ease; }
+.log-entry{ padding:11px 0 11px 12px; border-bottom:1px solid var(--line); border-left:2px solid transparent; transition:border-color var(--transition-slow) ease; }
 .log-entry:last-child{ border-bottom:none; }
+.log-entry.major{ border-left-color:var(--accent-bright); background:linear-gradient(90deg, rgba(255,207,138,0.08), transparent 65%); }
 .log-entry-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:3px; }
 .log-time{ font-family:var(--font-mono); font-size:10.5px; color:var(--accent-dim); }
 .log-date{ opacity:.75; margin-right:5px; }
+.log-marker{ font-size:9.5px; letter-spacing:.1em; color:var(--bg-0); background:var(--accent-bright); border-radius:8px; padding:2px 7px; font-family:var(--font-mono); font-weight:600; }
 .log-text{ font-size:13.5px; color:var(--ink-1); line-height:1.55; transition:color var(--transition-slow) ease; }
 .log-text.dialogue{ font-family:var(--font-display); color:var(--ink-0); font-style:italic; }
-.log-text.major{ color:var(--accent); }
+.log-text.major{ color:var(--accent-bright); font-weight:500; }
 .log-empty{ text-align:center; color:var(--ink-2); font-size:13px; padding:30px 0; }
 
 /* interact */
@@ -1319,6 +1322,10 @@ const Memory = {
     if(this.entries.length>500){
       this.entries.shift();
     }
+    if(type==="major"){
+      Presence.majorEventsWitnessed++;
+      UI.refreshStatsIfOpen();
+    }
     UI.refreshLogIfOpen();
     Persistence.scheduleSave();
   },
@@ -1812,6 +1819,9 @@ const UI = {
   refreshLogIfOpen(){
     if(document.getElementById("overlay-log").classList.contains("open")) this.renderLog();
   },
+  refreshStatsIfOpen(){
+    if(document.getElementById("overlay-settings").classList.contains("open")) this.renderStats();
+  },
   refreshInteractGridIfOpen(){
     if(document.getElementById("overlay-interact").classList.contains("open")) this.buildInteractOptions();
   },
@@ -1826,11 +1836,12 @@ const UI = {
     const renderEntry = e=>{
       const d = new Date(e.ts);
       const hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
-      const showDate = e.type==="major";
-      const dateStr = showDate ? `<span class="log-date">${d.getMonth()+1}/${String(d.getDate()).padStart(2,"0")}</span>` : "";
-      const cls = e.type==="dialogue"?"dialogue":(e.type==="major"?"major":"");
-      return `<div class="log-entry">`
-        + `<div class="log-entry-head"><span class="log-time">${dateStr}${hh}:${mm}</span></div>`
+      const isMajor = e.type==="major";
+      const dateStr = isMajor ? `<span class="log-date">${d.getMonth()+1}/${String(d.getDate()).padStart(2,"0")}</span>` : "";
+      const cls = e.type==="dialogue"?"dialogue":(isMajor?"major":"");
+      const marker = isMajor ? `<span class="log-marker">MAJOR</span>` : "";
+      return `<div class="log-entry ${isMajor?"major":""}">`
+        + `<div class="log-entry-head"><span class="log-time">${dateStr}${hh}:${mm}</span>${marker}</div>`
         + `<div class="log-text ${cls}">${escapeHtml(e.text)}</div></div>`;
     };
     list.innerHTML = entries.slice(0,150).map(renderEntry).join("");
