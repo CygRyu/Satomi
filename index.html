@@ -566,6 +566,7 @@ const ACTIVITIES = [
   { id:"at_university", category:"university", awayLength:"brief", text:["Satomi is at a lecture.","Satomi is in seminar, half-listening.","Satomi is between classes, sitting in the courtyard."], micro:["Satomi jots something down.","Satomi glances at the clock."], duration:[600,1800], tod:["morning","afternoon"], weekday:"weekday", effects:{energy:-3,focus:-2,socialNeed:-2,boredom:-2} },
   { id:"commute_home", category:"routine", text:["Satomi is on the train home.","Satomi is walking back to her apartment."], micro:["Satomi looks out at the passing streets."], duration:[300,900], tod:["morning","afternoon","evening"], weekday:"any", effects:{energy:-2,stress:-1} },
   { id:"prep_for_work", category:"work", text:["Satomi is getting ready for her shift."], micro:["Satomi ties her apron string in the mirror."], duration:[180,360], tod:["afternoon","evening"], weekday:"any", effects:{energy:-2,stress:+1} },
+  { id:"commute_to_work", category:"routine", text:["Satomi is heading out to work.","Satomi is on her way to the café."], micro:["Satomi checks the time.","Satomi picks up her pace a little."], duration:[180,420], tod:["afternoon","evening"], weekday:"any", effects:{energy:-2} },
   { id:"at_work", category:"work", awayLength:"normal", text:["Satomi is working her shift at the café."], micro:["Satomi wipes down a counter.","Satomi restocks napkins."], duration:[900,2400], tod:["evening"], weekday:"any", effects:{energy:-8,focus:-2,socialNeed:-4,stress:+1} },
   { id:"return_from_work", category:"routine", text:["Satomi just got back from her shift, tired."], micro:["Satomi drops her bag by the door."], duration:[60,180], tod:["evening","night"], weekday:"any", effects:{energy:-2,sleepiness:+3} },
   { id:"reading_book", category:"hobby", text:["Satomi is reading a novel for herself, not for class.","Satomi is curled up with a novel she picked up recently.","Satomi is reading a few chapters before bed.","Satomi is completely absorbed in her book.","Satomi is rereading a part she particularly liked."], micro:["Satomi smiles slightly at a line.","Satomi turns the page carefully.","Satomi pauses at a sentence.","Satomi smiles briefly at something she read.","Satomi loses her place and finds it again.","Satomi adjusts the book in her hands.","Satomi glances at how many pages are left."], duration:[300,1200], tod:["evening","night"], weekday:"any", effects:{boredom:-5,stress:-2,energy:-2} },
@@ -1027,6 +1028,12 @@ const DailyPlan = {
   isWithinPrepWindow(nowMin){
     return !!this.work && nowMin>=this.work.prepStart && nowMin<this.work.shiftStart;
   },
+  isApproachingWorkDeparture(nowMin){
+    // The last stretch of the prep window — close enough to shiftStart
+    // that actually leaving the apartment is the natural next beat,
+    // mirroring isApproachingUniversity's departure window.
+    return !!this.work && (this.work.shiftStart-nowMin)>=0 && (this.work.shiftStart-nowMin)<=20;
+  },
   restoreFromSave(saved){
     if(saved && saved.dateKey){
       this.dateKey = saved.dateKey;
@@ -1068,7 +1075,12 @@ const Schedule = {
     const nowMin = Clock.minutesOfDay();
 
     // --- Layer 1: hard anchors. While one of these is active, it is the
-    // only thing Satomi can be doing — no random substitution is possible.
+    // only thing Satomi can be doing — no random substitution is
+    // possible. forcedAnchorActivity() (see below) is what actually
+    // keeps a commute-in-progress from being skipped during ordinary
+    // ticking, by stepping out of the way until it's genuinely done;
+    // once pickNext() is reached at all, the trip is over and this is
+    // the arrival.
     if(DailyPlan.activeUniversityBlock(nowMin)){
       return CONTENT.activities.filter(a=>a.id==="at_university");
     }
@@ -1089,9 +1101,14 @@ const Schedule = {
 
       // --- Layer 2: soft anchors — real, but not the only option.
       if(a.id==="prep_for_work") return DailyPlan.isWithinPrepWindow(nowMin);
-      if(a.id==="commute_out") return DailyPlan.isApproachingUniversity(nowMin);
-      if(a.id==="commute_home") return !!ActivityEngine.current && ActivityEngine.current.id==="at_university";
-      if(a.id==="return_from_work") return !!ActivityEngine.current && ActivityEngine.current.id==="at_work";
+      // Commutes only make sense as a departure from home — she can't
+      // "get ready to leave for university" while she's already out.
+      if(a.id==="commute_out") return DailyPlan.isApproachingUniversity(nowMin) && Availability.location()==="home";
+      if(a.id==="commute_to_work") return DailyPlan.isApproachingWorkDeparture(nowMin) && Availability.location()==="home";
+      if(a.id==="commute_home") return !!ActivityEngine.current && (ActivityEngine.current.id==="at_university" || ActivityEngine.current.id==="at_work");
+      // Only the tail end of an actual commute FROM work counts as "just
+      // got back" — not the tail end of a commute home from university.
+      if(a.id==="return_from_work") return !!ActivityEngine.current && ActivityEngine.current.id==="commute_home" && ActivityEngine.commuteOrigin==="cafe";
       if(a.id==="getting_sleepy" || a.id==="preparing_bed" || a.id==="sleeping") return Schedule.isBedtimeEligible(nowMin);
       if(a.id==="waking_up") return !!ActivityEngine.current && ActivityEngine.current.id==="sleeping";
 
@@ -1111,6 +1128,11 @@ const ActivityEngine = {
   // rather than duplicating it. See section notes below. ---
   EXTRA_AWAY_IDS:["at_university","at_work","meeting_friend"], // pre-existing activities that already represent her being out
   awayCooldownUntil:0, // no new "away" pick is eligible before this real-time timestamp
+  // Where the current commute_home trip started from ("university" or
+  // "cafe") — the one bit of memory the location system needs that
+  // isn't derivable from the current activity alone, since by the time
+  // she's mid-commute the origin activity is already in the past.
+  commuteOrigin:null,
   isAwayActivity(a){
     return !!a && a.id!=="sleeping" && (a.category==="away" || this.EXTRA_AWAY_IDS.includes(a.id));
   },
@@ -1144,6 +1166,7 @@ const ActivityEngine = {
     // competing against for the transition to feel like the natural
     // default, without being absolutely forced every single time.
     if(activity.id==="commute_out") score += 18;
+    if(activity.id==="commute_to_work") score += 18;
     if(activity.id==="commute_home") score += 25;
     if(activity.id==="return_from_work") score += 25;
     if(activity.id==="waking_up") score += 25;
@@ -1201,17 +1224,59 @@ const ActivityEngine = {
       }
     }
   },
+  // Decides *where she needs to be right now*, not what she's doing —
+  // the transition system decides how she gets there. This is what
+  // makes commutes mandatory rather than optional: it fires the moment
+  // a commitment starts (or ends) and she isn't already in the right
+  // place, and steps back out of the way once she's en route so the
+  // trip can run its own course instead of being re-forced every tick.
   forcedAnchorActivity(){
     DailyPlan.ensureForToday();
     const nowMin = Clock.minutesOfDay();
-    if(DailyPlan.activeUniversityBlock(nowMin)) return CONTENT.activities.find(a=>a.id==="at_university");
-    if(DailyPlan.isWithinWorkShift(nowMin)) return CONTENT.activities.find(a=>a.id==="at_work");
+    const curId = this.current ? this.current.id : null;
+    const inClass = DailyPlan.activeUniversityBlock(nowMin);
+    const inShift = DailyPlan.isWithinWorkShift(nowMin);
+
+    if(inClass){
+      if(curId==="commute_out" || curId==="at_university") return null; // already there, or already on the way — let it run its course
+      return CONTENT.activities.find(a=>a.id==="commute_out"); // due at university and hasn't left yet — depart now
+    }
+    if(inShift){
+      if(curId==="commute_to_work" || curId==="at_work") return null;
+      return CONTENT.activities.find(a=>a.id==="commute_to_work");
+    }
+    // Neither commitment is active right now. If she's still marked as
+    // being AT one anyway, its window just closed — clamp immediately
+    // rather than let that activity's own timer run past a real
+    // schedule boundary (e.g. still "in a lecture" ten minutes after
+    // class actually ended).
+    if(curId==="at_university" || curId==="at_work") return CONTENT.activities.find(a=>a.id==="commute_home");
     return null;
   },
   setActivity(activity){
     const prev = this.current;
     const wasAway = this.isAwayActivity(prev);
     const isAway = this.isAwayActivity(activity);
+
+    // Remember where a commute_home trip started from — needed a few
+    // steps later to tell "just got back from work" apart from "just
+    // got back from university" (see Schedule's return_from_work gate).
+    if(activity.id==="commute_home"){
+      this.commuteOrigin = locationOf(prev);
+    }
+
+    // Lightweight validation net (Priority 4/5): this should never fire
+    // given the gating in Schedule/forcedAnchorActivity above, but if a
+    // future activity addition ever slips through, surface it instead
+    // of silently letting her teleport.
+    if(prev){
+      const fromLoc = locationOf(prev);
+      const toLoc = locationOf(activity);
+      const bothPhysicalPlaces = ["university","cafe"].includes(fromLoc) || ["university","cafe"].includes(toLoc);
+      if(bothPhysicalPlaces && fromLoc!==toLoc && toLoc!=="transit" && fromLoc!=="transit"){
+        console.warn(`[location] possible teleport: ${prev.id} (${fromLoc}) -> ${activity.id} (${toLoc})`);
+      }
+    }
 
     this.current = activity;
     const durSec = activity.id==="sleeping" ? this.computeSleepDurationSec() : RNG.range(activity.duration[0], activity.duration[1]);
@@ -1243,6 +1308,40 @@ const ActivityEngine = {
 };
 
 /* ============================================================
+   8a2. LOCATION MODEL — lightweight, activity-id -> place lookup.
+   Not a location simulator: just enough for the engine to know
+   "is a journey required to get from here to there" before it lets
+   an activity start. Anything not listed defaults to "home", which
+   covers the large ordinary-life pool (study/meals/hobbies/chores/
+   sleep) without needing an entry for every single one of them.
+   ============================================================ */
+const LOCATION_MAP = {
+  at_university: "university",
+  at_work: "cafe",
+  commute_out: "transit",
+  commute_home: "transit",
+  commute_to_work: "transit",
+  meeting_friend: "outside",
+  away_downstairs_shop: "outside",
+  away_walk: "outside",
+  away_coffee: "outside",
+  away_pickup: "outside",
+  away_nearby_shop: "outside",
+  away_library: "outside",
+  away_errands: "outside",
+  away_lunch_out: "outside",
+  away_campus: "outside",
+  away_bookstore: "outside",
+  away_afternoon_library: "outside",
+  away_visiting: "outside",
+  away_across_tokyo: "outside",
+};
+function locationOf(activity){
+  if(!activity) return "home";
+  return LOCATION_MAP[activity.id] || "home";
+}
+
+/* ============================================================
    8b. AVAILABILITY — Satomi being away from the apartment
    Deliberately a thin read layer, not a parallel state machine:
    "away/asleep/home" is derived live from ActivityEngine.current,
@@ -1253,6 +1352,12 @@ const Availability = {
   isAway(){ return ActivityEngine.isAwayActivity(ActivityEngine.current); },
   isSleeping(){ return !!ActivityEngine.current && ActivityEngine.current.id==="sleeping"; },
   isHome(){ return !this.isAway() && !this.isSleeping(); },
+  // Precise place, for the transition system. Distinct from isAway()/
+  // isHome(), which only ever needed a coarse home/away/asleep split.
+  location(){
+    if(this.isSleeping()) return "sleeping";
+    return locationOf(ActivityEngine.current);
+  },
   departureHint(length){
     // Sometimes no estimate at all — a real person doesn't give you a countdown.
     if(!RNG.chance(0.65)) return null;
@@ -1722,6 +1827,91 @@ const WeatherAudio = {
 /* ============================================================
    14. PERSISTENCE
    ============================================================ */
+/* ============================================================
+   8e. OFFLINE RECONSTRUCTION (Priority 6)
+   Bridges "the app was closed" and "the app is open again" without
+   simulating every minute in between. Anchor-first: sleep, classes,
+   and shifts are inferred from the exact same DailyPlan/Schedule the
+   live engine already uses (one source of truth) — everything else
+   is abstracted into a rough, day-scale state drift. No synthetic
+   minute-by-minute history is ever generated or logged.
+   ============================================================ */
+const OfflineReconstruct = {
+  SHORT_MS: 20*60*1000, // under 20 min: the normal expiry/advanceIfNeeded path already handles it fine
+
+  run(gapMs){
+    if(!gapMs || gapMs <= this.SHORT_MS) return;
+    this.driftState(gapMs);
+    this.placeIntoSchedule();
+  },
+
+  // Rough, day-scale state update — not a minute-by-minute simulation.
+  // Assumes she ate and slept normally across whatever day boundaries
+  // fell inside the gap, then applies the same short-term drift formula
+  // used live for however much of "today since waking" remains, capped
+  // so a multi-day gap can't run any stat away to an extreme.
+  driftState(gapMs){
+    const s = StateEngine.data;
+    const hoursAway = gapMs/3600000;
+    const plausibleNights = Math.max(0, Math.round((hoursAway-4)/24));
+    if(plausibleNights>0 || hoursAway>=6){
+      // At least one real night's sleep (or one very long stretch)
+      // happened — broad restoration rather than compounding drift
+      // across the whole gap.
+      s.sleepiness = Math.min(s.sleepiness, 15);
+      s.energy = Math.max(s.energy, 70);
+      s.stress = Math.max(10, s.stress-25);
+      s.motivation = Math.max(s.motivation, 45);
+    }
+    StateEngine.tickNatural(Math.min(hoursAway*60, 10*60));
+    // Meals happened along the way; hunger reflects roughly how long
+    // it's been since the last one would plausibly have been, given
+    // the time of day she's arriving back into.
+    const tod = Clock.timeOfDay();
+    const hungerCeil = tod==="morning" ? 35 : tod==="afternoon" ? 45 : tod==="evening" ? 40 : 55;
+    s.hunger = Math.min(s.hunger, hungerCeil);
+    s.boredom = Math.min(s.boredom, 55);
+    s.socialNeed = Math.min(s.socialNeed, 55);
+  },
+
+  // Discards the stale saved activity and asks the SAME schedule the
+  // live engine consults where she should be right now. After a real
+  // time jump, the schedule is the source of truth — not whatever she
+  // happened to be doing when the tab was closed.
+  placeIntoSchedule(){
+    DailyPlan.ensureForToday();
+    const nowMin = Clock.minutesOfDay();
+    const nowHour = Clock.hour();
+
+    ActivityEngine.current = null;
+    ActivityEngine.currentUntil = 0;
+    ActivityEngine.commuteOrigin = null;
+
+    // Hard anchors first: if a class or shift is genuinely active right
+    // now, she is simply there. Reconstruction never re-enacts a fake
+    // commute for a stale snapshot — it only asserts where the real
+    // schedule places her at this exact moment (per the "leave before a
+    // shift, return during it -> she's AT the café" example).
+    if(DailyPlan.activeUniversityBlock(nowMin)){
+      const a = CONTENT.activities.find(x=>x.id==="at_university");
+      if(a){ ActivityEngine.setActivity(a); return; }
+    }
+    if(DailyPlan.isWithinWorkShift(nowMin)){
+      const a = CONTENT.activities.find(x=>x.id==="at_work");
+      if(a){ ActivityEngine.setActivity(a); return; }
+    }
+
+    // A plausible "still asleep right now" window — inferred, not a
+    // hard schedule anchor the way class/work are.
+    const plausiblyAsleep = nowHour>=23 || nowHour<7;
+    if(plausiblyAsleep){
+      const sleepAct = CONTENT.activities.find(a=>a.id==="sleeping");
+      if(sleepAct){ ActivityEngine.setActivity(sleepAct); return; }
+    }
+    ActivityEngine.advanceIfNeeded();
+  }
+};
+
 const Persistence = {
   KEY: "satomi_companion_save_v1",
   saveTimer:null,
@@ -1746,6 +1936,7 @@ const Persistence = {
         recentIds: ActivityEngine.recentIds,
         text: ActivityEngine.currentText || null,
         awayCooldownUntil: ActivityEngine.awayCooldownUntil || 0,
+        commuteOrigin: ActivityEngine.commuteOrigin || null,
       },
       // Retained only when the feature is enabled; old saves remain compatible.
       ...(FEATURES.LIFE_THREADS ? {
@@ -1781,11 +1972,14 @@ const Persistence = {
       }
       if(p.activity){
         ActivityEngine.awayCooldownUntil = p.activity.awayCooldownUntil || 0;
+        ActivityEngine.commuteOrigin = p.activity.commuteOrigin || null; // missing on older saves -> null, safe default
         if(p.activity.id){
           const act = CONTENT.activities.find(a=>a.id===p.activity.id);
           if(act){
             // Restore the in-progress activity exactly as it was — a
             // refresh should feel like glancing back, not a reroll.
+            // (A large real-world gap since savedAt overrides this right
+            // after load(), via OfflineReconstruct — see boot().)
             ActivityEngine.current = act;
             ActivityEngine.currentUntil = p.activity.until || 0;
             ActivityEngine.recentIds = p.activity.recentIds || [];
@@ -1826,6 +2020,10 @@ const Persistence = {
         Presence.majorEventsWitnessed = p.presence.majorEventsWitnessed||0;
         Presence.totalTimeMs = p.presence.totalTimeMs||0;
       }
+      // Missing on older saves -> Date.now(), which reads as "no gap",
+      // the correct safe default (nothing to reconstruct for a save
+      // that never recorded when it happened).
+      this.lastSavedAt = p.savedAt || Date.now();
       return true;
     }catch(e){ console.warn("load failed", e); return false; }
   },
@@ -2316,6 +2514,8 @@ const Debug = {
       ["today's classes", uniStr],
       ["weather", WeatherEngine.currentId+" "+WeatherEngine.temp+"°C"],
       ["activity", ActivityEngine.current? ActivityEngine.current.id : "-"],
+      ["location", Availability.location()],
+      ["commute origin", ActivityEngine.commuteOrigin || "-"],
       ["availability", Availability.isSleeping() ? "sleeping" : Availability.isAway() ? "away ("+(ActivityEngine.current.awayLength||"?")+")" : "home"],
       ["away cooldown", ActivityEngine.inAwayCooldown() ? Math.round((ActivityEngine.awayCooldownUntil-Date.now())/60000)+"m left" : "-"],
       ["Birthday", "Feb 8"],
@@ -2386,6 +2586,25 @@ const Debug = {
       ["Force Away (Long)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_visiting"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
       ["Force Return Home", ()=>{ const a=CONTENT.activities.find(x=>x.id==="break_stretch"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced return home");} this.render(); }],
       ["Clear Away Cooldown", ()=>{ ActivityEngine.awayCooldownUntil=0; this.note("away cooldown cleared"); this.render(); }],
+      // --- Location / commute testing (Priority 4/5) ---
+      ["Force Commute -> University", ()=>{ const a=CONTENT.activities.find(x=>x.id==="commute_out"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced commute_out");} this.render(); }],
+      ["Force Commute -> Work", ()=>{ const a=CONTENT.activities.find(x=>x.id==="commute_to_work"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced commute_to_work");} this.render(); }],
+      ["Force Commute Home", ()=>{ const a=CONTENT.activities.find(x=>x.id==="commute_home"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced commute_home");} this.render(); }],
+      // --- Offline reconstruction testing (Priority 6) — jumps the clock
+      // forward AND runs the same reconstruction load() would trigger,
+      // without needing an actual page reload. ---
+      ...[["+2h",2],["+8h",8],["+19h",19],["+41h",41]].map(([label,hrs])=>[
+        "Offline: "+label+" (reconstruct)",
+        ()=>{
+          const gapMs = hrs*3600000;
+          Clock.offsetMs += gapMs;
+          OfflineReconstruct.run(gapMs);
+          UI.tickClock(); UI.refreshInteractGridIfOpen();
+          UI.setActivityText(ActivityEngine.currentText || (ActivityEngine.current?RNG.pick(ActivityEngine.current.text):""));
+          this.note("offline reconstruct: "+label+" -> "+(ActivityEngine.current?ActivityEngine.current.id:"-")+" @ "+Availability.location());
+          this.render();
+        }
+      ]),
       ["Reset Save", ()=>{ if(confirm("Reset all save data?")){ Persistence.reset(); location.reload(); } }],
     ];
   },
@@ -2582,6 +2801,13 @@ function boot(){
   Memory.checkDayRollover();
   if(FEATURES.LIFE_THREADS) LifeThreadEngine.init();
   else { LifeThreadEngine.active = []; LifeThreadEngine.completed = []; }
+  if(hadSave){
+    // A meaningful real-world gap since the last save gets reconstructed
+    // against the schedule (Priority 6) BEFORE anything reads the
+    // restored activity, so the UI never flashes the stale one.
+    const gapMs = Math.max(0, Date.now() - (Persistence.lastSavedAt || Date.now()));
+    OfflineReconstruct.run(gapMs);
+  }
   UI.init();
   if(ActivityEngine.current){
     // A restored activity is shown immediately, with no re-roll and
