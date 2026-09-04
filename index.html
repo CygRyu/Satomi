@@ -1860,7 +1860,7 @@ const Memory = {
 const Presence = {
   firstOpened: null,
   daysTogether: new Set(),
-  conversations: 0,
+  interactions: 0,
   majorEventsWitnessed: 0,
   totalTimeMs: 0,
   lastTickAt: Date.now(),
@@ -2166,7 +2166,7 @@ const Persistence = {
       presence: {
         firstOpened: Presence.firstOpened,
         daysTogether: Array.from(Presence.daysTogether),
-        conversations: Presence.conversations,
+        interactions: Presence.interactions,
         majorEventsWitnessed: Presence.majorEventsWitnessed,
         totalTimeMs: Presence.totalTimeMs,
       },
@@ -2234,8 +2234,12 @@ const Persistence = {
       Memory.currentLogDay = p.logDay || new Date().toDateString();
       if(p.presence){
         Presence.firstOpened = p.presence.firstOpened;
+        // 1.15 counted every UI.speak() call as "Conversations".
+        // 1.15 intentionally does not reinterpret that historical number:
+        // older saves start the new, more meaningful interaction counter at 0.
+
         Presence.daysTogether = new Set(p.presence.daysTogether||[]);
-        Presence.conversations = p.presence.conversations||0;
+        Presence.interactions = (typeof p.presence.interactions === "number") ? p.presence.interactions : 0;
         Presence.majorEventsWitnessed = p.presence.majorEventsWitnessed||0;
         Presence.totalTimeMs = p.presence.totalTimeMs||0;
       }
@@ -2315,8 +2319,11 @@ const UI = {
       el.classList.remove("swap");
     }, isMicro? 350:550);
   },
-  speak(text){
+  speak(text, options){
     const el = this.els.dialogue;
+    // Speaking is a rendering primitive, not a conversation counter.
+    // Only an explicitly tagged interaction response increments Presence.interactions.
+
     // Every call to speak() starts a fresh "generation". Any timers left
     // over from a previous, still-in-flight speak() call (typing steps,
     // the post-sentence hold, the fade) check this token before touching
@@ -2342,7 +2349,9 @@ const UI = {
         }, holdMs);
       });
     }, 500);
-    Presence.conversations++;
+    if(options && options.interaction) Presence.interactions++;
+    if(options && options.interaction) UI.refreshStatsIfOpen();
+    Persistence.scheduleSave();
   },
   typewrite(el, text, gen, done){
     let i=0;
@@ -2500,7 +2509,7 @@ const UI = {
     const rows = [
       ["Days together", days],
       ["Time spent together", hours+" hrs"],
-      ["Conversations", Presence.conversations],
+      ["Interactions", Presence.interactions],
       ["Major events witnessed", Presence.majorEventsWitnessed],
     ];
     this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
@@ -2580,6 +2589,10 @@ document.querySelectorAll(".panel-overlay").forEach(ov=>{
    16. PLAYER INTERACTIONS
    ============================================================ */
 const Interactions = {
+  // `interactions` counts only deliberate player -> Satomi interactions
+  // that receive an actual spoken response. Ambient/self-directed dialogue,
+  // environmental reactions, life-thread lines, and unanswered prompts do
+  // not increment the stat.
   sayHello(){
     if(!Availability.isHome()){
       Memory.log("activity", Availability.isSleeping() ? "She doesn't stir." : Availability.absenceLine());
@@ -2588,7 +2601,7 @@ const Interactions = {
     StateEngine.apply({socialNeed:-6});
     Memory.log("activity", "You say hello.");
     if(RNG.chance(0.7)){
-      setTimeout(()=>{ UI.speak(RNG.pick(["Oh — hi.","Hey.","Hi there."])); Memory.log("dialogue", "(response to hello)"); }, RNG.range(500,2500));
+      setTimeout(()=>{ UI.speak(RNG.pick(["Oh — hi.","Hey.","Hi there."]), {interaction:true}); Memory.log("dialogue", "(response to hello)"); }, RNG.range(500,2500));
     }
   },
   encourage(){
@@ -2599,7 +2612,7 @@ const Interactions = {
     StateEngine.apply({motivation:+8, stress:-4});
     Memory.log("activity", "You offer some encouragement.");
     if(RNG.chance(0.55)){
-      setTimeout(()=>{ UI.speak(RNG.pick(["Thanks. I needed that.","Haha, thank you.","...that actually helped, a little."])); }, RNG.range(800,3000));
+      setTimeout(()=>{ UI.speak(RNG.pick(["Thanks. I needed that.","Haha, thank you.","...that actually helped, a little."]), {interaction:true}); }, RNG.range(800,3000));
     }
   },
   askHow(){
@@ -2617,7 +2630,7 @@ const Interactions = {
         relaxed:"Pretty good, actually.",
         neutral:"I'm okay. Just getting through the day."
       };
-      setTimeout(()=>{ UI.speak(responses[mood]||responses.neutral); }, RNG.range(600,2600));
+      setTimeout(()=>{ UI.speak(responses[mood]||responses.neutral, {interaction:true}); }, RNG.range(600,2600));
     } else {
       Memory.log("activity", "She doesn't answer right away — maybe later.");
     }
@@ -2639,7 +2652,7 @@ const Interactions = {
       "Thank you. I didn't expect that.",
       "Ah… right. It's my birthday today.",
       "Thank you. That makes today feel a little nicer.",
-    ]));
+    ]), {interaction:true});
     Persistence.scheduleSave();
     UI.refreshInteractGridIfOpen();
   }
