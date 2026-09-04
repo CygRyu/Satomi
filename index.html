@@ -558,10 +558,18 @@ const ACTIVITIES = [
   { id:"tea_making", category:"break", text:["Satomi gets up to make tea.","Satomi is making herself another cup of tea.","Satomi is standing in the kitchen, waiting for the tea to steep.","Satomi is deciding which tea to have."], micro:["Satomi waits for the kettle.","Satomi warms her hands on the cup.","Satomi checks the color of the tea.","Satomi blows gently across the surface.","Satomi takes a small sip, then waits.","Satomi carries the cup back to her desk.","Satomi warms her hands around the cup."], duration:[120,300], tod:["any"], weekday:"any", effects:{energy:+2,hunger:-2,stress:-2} },
   { id:"phone_check", category:"break", text:["Satomi checks her phone.","Satomi is checking her phone for a moment.","Satomi is catching up on a few messages.","Satomi is looking through her notifications."], micro:["Satomi scrolls slowly.","Satomi types a short reply.","Satomi puts the phone face-down again.","Satomi opens a message, then leaves it unanswered for now.","Satomi reads something twice.","Satomi types a reply and deletes half of it.","Satomi checks the time before putting her phone down.","Satomi turns the phone over again."], duration:[30,180], tod:["any"], weekday:"any", effects:{socialNeed:-3,boredom:-2,focus:-1} },  { id:"desk_organize", category:"break", text:["Satomi is tidying her desk."], micro:["Satomi stacks some loose papers.","Satomi finds a pen she'd been looking for."], duration:[90,240], tod:["any"], weekday:"any", effects:{boredom:-1} },
   { id:"window_watch", category:"observe", text:["Satomi looks out the window for a while.","Satomi is standing by the window for a while.","Satomi is watching the street below.","Satomi pauses by the window without really knowing why."], micro:["Satomi watches something pass by outside.","Satomi watches a cyclist disappear around the corner.","Satomi notices someone hurrying down the street.","Satomi rests her hand against the window frame.","Satomi looks up at the sky.","Satomi watches the lights come on in a nearby building."], duration:[30,150], tod:["any"], weekday:"any", effects:{stress:-1,boredom:+1} },
-  { id:"breakfast", category:"meal", text:["Satomi is eating a simple breakfast.","Satomi is having a quiet breakfast before starting the day.","Satomi is eating breakfast while checking the time.","Satomi is finishing a simple breakfast."], micro:["Satomi sips her drink between bites.","Satomi takes a sip of her drink.","Satomi glances at the clock.","Satomi eats the last few bites slowly.","Satomi wipes a crumb from the table.","Satomi checks her phone between bites."], duration:[300,700], tod:["morning"], weekday:"any", effects:{hunger:-30,energy:+8} },
-  { id:"lunch", category:"meal", text:["Satomi is eating lunch."], micro:["Satomi checks her phone between bites."], duration:[400,900], tod:["afternoon"], weekday:"any", effects:{hunger:-35,energy:+6} },
-  { id:"dinner", category:"meal", text:["Satomi is making dinner.","Satomi is eating dinner.","Satomi is making something simple for dinner.","Satomi is eating dinner while listening to music.","Satomi is deciding whether she has enough energy to cook properly tonight.","Satomi is having a quiet dinner by herself."], micro:["Satomi tastes the food, adjusts the seasoning.","Satomi eats slowly, unhurried.","Satomi tastes the food before sitting down.","Satomi reaches for her drink.","Satomi pauses between bites.","Satomi adds a little more seasoning.","Satomi looks out the window while eating."], duration:[500,1100], tod:["evening"], weekday:"any", effects:{hunger:-40,energy:+10,stress:-2} },
-  { id:"snack", category:"meal", text:["Satomi is having a small snack."], micro:["Satomi eats it slowly, one piece at a time."], duration:[120,300], tod:["any"], weekday:"any", effects:{hunger:-15,energy:+3} },
+  // ISSUE #7: meal activities now carry a soft preferred/extended time
+  // window (minutes-of-day) alongside the existing coarse `tod` bucket.
+  // `tod` still gates which broad part of the day a meal can occur in at
+  // all (unchanged mechanism); `pref`/`ext` let ActivityEngine.score()
+  // favor the natural sub-window within that bucket instead of treating
+  // the whole bucket as uniformly likely. See MEAL_FLAVOR below for the
+  // location/context-aware text variants (campus lunch, before/after-work
+  // dinner) referenced in the task's "context matters" examples.
+  { id:"breakfast", category:"meal", pref:[420,570], ext:[390,630], text:["Satomi is eating a simple breakfast.","Satomi is having a quiet breakfast before starting the day.","Satomi is eating breakfast while checking the time.","Satomi is finishing a simple breakfast."], micro:["Satomi sips her drink between bites.","Satomi takes a sip of her drink.","Satomi glances at the clock.","Satomi eats the last few bites slowly.","Satomi wipes a crumb from the table.","Satomi checks her phone between bites."], duration:[300,700], tod:["morning"], weekday:"any", effects:{hunger:-30,energy:+8} },
+  { id:"lunch", category:"meal", pref:[690,810], ext:[660,870], text:["Satomi is eating lunch."], micro:["Satomi checks her phone between bites."], duration:[400,900], tod:["afternoon"], weekday:"any", effects:{hunger:-35,energy:+6} },
+  { id:"dinner", category:"meal", pref:[1080,1230], ext:[1050,1290], text:["Satomi is making dinner.","Satomi is eating dinner.","Satomi is making something simple for dinner.","Satomi is eating dinner while listening to music.","Satomi is deciding whether she has enough energy to cook properly tonight.","Satomi is having a quiet dinner by herself."], micro:["Satomi tastes the food, adjusts the seasoning.","Satomi eats slowly, unhurried.","Satomi tastes the food before sitting down.","Satomi reaches for her drink.","Satomi pauses between bites.","Satomi adds a little more seasoning.","Satomi looks out the window while eating."], duration:[500,1100], tod:["evening","night"], weekday:"any", effects:{hunger:-40,energy:+10,stress:-2} },
+  { id:"snack", category:"meal", pref:[900,1020], ext:[840,1080], text:["Satomi is having a small snack.","Satomi is having some tea and a little something to eat."], micro:["Satomi eats it slowly, one piece at a time."], duration:[120,300], tod:["any"], weekday:"any", effects:{hunger:-15,energy:+3} },
   { id:"commute_out", category:"routine", text:["Satomi is getting ready to leave for university."], micro:["Satomi checks she has everything.","Satomi ties her shoes."], duration:[180,420], tod:["morning","afternoon"], weekday:"weekday", effects:{energy:-2} },
   { id:"at_university", category:"university", awayLength:"brief", text:["Satomi is at a lecture.","Satomi is in seminar, half-listening.","Satomi is between classes, sitting in the courtyard."], micro:["Satomi jots something down.","Satomi glances at the clock."], duration:[600,1800], tod:["morning","afternoon"], weekday:"weekday", effects:{energy:-3,focus:-2,socialNeed:-2,boredom:-2} },
   { id:"commute_home", category:"routine", text:["Satomi is on the train home.","Satomi is walking back to her apartment."], micro:["Satomi looks out at the passing streets."], duration:[300,900], tod:["morning","afternoon","evening"], weekday:"any", effects:{energy:-2,stress:-1} },
@@ -574,7 +582,12 @@ const ACTIVITIES = [
   { id:"listening_music", category:"hobby", text:["Satomi has music playing quietly while she works.","Satomi is listening to music while taking a break.","Satomi has put on some music to fill the quiet.","Satomi is listening to an old favorite while she works.","Satomi is letting a playlist run in the background."], micro:["Satomi hums along without noticing.","Satomi reaches over to adjust the volume.","Satomi pauses when a familiar song comes on.","Satomi quietly hums along.","Satomi lets the song finish before choosing another.","Satomi taps her fingers lightly against the desk."], duration:[600,1800], tod:["any"], weekday:"any", effects:{stress:-1,boredom:-1} },
   { id:"laundry_avoidance", category:"chore", text:["Satomi glances at the pile of laundry and decides not today.","Satomi looks at the laundry and decides she can survive another day.","Satomi considers doing the laundry. She considers it carefully. Then doesn't.","Satomi notices the laundry pile has gotten slightly worse."], micro:["Satomi moves one shirt out of the way and gives up.","Satomi stares at the laundry basket.","Satomi decides this is tomorrow's problem.","Satomi picks something clean from the chair instead."], duration:[20,60], tod:["evening","night"], weekday:"any", effects:{stress:+1} },
   { id:"laundry_doing", category:"chore", text:["Satomi is finally doing her laundry.","Satomi is finally sorting through her laundry.","Satomi is folding clothes while listening to something.","Satomi is trying to get the laundry finished before she loses motivation."], micro:["Satomi folds a shirt.","Satomi checks her phone while waiting.","Satomi matches two socks.","Satomi folds a shirt and puts it aside.","Satomi checks whether something is actually dry.","Satomi shakes out a shirt before folding it.","Satomi sighs at how much laundry there is."], duration:[300,700], tod:["afternoon","weekend"], weekday:"any", effects:{stress:-1,motivation:+2} },
-  { id:"phone_call_family", category:"social", text:["Satomi is on the phone with her mother."], micro:["Satomi laughs quietly at something.","Satomi paces slowly while talking."], duration:[300,900], tod:["evening"], weekday:"weekend", effects:{socialNeed:-8,stress:-2} },
+  // ISSUE #9: still gated to weekend days by `weekday` (unchanged
+  // mechanism), but now reachable across afternoon+evening so the
+  // Sunday 15:00-19:30 soft window (see ActivityEngine.score()) has
+  // room to land at a different, plausible minute each time rather
+  // than only ever in the old single "evening" bucket.
+  { id:"phone_call_family", category:"social", text:["Satomi is on the phone with her mother."], micro:["Satomi laughs quietly at something.","Satomi paces slowly while talking."], duration:[300,900], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-8,stress:-2} },
   { id:"relaxing_phone", category:"break", text:["Satomi is relaxing, scrolling through her phone."], micro:["Satomi smiles faintly at something.","Satomi switches apps."], duration:[180,600], tod:["night","late_night"], weekday:"any", effects:{boredom:-3,socialNeed:-2,sleepiness:+1} },
   { id:"getting_sleepy", category:"routine", text:["Satomi is fighting off sleepiness at her desk.","Satomi is getting distracted by how tired she is.","Satomi is trying to finish one last thing before bed.","Satomi is barely keeping her attention on the screen."], micro:["Satomi's eyes drift half-shut.","Satomi rubs her eyes.","Satomi blinks slowly.","Satomi rests her forehead against her hand.","Satomi yawns and tries to continue.","Satomi rereads the same line.","Satomi nearly drops her pen."], duration:[60,240], tod:["night","late_night"], weekday:"any", effects:{sleepiness:+4,focus:-4} },
   { id:"preparing_bed", category:"routine", text:["Satomi is getting ready for bed."], micro:["Satomi sets an alarm.","Satomi turns off the lamp."], duration:[180,420], tod:["night","late_night"], weekday:"any", effects:{sleepiness:+2,energy:+1} },
@@ -606,6 +619,36 @@ const ACTIVITIES = [
   { id:"away_visiting", category:"away", awayLength:"long", text:["Satomi went to visit someone for the afternoon."], micro:[], duration:[7200,14400], tod:["afternoon"], weekday:"weekend", effects:{socialNeed:-10,stress:-3} },
   { id:"away_across_tokyo", category:"away", awayLength:"long", text:["Satomi went somewhere across Tokyo and will be out for a while."], micro:[], duration:[7200,14400], tod:["afternoon"], weekday:"weekend", effects:{energy:-5} },
 ];
+
+// --- ISSUE #7 "context matters": lightweight text-variant pools for
+// meals, layered on top of (not replacing) each meal activity's normal
+// `text` array. Selected in ActivityEngine.setActivity() based on
+// where/when the meal is actually happening; falls back to the plain
+// `text` array whenever no special context applies. Deliberately just
+// text pools, not new activities, so anti-repeat/scoring/persistence
+// all keep working exactly as before. ---
+const MEAL_FLAVOR = {
+  lunch: {
+    campus: [
+      "Satomi is grabbing lunch between classes.",
+      "Satomi picked up something quick to eat near campus.",
+      "Satomi is having a quick lunch before her next class.",
+      "Satomi is eating lunch in the courtyard between lectures.",
+    ],
+  },
+  dinner: {
+    beforeWork: [
+      "Satomi eats something quick before heading to her shift.",
+      "Satomi has an early dinner before work.",
+      "Satomi is eating a little early tonight, before her shift.",
+    ],
+    afterWork: [
+      "Satomi is having a late dinner after getting back from work.",
+      "Satomi picked up something on the way home from the café.",
+      "Satomi is eating a simple dinner, still a little tired from her shift.",
+    ],
+  },
+};
 
 // --- dialogue: explicit lines with contextual weighting ---
 const DIALOGUE = [
@@ -768,6 +811,28 @@ const LIFE_THREADS = [
       "It's over. I think it went okay.",
     ], minDaysBetween:2, category:"study" },
 ];
+
+// --- ISSUE #8: lightweight weekend rhythm. Not a second scheduler —
+// just per-day multipliers layered onto the existing weighted-random
+// scoring in ActivityEngine.score(). Saturday leans social/outside,
+// Sunday leans domestic/recovery, and both keep every other activity
+// (including "stay home and do nothing") fully available. ---
+const WEEKEND_BIAS = {
+  saturday: {
+    boost: ["meeting_friend","away_bookstore","away_visiting","away_across_tokyo","away_lunch_out","away_errands","away_walk","away_coffee","away_nearby_shop","away_pickup"],
+    boostFactor: 1.5,
+    afternoonBoost: ["meeting_friend","away_bookstore","away_lunch_out","away_errands","away_walk"],
+    afternoonBoostFactor: 1.6,
+  },
+  sunday: {
+    boost: ["laundry_doing","desk_organize","study_notes","study_reading","tea_making","reading_book","weekend_lazing","relaxing_phone","listening_music","break_stretch"],
+    boostFactor: 1.35,
+    morningBoost: ["laundry_doing","tea_making","desk_organize","weekend_lazing","reading_book"],
+    morningBoostFactor: 1.5,
+    reduce: ["meeting_friend","away_bookstore","away_visiting","away_across_tokyo"],
+    reduceFactor: 0.45,
+  }
+};
 
 // --- season pools (extend later) ---
 const SEASONS = [
@@ -967,6 +1032,40 @@ const WeatherEngine = {
     WeatherAudio.setWeather(id);
   },
   isRaining(){ return ["light_rain","heavy_rain","thunderstorm"].includes(this.currentId); },
+  // ISSUE #10: called once from OfflineReconstruct after a real gap in
+  // play, so weather doesn't just sit frozen at whatever it was when the
+  // tab closed. This walks the SAME transition graph/interval model as
+  // maybeEvolve() — just stepped through virtually, using the real
+  // elapsed time since the weather last changed, instead of waiting for
+  // live ticks. Capped at a handful of steps so a multi-day gap can't
+  // spiral through the whole state graph and land somewhere absurd; a
+  // long absence still only "evolves once or several times", as intended,
+  // never once per elapsed minute.
+  MAX_OFFLINE_STEPS: 5,
+  catchUpAfterGap(){
+    let elapsedMs = Date.now() - (this.lastChange || Date.now());
+    if(elapsedMs <= 0) return;
+    let steps = 0;
+    let changed = false;
+    while(steps < this.MAX_OFFLINE_STEPS){
+      const intervalMs = RNG.range(20,70)*60000; // same 20-70 min pace as maybeEvolve()
+      if(elapsedMs < intervalMs) break;
+      elapsedMs -= intervalMs;
+      const cur = this.current();
+      this.currentId = RNG.pick(cur.next);
+      steps++;
+      changed = true;
+    }
+    if(!changed) return; // short-ish gap: leave weather exactly as it was, no reroll
+    // Only the FINAL state gets a fresh temp/mood/audio update — the
+    // intermediate hops are a bookkeeping detail, not something the
+    // player ever "sees", so they shouldn't each nudge mood/stats.
+    const w = this.current();
+    this.temp = Math.round(RNG.range(w.tempRange[0], w.tempRange[1]));
+    this.lastChange = Date.now();
+    StateEngine.apply(w.moodMod);
+    WeatherAudio.setWeather(this.currentId);
+  },
 };
 
 /* ============================================================
@@ -1021,6 +1120,13 @@ const DailyPlan = {
     // A block starting 5-45 minutes from now — the natural window for
     // "getting ready to leave", not a random moment.
     return this.university.some(b => (b.start-nowMin)>=5 && (b.start-nowMin)<=45);
+  },
+  // ISSUE #7: "breakfast should be less likely if Satomi is already
+  // late for university" — a tighter sub-window of isApproachingUniversity,
+  // close enough to departure that sitting down to eat is no longer the
+  // natural next beat.
+  isImminentUniversity(nowMin){
+    return this.university.some(b => (b.start-nowMin)>=0 && (b.start-nowMin)<=15);
   },
   isWithinWorkShift(nowMin){
     return !!this.work && nowMin>=this.work.shiftStart && nowMin<this.work.shiftEnd;
@@ -1137,6 +1243,45 @@ const ActivityEngine = {
     return !!a && a.id!=="sleeping" && (a.category==="away" || this.EXTRA_AWAY_IDS.includes(a.id));
   },
   inAwayCooldown(){ return Date.now() < (this.awayCooldownUntil||0); },
+  // ISSUE #8 helper: applies Saturday/Sunday weighting to a raw score.
+  // Shared by the "away" branch and the ordinary branch below so social/
+  // outing activities (which are category:"away") get the same weekend
+  // treatment as home activities like laundry or reading.
+  applyWeekendBias(activity, base){
+    if(!Clock.isWeekend()) return base;
+    const wd = Clock.weekdayIndex();
+    const tod = Clock.timeOfDay();
+    let v = base;
+    if(wd===6){ // Saturday: social/outside-leaning
+      const b = WEEKEND_BIAS.saturday;
+      if(tod==="afternoon" && b.afternoonBoost.includes(activity.id)) v *= b.afternoonBoostFactor;
+      else if(b.boost.includes(activity.id)) v *= b.boostFactor;
+    } else if(wd===0){ // Sunday: domestic/recovery-leaning
+      const b = WEEKEND_BIAS.sunday;
+      if(tod==="morning" && b.morningBoost.includes(activity.id)) v *= b.morningBoostFactor;
+      else if(b.boost.includes(activity.id)) v *= b.boostFactor;
+      if(b.reduce.includes(activity.id)) v *= b.reduceFactor;
+    }
+    return v;
+  },
+  // ISSUE #7 helper: soft preferred/extended time-window scoring for
+  // meals. Distinguishes "possible right now" (handled by `tod` in
+  // Schedule.candidatePool, unchanged) from "especially appropriate
+  // right now" (this), without ever hard-gating a meal off the table.
+  mealWindowBonus(activity, s){
+    if(!activity.pref) return 0;
+    const nowMin = Clock.minutesOfDay();
+    const veryHungry = s.hunger > 75;
+    let bonus;
+    if(nowMin>=activity.pref[0] && nowMin<=activity.pref[1]) bonus = 6; // squarely the right time
+    else if(nowMin>=activity.ext[0] && nowMin<=activity.ext[1]) bonus = 2; // acceptable, a little early/late
+    else bonus = veryHungry ? 1.5 : -0.85; // outside the window: rare, unless she's genuinely very hungry
+    // Freshly fed: the window bonus alone shouldn't be enough to send her
+    // back for a second "breakfast" twenty minutes after the first one —
+    // hunger needs to have actually built back up again first.
+    if(s.hunger < 20) bonus *= 0.15;
+    return bonus;
+  },
   score(activity){
     if(activity.category==="away"){
       // Deliberately conservative: cooldown after any away-ish stretch,
@@ -1147,12 +1292,24 @@ const ActivityEngine = {
       if(this.inAwayCooldown() || this.isAwayActivity(this.current)) return 0.001;
       let base = activity.awayLength==="brief" ? 0.35 : activity.awayLength==="normal" ? 0.12 : 0.03;
       if(this.recentIds.includes(activity.id)) base *= 0.25;
+      base = this.applyWeekendBias(activity, base);
+      // ISSUE #10: weather nudges optional outings without ever touching
+      // hard anchors (those aren't scored here at all — see
+      // Schedule.candidatePool's Layer 1) — rain makes staying in a
+      // little more likely, not a rule, just a lean.
+      if(WeatherEngine.isRaining()) base *= 0.7;
       return base;
     }
     let score = 1;
     const s = StateEngine.data;
     // steer toward what the state "needs"
-    if(activity.category==="meal" && s.hunger>55) score += (s.hunger-55)/8;
+    if(activity.category==="meal"){
+      score += this.mealWindowBonus(activity, s);
+      if(s.hunger>55) score += (s.hunger-55)/8;
+      // ISSUE #7: less likely to sit down to breakfast if she's about
+      // to be late leaving for a lecture/seminar.
+      if(activity.id==="breakfast" && DailyPlan.isImminentUniversity(Clock.minutesOfDay())) score *= 0.35;
+    }
     if(activity.category==="break" && (s.energy<35 || s.focus<35)) score += 3;
     if(activity.id==="getting_sleepy" && s.sleepiness>60) score += 3;
     if(activity.id==="preparing_bed" && s.sleepiness>65) score += 4;
@@ -1170,6 +1327,24 @@ const ActivityEngine = {
     if(activity.id==="commute_home") score += 25;
     if(activity.id==="return_from_work") score += 25;
     if(activity.id==="waking_up") score += 25;
+    // ISSUE #9: soft Sunday anchor for the mother call. Sunday
+    // 15:00-19:30 is the sweet spot; Sunday outside that window is
+    // still possible but muted; Saturday is very low priority without
+    // being flatly impossible (weekday:"weekend" already keeps this
+    // off Mon-Fri). Once she's called today, the bonus collapses so
+    // she doesn't call twice in one Sunday.
+    if(activity.id==="phone_call_family"){
+      if(FamilyCall.calledToday()){
+        score *= 0.04;
+      } else {
+        const wd = Clock.weekdayIndex();
+        const nowMin = Clock.minutesOfDay();
+        const inSundayWindow = nowMin>=900 && nowMin<=1170; // 15:00-19:30
+        if(wd===0) score += inSundayWindow ? 12 : 3;
+        else if(wd===6) score *= 0.06;
+      }
+    }
+    score = this.applyWeekendBias(activity, score);
     if(this.recentIds.includes(activity.id)) score *= 0.3; // anti-repetition
     return Math.max(0.05, score);
   },
@@ -1253,6 +1428,23 @@ const ActivityEngine = {
     if(curId==="at_university" || curId==="at_work") return CONTENT.activities.find(a=>a.id==="commute_home");
     return null;
   },
+  // ISSUE #7 "context matters": picks a meal's display text, preferring
+  // a location/schedule-aware MEAL_FLAVOR variant when one genuinely
+  // applies, and otherwise falling back to the activity's own `text`
+  // pool exactly as before. Never changes scoring/eligibility — purely
+  // cosmetic, so it can't affect anti-repeat, persistence, etc.
+  pickActivityText(activity, prev){
+    if(activity.id==="lunch"){
+      const onCampus = (prev && locationOf(prev)==="university") || (!Clock.isWeekend() && DailyPlan.university.length>0);
+      if(onCampus && RNG.chance(0.7)) return RNG.pick(MEAL_FLAVOR.lunch.campus);
+    }
+    if(activity.id==="dinner" && DailyPlan.work){
+      const nowMin = Clock.minutesOfDay();
+      if(nowMin < DailyPlan.work.shiftStart && RNG.chance(0.5)) return RNG.pick(MEAL_FLAVOR.dinner.beforeWork);
+      if(nowMin >= DailyPlan.work.shiftEnd && this.commuteOrigin==="cafe" && RNG.chance(0.6)) return RNG.pick(MEAL_FLAVOR.dinner.afterWork);
+    }
+    return RNG.pick(activity.text);
+  },
   setActivity(activity){
     const prev = this.current;
     const wasAway = this.isAwayActivity(prev);
@@ -1284,7 +1476,10 @@ const ActivityEngine = {
     this.recentIds.push(activity.id);
     if(this.recentIds.length>6) this.recentIds.shift();
     StateEngine.apply(activity.effects);
-    const text = RNG.pick(activity.text);
+    // ISSUE #9: record today's mother call so its score collapses for
+    // the remainder of the day (see ActivityEngine.score()).
+    if(activity.id==="phone_call_family") FamilyCall.markCalled();
+    const text = this.pickActivityText(activity, prev);
     this.currentText = text;
     Memory.log("activity", text);
     UI.setActivityText(text);
@@ -1418,6 +1613,20 @@ const Birthday = {
   markGreeted(){
     this.lastGreetedYear = Clock.now().getFullYear();
   }
+};
+
+/* ============================================================
+   8d. FAMILY CALL — ISSUE #9: the mother call is a soft Sunday
+   anchor, not a generic weekend one. This tracks only "was she
+   already called today" (same pattern as Birthday.lastGreetedYear)
+   so the anti-repeat lives here instead of relying on the ordinary
+   recentIds buffer, which is too short-lived to cover a whole day.
+   ============================================================ */
+const FamilyCall = {
+  lastCallDateKey: null, // null/unset = safe default for older saves
+  _keyFor(d){ return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); },
+  calledToday(){ return this.lastCallDateKey === this._keyFor(Clock.now()); },
+  markCalled(){ this.lastCallDateKey = this._keyFor(Clock.now()); Persistence.scheduleSave(); }
 };
 
 /* ============================================================
@@ -1843,6 +2052,12 @@ const OfflineReconstruct = {
     if(!gapMs || gapMs <= this.SHORT_MS) return;
     this.driftState(gapMs);
     this.placeIntoSchedule();
+    // ISSUE #10: bring weather forward too, so it doesn't still read as
+    // "Friday afternoon" once the schedule/activity above has already
+    // moved on to "Saturday morning". Independent of gapMs itself —
+    // it re-derives elapsed time from WeatherEngine.lastChange, which
+    // may differ slightly from the save gap.
+    WeatherEngine.catchUpAfterGap();
   },
 
   // Rough, day-scale state update — not a minute-by-minute simulation.
@@ -1945,6 +2160,7 @@ const Persistence = {
       } : {}),
       dailyPlan: DailyPlan.serialize(),
       birthday: { lastGreetedYear: Birthday.lastGreetedYear },
+      familyCall: { lastCallDateKey: FamilyCall.lastCallDateKey },
       log: Memory.entriesForSave(),
       logDay: Memory.currentLogDay,
       presence: {
@@ -2003,6 +2219,9 @@ const Persistence = {
       // Missing on older saves → 0, which is never the current year,
       // so it safely defaults to "not greeted this year".
       Birthday.lastGreetedYear = (p.birthday && typeof p.birthday.lastGreetedYear==="number") ? p.birthday.lastGreetedYear : 0;
+      // Missing on older saves -> null, the correct safe default ("not
+      // called today" is indistinguishable from "never recorded").
+      FamilyCall.lastCallDateKey = (p.familyCall && p.familyCall.lastCallDateKey) || null;
       // Older saves may lack id fields — backfill so entries have
       // something stable to key off of.
       let maxId = 0;
@@ -2081,6 +2300,15 @@ const UI = {
   },
   setActivityText(text, isMicro){
     const el = this.els.activity;
+    // Guard: ActivityEngine can set an activity (and therefore call this)
+    // during OfflineReconstruct.run(), which boot() deliberately runs
+    // BEFORE UI.init() — so this.els.activity isn't populated yet on a
+    // fresh page load with a real gap since the last save. That's fine:
+    // boot() separately paints the restored/reconstructed activity's
+    // text directly once UI.init() has run (see boot()'s
+    // "UI.els.activity.textContent = ..." line), with no animation, by
+    // design — this call just has nothing to animate yet.
+    if(!el) return;
     el.classList.add("swap");
     setTimeout(()=>{
       el.textContent = text;
