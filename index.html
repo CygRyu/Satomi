@@ -595,7 +595,27 @@ const ACTIVITIES = [
   // ActivityEngine.computeSleepDurationSec() overrides it with a real wake-time
   // calculation (roughly 6.5-9.5 real hours, later on weekends) whenever this
   // activity actually begins, so it can correctly span past midnight.
-  { id:"sleeping", category:"routine", text:["Satomi has gone to sleep."], micro:[], duration:[23400,32400], tod:["night","late_night"], weekday:"any", effects:{sleepiness:-60,energy:+30,stress:-10} },
+  { id:"sleeping", category:"routine", text:[
+      "Satomi has gone to sleep.",
+      "Satomi is asleep, quiet and still.",
+      "The room is quiet except for her steady breathing.",
+      "Satomi is asleep, the blanket pulled up to her shoulder.",
+      "She's asleep, facing away from the lamp.",
+      "Satomi fell asleep not long after turning off the light.",
+      "Satomi is asleep, curled slightly on her side.",
+      "The apartment is quiet. Satomi is asleep.",
+    ], micro:[
+      "Satomi shifts slightly under the blanket.",
+      "She murmurs something too quiet to make out.",
+      "Satomi turns over, facing the other way.",
+      "She pulls the blanket up a little higher.",
+      "Satomi sighs quietly in her sleep.",
+      "Her hand twitches slightly, then goes still again.",
+      "Satomi adjusts her pillow without really waking.",
+      "A few quiet words slip out, unclear.",
+      "Satomi's breathing is slow and steady.",
+      "She stirs slightly, then settles again.",
+    ], duration:[23400,32400], tod:["night","late_night"], weekday:"any", effects:{sleepiness:-60,energy:+30,stress:-10} },
   { id:"waking_up", category:"routine", text:["Satomi is slowly waking up.","Satomi is still half-asleep, lying in bed for a moment longer.","Satomi's alarm went off a few minutes ago; she's only just stirring.","Satomi stretches and blinks against the morning light."], micro:["Satomi rubs her eyes.","Satomi reaches for her phone to check the time.","Satomi pulls the blanket back over her head for a moment."], duration:[60,240], tod:["morning"], weekday:"any", effects:{sleepiness:-10,energy:+3} },
   { id:"weekend_lazing", category:"break", text:["Satomi is lazing around, in no hurry to do anything.","Satomi is still in pajamas, scrolling idly.","Satomi is having a very slow weekend morning.","Satomi isn't in any hurry to start the day.","Satomi is sitting around in comfortable clothes, doing very little.","Satomi hasn't made any plans for the morning."], micro:["Satomi stretches out on the floor cushion.","Satomi checks the time, then pulls the blanket back up.","Satomi pulls the blanket closer around herself.","Satomi stretches and settles back down.","Satomi looks at the ceiling for a while.","Satomi starts to sit up, then lies back down.",], duration:[300,900], tod:["morning","afternoon"], weekday:"weekend", effects:{energy:+3,boredom:+3,stress:-2} },
   { id:"meeting_friend", category:"social", awayLength:"normal", text:["Satomi is out meeting a friend."], micro:[], duration:[1200,3000], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-15,stress:-3,energy:-3} },
@@ -1635,6 +1655,13 @@ const ActivityEngine = {
   },
   microUpdate(){
     if(!this.current || !this.current.micro || this.current.micro.length===0) return;
+    // Sleep stays mostly undisturbed: even when the normal micro-update
+    // timer fires (Sim.tick's own 15-45s/50% cadence), a sleeping Satomi
+    // only actually shows one of these small movements/sounds on top of
+    // that some of the time, so the room reads as quiet far more often
+    // than not — never a genuine "no-op" (asleep stays asleep, the
+    // timer/duration/currentUntil are all untouched either way).
+    if(this.current.id==="sleeping" && !RNG.chance(0.25)) return;
     const text = RNG.pick(this.current.micro);
     this.currentText = text;
     UI.setActivityText(text, true);
