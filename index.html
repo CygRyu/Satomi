@@ -1808,75 +1808,115 @@ const Availability = {
      - only the Primary Destination is ever shown while she's away;
        the specific sub-location is revealed solely through the
        Life Log entry written at the moment she's actually back (req 5/6)
+
+   GEOGRAPHY: Satomi's apartment is in Kichijoji (western Tokyo,
+   Musashino). Every hub below is a real, plausible destination given
+   that home base, and each hub's `tier` reflects real distance:
+     - "near"  — Kichijoji itself, walkable, available any day
+     - "mid"   — one quick train ride out (Shimokitazawa on the
+                 Inokashira Line, neighboring Mitaka), weekend only,
+                 fits inside the normal 90-min weekend cap
+     - "far"   — a real trip across Tokyo (Ueno, Akihabara, Asakusa),
+                 weekend only, and ONLY ever selected for the rare
+                 awayLength:"long" outing (away_across_tokyo), which
+                 is the one case allowed a much bigger duration cap —
+                 see OutingEngine.hardDurationCapMin(scale) below.
+       Only the hub label is ever shown live while she's away — so
+       nearby errands stay vague ("Out at the neighborhood...") while
+       a real cross-town trip actually names the area ("Out at
+       Ueno..."), matching how specific someone would naturally be
+       about each. The exact spot is still only revealed after the
+       fact, in the Life Log.
    ============================================================ */
 const PRIMARY_DESTINATIONS = {
-  neighborhood: {
-    id:"neighborhood", label:"the neighborhood",
+  kichijoji: {
+    id:"kichijoji", label:"the neighborhood", tier:"near",
     weekday:true, weekend:true,
     subLocations:[
-      { id:"bakery", label:"the bakery down the street", tod:["morning"],
+      { id:"bakery", label:"the bakery on Sun Road", tod:["morning"],
         transitRoundTripMin:[4,8], activityMin:[8,15],
         logLines:[
-          "Walked down to the bakery. Picked up something warm for later.",
-          "Stopped at the bakery down the street — the melon bread looked too good to pass up.",
+          "Walked down to the bakery on Sun Road. Picked up something warm for later.",
+          "Stopped at the bakery on Sun Road — the melon bread looked too good to pass up.",
         ] },
-      { id:"morning_market", label:"the morning market stalls", tod:["morning"],
+      { id:"morning_market", label:"the market stalls near the station", tod:["morning"],
         transitRoundTripMin:[6,10], activityMin:[10,20],
-        logLines:["Wandered through the morning market stalls for a bit. Nothing planned, just looking."] },
-      { id:"quiet_cafe", label:"the quiet café on the corner", tod:["morning","afternoon"],
+        logLines:["Wandered through the market stalls near the station for a bit. Nothing planned, just looking."] },
+      { id:"quiet_cafe", label:"the quiet café off Nakamichi-dori", tod:["morning","afternoon"],
         transitRoundTripMin:[6,10], activityMin:[15,25],
-        logLines:["Sat at the quiet café on the corner for a while with something warm to drink."] },
-      { id:"nearby_bench", label:"the bench near the apartment", tod:["afternoon","evening"],
-        transitRoundTripMin:[3,6], activityMin:[10,20],
-        logLines:["Sat on the bench near the apartment for a while, just watching the street."] },
-      { id:"convenience_store", label:"the convenience store", tod:["evening"],
+        logLines:["Sat at the quiet café off Nakamichi-dori for a while with something warm to drink."] },
+      { id:"inokashira_pond", label:"the path around Inokashira Pond", tod:["afternoon","evening"],
+        transitRoundTripMin:[8,14], activityMin:[15,30],
+        logLines:["Walked the path around Inokashira Pond for a while. Didn't run into anyone she knew."] },
+      { id:"convenience_store", label:"the convenience store by the station", tod:["evening"],
         transitRoundTripMin:[3,6], activityMin:[5,12],
-        logLines:["Ran to the convenience store for a couple of things."] },
-      { id:"neighborhood_stroll", label:"a stroll around the block", tod:["evening"],
+        logLines:["Ran to the convenience store by the station for a couple of things."] },
+      { id:"harmonica_yokocho", label:"Harmonica Yokocho", tod:["evening"],
         transitRoundTripMin:[8,14], activityMin:[8,16],
-        logLines:["Took a slow lap around the block before heading back in."] },
+        logLines:["Cut through Harmonica Yokocho on the way back. Too early for most of it to be open."] },
     ]
   },
-  shopping_district: {
-    id:"shopping_district", label:"the Shopping District",
+  shimokitazawa: {
+    id:"shimokitazawa", label:"Shimokitazawa", tier:"mid",
     weekday:false, weekend:true,
     subLocations:[
-      { id:"stationery_shop", label:"the stationery shop", tod:["afternoon"],
-        transitRoundTripMin:[30,45], activityMin:[20,40],
-        logLines:["Walked over to the stationery shop in the Shopping District. Picked up a fresh notebook."] },
-      { id:"clothing_boutique", label:"a small clothing boutique", tod:["afternoon","evening"],
-        transitRoundTripMin:[30,50], activityMin:[20,45],
-        logLines:["Browsed a little boutique in the Shopping District. Didn't buy anything, just looked."] },
-      { id:"bookshop_district", label:"the bookshop", tod:["afternoon","evening"],
-        transitRoundTripMin:[30,45], activityMin:[20,40],
-        logLines:["Lost some time in the bookshop in the Shopping District."] },
+      { id:"record_shop", label:"a used record shop", tod:["afternoon"],
+        transitRoundTripMin:[28,38], activityMin:[20,40],
+        logLines:["Took the Inokashira Line out to Shimokitazawa and got lost in a used record shop for a while."] },
+      { id:"vintage_shop", label:"a vintage clothing shop", tod:["afternoon","evening"],
+        transitRoundTripMin:[28,42], activityMin:[20,45],
+        logLines:["Spent a while digging through a vintage shop in Shimokitazawa. Found nothing, regretted nothing."] },
+      { id:"back_alley_theater", label:"the streets by the little theater", tod:["evening"],
+        transitRoundTripMin:[28,40], activityMin:[15,35],
+        logLines:["Walked the back streets near the theater in Shimokitazawa. Just window-shopping."] },
     ]
   },
-  park: {
-    id:"park", label:"the Park",
+  mitaka: {
+    id:"mitaka", label:"Mitaka", tier:"mid",
     weekday:false, weekend:true,
     subLocations:[
-      { id:"park_bench", label:"a bench under the trees", tod:["afternoon"],
-        transitRoundTripMin:[20,35], activityMin:[20,45],
-        logLines:["Sat on a bench in the park for a while. Good weather for it."] },
-      { id:"park_pond", label:"the pond path", tod:["morning","afternoon"],
-        transitRoundTripMin:[20,35], activityMin:[20,40],
-        logLines:["Walked the path around the pond in the park."] },
-      { id:"park_lawn", label:"the open lawn", tod:["afternoon","evening"],
-        transitRoundTripMin:[20,35], activityMin:[15,35],
-        logLines:["Sat out on the open lawn in the park until it started getting cooler."] },
+      { id:"mitaka_library", label:"the library in Mitaka", tod:["afternoon"],
+        transitRoundTripMin:[20,30], activityMin:[30,60],
+        logLines:["Spent a while at the library over in Mitaka. Quiet in there today."] },
+      { id:"mitaka_old_street", label:"the old shopping street near the station", tod:["afternoon","evening"],
+        transitRoundTripMin:[20,30], activityMin:[15,30],
+        logLines:["Walked through the old shopping street near Mitaka station on the way back."] },
     ]
   },
-  library: {
-    id:"library", label:"the Town Library",
+  ueno: {
+    id:"ueno", label:"Ueno", tier:"far",
     weekday:false, weekend:true,
     subLocations:[
-      { id:"reading_room", label:"the reading room", tod:["afternoon"],
-        transitRoundTripMin:[25,40], activityMin:[30,60],
-        logLines:["Spent a while in the reading room at the library. Quiet in there today."] },
-      { id:"library_stacks", label:"the stacks", tod:["afternoon"],
-        transitRoundTripMin:[25,40], activityMin:[20,45],
-        logLines:["Went looking through the stacks at the library. Found something worth borrowing."] },
+      { id:"ueno_park", label:"Ueno Park", tod:["morning","afternoon"],
+        transitRoundTripMin:[70,90], activityMin:[30,70],
+        logLines:["Ended up in Ueno Park for most of the afternoon. Sat by the pond for a long time."] },
+      { id:"ameyoko", label:"the market street under the tracks", tod:["afternoon","evening"],
+        transitRoundTripMin:[70,95], activityMin:[25,55],
+        logLines:["Wandered the market street under the tracks near Ueno station. Loud, but the right kind."] },
+    ]
+  },
+  akihabara: {
+    id:"akihabara", label:"Akihabara", tier:"far",
+    weekday:false, weekend:true,
+    subLocations:[
+      { id:"electronics_alley", label:"a side street of electronics shops", tod:["afternoon","evening"],
+        transitRoundTripMin:[55,75], activityMin:[25,50],
+        logLines:["Went to Akihabara and poked around a side street of electronics shops. Bought a cable she didn't need."] },
+      { id:"used_goods_floor", label:"a multi-floor used goods shop", tod:["afternoon","evening"],
+        transitRoundTripMin:[55,75], activityMin:[25,55],
+        logLines:["Spent a while working through the floors of a used goods shop in Akihabara."] },
+    ]
+  },
+  asakusa: {
+    id:"asakusa", label:"Asakusa", tier:"far",
+    weekday:false, weekend:true,
+    subLocations:[
+      { id:"nakamise_street", label:"the approach to the temple", tod:["morning","afternoon"],
+        transitRoundTripMin:[85,105], activityMin:[30,60],
+        logLines:["Went all the way out to Asakusa and walked the shopping street up to the temple. Bought a snack from a stall."] },
+      { id:"riverside_walk", label:"the walk along the river", tod:["afternoon","evening"],
+        transitRoundTripMin:[85,105], activityMin:[20,45],
+        logLines:["Walked along the river near Asakusa for a while before heading back."] },
     ]
   },
 };
@@ -1914,24 +1954,42 @@ const OutingEngine = {
     return true;
   },
 
-  // --- req 2: hard duration cap by day of week.
-  hardDurationCapMin(){ return Clock.isWeekend() ? 90 : 30; },
+  // --- req 2: hard duration cap by day of week. A real cross-Tokyo
+  // trip (scale "long", i.e. the away_across_tokyo activity) is the
+  // one case allowed a much bigger cap — Ueno/Akihabara/Asakusa need
+  // 55-105 min of round-trip transit alone, which would never fit
+  // under the ordinary 90-min weekend cap. Ordinary weekend outings
+  // (scale "normal"/"brief") keep the original 90-min cap.
+  hardDurationCapMin(scale){
+    if(!Clock.isWeekend()) return 30;
+    return scale==="long" ? 240 : 90;
+  },
 
   // --- req 2: which Primary Destinations are reachable at all today.
-  eligibleHubs(){
+  // `tier:"far"` hubs (real across-Tokyo destinations) are only ever
+  // eligible for a genuine long outing — otherwise they'd occasionally
+  // get offered for a quick weekend errand and either fail to fit or
+  // eat the entire 90-min cap on transit alone.
+  eligibleHubs(scale){
     const weekend = Clock.isWeekend();
-    return Object.values(PRIMARY_DESTINATIONS).filter(h => weekend ? h.weekend : h.weekday);
+    return Object.values(PRIMARY_DESTINATIONS).filter(h=>{
+      if(weekend ? !h.weekend : !h.weekday) return false;
+      if(h.tier==="far" && scale!=="long") return false;
+      return true;
+    });
   },
 
   // --- req 3/4: builds the full set of sub-locations that genuinely
   // fit inside `availableMin`, each with a rolled (transit + activity)
   // duration that is GUARANTEED never to exceed the available window,
   // and a time-of-day weight (req 4: morning/afternoon/evening bias).
-  candidateSubLocations(availableMin){
+  // `scale` defaults to "normal" — pass "long" for a real across-Tokyo
+  // outing so the far tier and its bigger cap come into play.
+  candidateSubLocations(availableMin, scale='normal'){
     const tod = Clock.timeOfDay();
-    const capMin = Math.min(this.hardDurationCapMin(), availableMin);
+    const capMin = Math.min(this.hardDurationCapMin(scale), availableMin);
     const out = [];
-    this.eligibleHubs().forEach(hub=>{
+    this.eligibleHubs(scale).forEach(hub=>{
       hub.subLocations.forEach(sub=>{
         const bestCaseMin = sub.transitRoundTripMin[0] + sub.activityMin[0];
         if(bestCaseMin > capMin) return; // can't fit even at the floor — excluded (req 3)
@@ -1971,14 +2029,25 @@ const OutingEngine = {
   beginFor(activity){
     const availableMin = this.availableFreeTimeMin();
     if(availableMin < this.MIN_WORTHWHILE_MIN) return null;
-    let candidates = this.candidateSubLocations(availableMin);
-    if(candidates.length===0) return null;
     const scale = (activity && activity.awayLength) || "normal";
+    let candidates = this.candidateSubLocations(availableMin, scale);
+    if(candidates.length===0) return null;
     candidates = candidates.map(c=>{
-      const farther = c.hub.id !== "neighborhood";
+      const tier = c.hub.tier;
       let w = c.weight;
-      if(scale==="brief" && !farther) w *= 2.2;
-      if(scale!=="brief" && farther) w *= 1.8;
+      if(scale==="brief"){
+        w *= tier==="near" ? 2.2 : 0.3;
+      } else if(scale==="long"){
+        // A real across-Tokyo trip should usually land somewhere that
+        // actually feels like "across Tokyo" — heavily favor the far
+        // tier (Ueno/Akihabara/Asakusa) without making mid/near
+        // impossible (plans do fall through sometimes).
+        if(tier==="far") w *= 4;
+        else if(tier==="mid") w *= 1.3;
+        else w *= 0.25;
+      } else if(tier!=="near"){
+        w *= 1.8;
+      }
       return Object.assign({}, c, {weight:w});
     });
     const choice = RNG.weightedPick(candidates, c=>c.weight);
