@@ -1367,17 +1367,37 @@ const ActivityEngine = {
   // weekend) and returns the duration in seconds needed to reach it,
   // however far past midnight that is.
   computeSleepDurationSec(){
-    const approxWake = new Date(Date.now() + 7*3600000); // rough guess just to check which day she'll wake into
-    const wakeIsWeekend = (approxWake.getDay()===0 || approxWake.getDay()===6);
-    const hours = wakeIsWeekend ? RNG.range(7, 9.5) : RNG.range(6.5, 9);
-    return Math.round(hours*3600);
+    // Pick a natural sleep length, but enforce an absolute latest wake time.
+    // The deadline is calculated once when sleep begins and stored in
+    // currentUntil, so refreshes never reroll or extend an existing sleep.
+    const now = new Date();
+    const wakeDay = new Date(now);
+    wakeDay.setDate(wakeDay.getDate()+1);
+    const wakeIsWeekend = wakeDay.getDay()===0 || wakeDay.getDay()===6;
+    const preferredHours = RNG.range(wakeIsWeekend ? 7 : 6.5, wakeIsWeekend ? 9 : 9);
+
+    // Latest allowed wake-up: 09:00 on weekend mornings, 08:30 on weekday
+    // mornings. This is a hard ceiling, not another random wake-up target.
+    const latestWake = new Date(wakeDay);
+    latestWake.setHours(wakeIsWeekend ? 9 : 8, wakeIsWeekend ? 0 : 30, 0, 0);
+
+    const preferredWake = now.getTime() + preferredHours*3600000;
+    return Math.max(60, Math.round((Math.min(preferredWake, latestWake.getTime()) - now.getTime())/1000));
   },
   advanceIfNeeded(){
     // Sleep is inviolable: once she's asleep, nothing — not even a
     // scheduled class or shift — cuts it short. It only ends on its own
     // computed wake time below, same as any other activity's currentUntil.
     if(this.current && this.current.id==="sleeping"){
-      if(Date.now() > this.currentUntil){
+      // currentUntil is the authoritative wake timestamp. Never recalculate
+      // sleep duration here; doing so could make a refreshed/offline Satomi
+      // fall asleep again after her original wake time has passed.
+      if(Date.now() >= this.currentUntil){
+        const waking = CONTENT.activities.find(a=>a.id==="waking_up");
+        if(waking){
+          this.setActivity(waking);
+          return;
+        }
         const next = this.pickNext();
         if(next) this.setActivity(next);
       }
@@ -2098,6 +2118,16 @@ const OfflineReconstruct = {
     const nowMin = Clock.minutesOfDay();
     const nowHour = Clock.hour();
 
+    // Preserve an existing sleep commitment if its real wake timestamp is
+    // still in the future. If it has expired, discard it and let the normal
+    // activity engine move her into waking_up/another morning activity.
+    const savedActivity = ActivityEngine.current;
+    const savedUntil = ActivityEngine.currentUntil;
+    if(savedActivity && savedActivity.id==="sleeping" && savedUntil > Date.now()){
+      ActivityEngine.commuteOrigin = null;
+      return;
+    }
+
     ActivityEngine.current = null;
     ActivityEngine.currentUntil = 0;
     ActivityEngine.commuteOrigin = null;
@@ -2116,13 +2146,9 @@ const OfflineReconstruct = {
       if(a){ ActivityEngine.setActivity(a); return; }
     }
 
-    // A plausible "still asleep right now" window — inferred, not a
-    // hard schedule anchor the way class/work are.
-    const plausiblyAsleep = nowHour>=23 || nowHour<7;
-    if(plausiblyAsleep){
-      const sleepAct = CONTENT.activities.find(a=>a.id==="sleeping");
-      if(sleepAct){ ActivityEngine.setActivity(sleepAct); return; }
-    }
+    // Do not create a brand-new sleep activity during reconstruction merely
+    // because it is late night/early morning. A fresh sleep would reroll the
+    // wake time on every refresh and could keep her asleep indefinitely.
     ActivityEngine.advanceIfNeeded();
   }
 };
