@@ -2751,6 +2751,158 @@ document.querySelectorAll(".panel-overlay").forEach(ov=>{
 })();
 
 /* ============================================================
+   15b. FAMILIARITY — invisible, derived vocabulary-availability
+   tier. This is NOT a relationship/affection meter: it is never
+   shown to the player, never named in the UI or Memory log, and
+   never gates anything except which *ordinary* lines are eligible
+   to be picked for the existing Interact responses. It is computed
+   fresh every time from Presence's existing persisted numbers
+   (totalTimeMs / daysTogether / interactions), so it needs no new
+   save data and can't break old saves — a fresh save simply starts
+   at tier 0, which is exactly the old, small dialogue pool.
+   Conceptually: more time => more of her ordinary vocabulary is
+   visible, not a closer relationship.
+   ============================================================ */
+const Familiarity = {
+  tier(){
+    const hours = Presence.totalTimeMs/3600000;
+    const days = Presence.daysTogether.size;
+    const count = Presence.interactions;
+    let t = 0;
+    if(hours>=3 && days>=3 && count>=12) t = 1;
+    if(hours>=6 && days>=9 && count>=40) t = 2;
+    if(hours>=18 && days>=20 && count>=120) t = 3;
+    return t;
+  }
+};
+
+/* ============================================================
+   15c. INTERACT RESPONSE POOLS
+   Every entry is {text, weight, tier, when?}.
+   - tier: minimum Familiarity.tier() required for this line to be
+     eligible (0 = available immediately).
+   - weight: relative pick weight within whatever pool is eligible.
+     Small weights (<1) are intentionally rare "surprise" lines.
+   - when(ctx): optional predicate. If present, the line is only
+     eligible when it returns true. Absence of `when` means the
+     line is a general-purpose line always in the running.
+   These pools only ever grow — nothing here is ever removed or
+   replaced as tiers unlock, matching "old responses stay possible".
+   ============================================================ */
+const HELLO_LINES = [
+  // tier 0 — plain greetings, available from the very first session
+  {text:"Oh — hi.", weight:5},
+  {text:"Hey.", weight:5},
+  {text:"Hi.", weight:5},
+  {text:"Oh, hey.", weight:4},
+  {text:"Hi there.", weight:4},
+  {text:"Hey there.", weight:3},
+  {text:"Oh. Hi.", weight:3},
+  {text:"Hm?", weight:2},
+  {text:"Mm.", weight:1.5},
+  {text:"Mm? ...sorry, what?", weight:1.5, when:ctx=>ctx.category==="study"||ctx.category==="work"},
+  {text:"Oh — sorry, I was reading.", weight:1.5, when:ctx=>ctx.activityId==="reading_book"||ctx.activityId==="study_reading"},
+  // tier 1 — a little more range, plus a handful of situational replies
+  {text:"Oh, hello.", weight:3, tier:1},
+  {text:"Hey, you.", weight:2, tier:1},
+  {text:"Mm? Oh, hey.", weight:2, tier:1},
+  {text:"Oh—hi. Didn't notice you there.", weight:2, tier:1},
+  {text:"Hi. Sorry, I was somewhere else for a second.", weight:2, tier:1},
+  {text:"Hey. Give me a second.", weight:1.5, tier:1, when:ctx=>ctx.category==="study"},
+  {text:"Hey. It's been raining all day.", weight:1.5, tier:1, when:ctx=>ctx.raining},
+  {text:"Morning.", weight:1.5, tier:1, when:ctx=>ctx.tod==="morning"},
+  {text:"Hey... sorry, I'm half-asleep.", weight:1.5, tier:1, when:ctx=>ctx.mood==="sleepy"},
+  {text:"Hi. Long day.", weight:1.5, tier:1, when:ctx=>ctx.mood==="tired"},
+  // tier 2 — more specific, mundane texture
+  {text:"Oh — hi. Give me a second, I lost my train of thought.", weight:1.5, tier:2},
+  {text:"Hey. I was just thinking about something else.", weight:1.5, tier:2},
+  {text:"Hi. Sorry, my hands are freezing.", weight:1, tier:2, when:ctx=>ctx.weatherId==="cold"||ctx.tod==="late_night"},
+  {text:"Hey. Quiet one today.", weight:1.5, tier:2},
+  {text:"Oh, hi. One sec.", weight:1.5, tier:2},
+  // tier 2/3 — very subtle, understated recognition. Never warmer than this.
+  {text:"Oh. You're here.", weight:0.4, tier:2},
+  {text:"Hey again.", weight:0.4, tier:2},
+  {text:"I see you.", weight:0.3, tier:2},
+  {text:"You've been here a while.", weight:0.3, tier:3},
+  // tier 3 — rare surprise lines
+  {text:"I forgot what I was doing.", weight:0.3, tier:3},
+  {text:"It's weirdly peaceful today.", weight:0.3, tier:3},
+  {text:"Wait, what time is it?", weight:0.3, tier:3},
+];
+
+const ENCOURAGE_LINES = [
+  // tier 0
+  {text:"Thanks.", weight:5},
+  {text:"Thank you.", weight:5},
+  {text:"Haha, thanks.", weight:4},
+  {text:"I needed that.", weight:3},
+  {text:"...that actually helped, a little.", weight:3},
+  {text:"Mm. Thanks.", weight:2},
+  {text:"Sure.", weight:1.5},
+  // tier 1
+  {text:"I'll try.", weight:3, tier:1},
+  {text:"Yeah... maybe you're right.", weight:2.5, tier:1},
+  {text:"Thanks. I'll keep going.", weight:2.5, tier:1},
+  {text:"Mm. I'll do my best.", weight:2, tier:1},
+  {text:"I needed to hear that, actually.", weight:2, tier:1, when:ctx=>ctx.mood==="stressed"||ctx.category==="study"},
+  {text:"Okay. Back to it, I guess.", weight:2, tier:1, when:ctx=>ctx.category==="study"},
+  // tier 2
+  {text:"Heh. I'm trying.", weight:1.5, tier:2},
+  {text:"Thanks. I mean it.", weight:1, tier:2},
+  {text:"One second.", weight:1, tier:2, when:ctx=>ctx.category==="study"||ctx.category==="work"},
+  {text:"Mm.", weight:1, tier:2},
+  // tier 3 — rare
+  {text:"I forgot what I was stressed about for a second.", weight:0.3, tier:3},
+  {text:"Huh. Okay. Thanks.", weight:0.3, tier:3},
+];
+
+const ASKHOW_LINES = [
+  // tier 0 — mood-specific, but already several options per mood
+  {text:"Honestly? Pretty tired.", weight:5, when:ctx=>ctx.mood==="tired"},
+  {text:"Tired. Very tired.", weight:3, when:ctx=>ctx.mood==="tired"},
+  {text:"A bit stressed, if I'm being honest.", weight:5, when:ctx=>ctx.mood==="stressed"},
+  {text:"Stressed, but managing.", weight:3, when:ctx=>ctx.mood==="stressed"},
+  {text:"Sleepy. Very sleepy.", weight:5, when:ctx=>ctx.mood==="sleepy"},
+  {text:"I should probably go to bed soon.", weight:3, when:ctx=>ctx.mood==="sleepy"},
+  {text:"Pretty good, actually.", weight:5, when:ctx=>ctx.mood==="relaxed"},
+  {text:"Good, actually. Just relaxing.", weight:3, when:ctx=>ctx.mood==="relaxed"},
+  {text:"I'm okay. Just getting through the day.", weight:5, when:ctx=>ctx.mood==="neutral"},
+  {text:"Fine, I guess.", weight:3, when:ctx=>ctx.mood==="neutral"},
+  {text:"I don't know.", weight:1.5},
+  {text:"Mm.", weight:1},
+  {text:"Sorry. What were you saying?", weight:1},
+  // tier 1 — a second layer per mood, plus activity/weather flavor
+  {text:"I think I need a break.", weight:2.5, tier:1, when:ctx=>ctx.mood==="tired"},
+  {text:"I'm dragging a bit today.", weight:2.5, tier:1, when:ctx=>ctx.mood==="tired"},
+  {text:"There's a lot going on right now.", weight:2.5, tier:1, when:ctx=>ctx.mood==="stressed"},
+  {text:"I keep losing focus.", weight:2.5, tier:1, when:ctx=>ctx.mood==="stressed"},
+  {text:"I'm barely keeping my eyes open.", weight:2.5, tier:1, when:ctx=>ctx.mood==="sleepy"},
+  {text:"Just taking it easy.", weight:2.5, tier:1, when:ctx=>ctx.mood==="relaxed"},
+  {text:"I needed a quiet evening.", weight:2.5, tier:1, when:ctx=>ctx.mood==="relaxed"&&(ctx.tod==="evening"||ctx.tod==="night")},
+  {text:"Nothing special. Same as usual.", weight:2.5, tier:1, when:ctx=>ctx.mood==="neutral"},
+  {text:"Can't complain.", weight:2.5, tier:1, when:ctx=>ctx.mood==="neutral"},
+  {text:"My brain's getting a little tired.", weight:2.5, tier:1, when:ctx=>ctx.category==="study"},
+  {text:"I'm okay. This chapter is just taking forever.", weight:2, tier:1, when:ctx=>ctx.category==="study"},
+  {text:"I think I need to reread that.", weight:2, tier:1, when:ctx=>ctx.category==="study"},
+  {text:"It's been a long shift.", weight:2, tier:1, when:ctx=>ctx.category==="work"},
+  {text:"Busy today, actually.", weight:2, tier:1, when:ctx=>ctx.category==="work"},
+  {text:"It's been raining all day.", weight:2, tier:1, when:ctx=>ctx.raining},
+  {text:"I kind of like weather like this.", weight:1.5, tier:1, when:ctx=>ctx.raining},
+  // tier 2 — mundane specificity
+  {text:"My hands are freezing.", weight:1.5, tier:2},
+  {text:"I haven't eaten yet.", weight:1.5, tier:2, when:ctx=>ctx.s.hunger>55},
+  {text:"Why am I suddenly hungry?", weight:1, tier:2, when:ctx=>ctx.s.hunger>55},
+  {text:"I can't concentrate anymore.", weight:1.5, tier:2, when:ctx=>ctx.category==="study"},
+  {text:"I've been sitting in the same position for too long.", weight:1.5, tier:2},
+  {text:"I should probably clean this up.", weight:1, tier:2},
+  {text:"I keep losing my pen.", weight:1, tier:2, when:ctx=>ctx.category==="study"},
+  // tier 3 — rare surprise lines
+  {text:"It's weirdly peaceful today.", weight:0.3, tier:3},
+  {text:"I think I've been sitting here for an hour.", weight:0.3, tier:3},
+  {text:"I have no idea what I want to eat.", weight:0.3, tier:3, when:ctx=>ctx.s.hunger>40},
+];
+
+/* ============================================================
    16. PLAYER INTERACTIONS
    ============================================================ */
 const Interactions = {
@@ -2758,6 +2910,44 @@ const Interactions = {
   // that receive an actual spoken response. Ambient/self-directed dialogue,
   // environmental reactions, life-thread lines, and unanswered prompts do
   // not increment the stat.
+
+  // Transient (never persisted) short response-history per interaction
+  // type, purely to keep the exact same line from firing twice in a
+  // row — not a save-worthy fact, just anti-repetition bookkeeping.
+  _recent:{},
+  buildContext(){
+    return {
+      s: StateEngine.data,
+      mood: StateEngine.currentMoodTag(),
+      activity: ActivityEngine.current,
+      category: ActivityEngine.current ? ActivityEngine.current.category : null,
+      activityId: ActivityEngine.current ? ActivityEngine.current.id : null,
+      tod: Clock.timeOfDay(),
+      weekend: Clock.isWeekend(),
+      raining: WeatherEngine.isRaining(),
+      weatherId: WeatherEngine.currentId,
+      tier: Familiarity.tier(),
+    };
+  },
+  // Picks one line out of `pool` that's eligible for the player's
+  // current familiarity tier and the current situational context,
+  // weighted at random, while softly avoiding whatever this same
+  // interaction just said a moment ago.
+  pickLine(pool, key){
+    const ctx = this.buildContext();
+    let eligible = pool.filter(e => (e.tier||0) <= ctx.tier && (!e.when || e.when(ctx)));
+    if(eligible.length===0) eligible = pool.filter(e => (e.tier||0)===0 && !e.when);
+    if(eligible.length===0) return null;
+    const recent = this._recent[key] || [];
+    let choices = eligible.filter(e => !recent.includes(e.text));
+    if(choices.length===0) choices = eligible;
+    const chosen = RNG.weightedPick(choices, e=>e.weight||1);
+    if(!chosen) return null;
+    recent.push(chosen.text);
+    if(recent.length>4) recent.shift();
+    this._recent[key] = recent;
+    return chosen.text;
+  },
   sayHello(){
     if(!Availability.isHome()){
       Memory.log("activity", Availability.isSleeping() ? "She doesn't stir." : Availability.absenceLine());
@@ -2765,8 +2955,16 @@ const Interactions = {
     }
     StateEngine.apply({socialNeed:-6});
     Memory.log("activity", "You say hello.");
-    if(RNG.chance(0.7)){
-      setTimeout(()=>{ UI.speak(RNG.pick(["Oh — hi.","Hey.","Hi there."]), {interaction:true}); Memory.log("dialogue", "(response to hello)"); }, RNG.range(500,2500));
+    const mood = StateEngine.currentMoodTag();
+    let p = 0.7;
+    if(mood==="sleepy") p -= 0.15;
+    if(mood==="relaxed") p += 0.05;
+    p = Math.max(0.35, Math.min(0.9, p));
+    if(RNG.chance(p)){
+      const line = this.pickLine(HELLO_LINES, "hello");
+      if(line){
+        setTimeout(()=>{ UI.speak(line, {interaction:true}); Memory.log("dialogue", "(response to hello)"); }, RNG.range(500,2500));
+      }
     }
   },
   encourage(){
@@ -2776,8 +2974,15 @@ const Interactions = {
     }
     StateEngine.apply({motivation:+8, stress:-4});
     Memory.log("activity", "You offer some encouragement.");
-    if(RNG.chance(0.55)){
-      setTimeout(()=>{ UI.speak(RNG.pick(["Thanks. I needed that.","Haha, thank you.","...that actually helped, a little."]), {interaction:true}); }, RNG.range(800,3000));
+    const mood = StateEngine.currentMoodTag();
+    let p = 0.55;
+    if(mood==="stressed") p += 0.1;
+    p = Math.max(0.3, Math.min(0.85, p));
+    if(RNG.chance(p)){
+      const line = this.pickLine(ENCOURAGE_LINES, "encourage");
+      if(line){
+        setTimeout(()=>{ UI.speak(line, {interaction:true}); }, RNG.range(800,3000));
+      }
     }
   },
   askHow(){
@@ -2786,16 +2991,18 @@ const Interactions = {
       return;
     }
     Memory.log("activity", "You ask how she's doing.");
-    if(RNG.chance(0.6)){
-      const mood = StateEngine.currentMoodTag();
-      const responses = {
-        tired:"Honestly? Pretty tired.",
-        stressed:"A bit stressed, if I'm being honest.",
-        sleepy:"Sleepy. Very sleepy.",
-        relaxed:"Pretty good, actually.",
-        neutral:"I'm okay. Just getting through the day."
-      };
-      setTimeout(()=>{ UI.speak(responses[mood]||responses.neutral, {interaction:true}); }, RNG.range(600,2600));
+    const mood = StateEngine.currentMoodTag();
+    let p = 0.6;
+    if(mood==="sleepy") p -= 0.1;
+    if(mood==="relaxed") p += 0.05;
+    p = Math.max(0.3, Math.min(0.85, p));
+    if(RNG.chance(p)){
+      const line = this.pickLine(ASKHOW_LINES, "askHow");
+      if(line){
+        setTimeout(()=>{ UI.speak(line, {interaction:true}); }, RNG.range(600,2600));
+      } else {
+        Memory.log("activity", "She doesn't answer right away — maybe later.");
+      }
     } else {
       Memory.log("activity", "She doesn't answer right away — maybe later.");
     }
