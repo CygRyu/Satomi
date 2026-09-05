@@ -692,6 +692,189 @@ const COMMUTE_FLAVOR = {
   ],
 };
 
+// --- reading content: procedurally assembled book/material identity for
+// the `study_reading` (course reading) and `reading_book` (leisure) hobby
+// activities. Purely a text/flavor layer, same spirit as MEAL_FLAVOR and
+// COMMUTE_FLAVOR above — it never overrides an activity's own `effects`,
+// it only gives ActivityEngine.pickActivityText() something specific to
+// say instead of the generic pool, and gives ReadingEngine somewhere to
+// pull genre-appropriate micro-reactions and spoken reactions from. See
+// ReadingEngine (10b) for how a leisure book persists across multiple
+// reading_book sessions until she actually finishes it. ---
+const READING_CONTENT = {
+  academic: {
+    topics: [
+      "Urban Planning & Architecture", "Digital Media Ethics", "Cognitive Psychology",
+      "Behavioral Economics", "20th-Century Japanese History", "Comparative Linguistics",
+      "Environmental Policy", "Philosophy of Mind", "Translation Theory", "Sociology of Everyday Life",
+    ],
+    materialTypes: [
+      "Chapter 5 of", "a dense research paper on", "lecture notes covering",
+      "an assigned excerpt from", "a case study on", "a journal article about",
+    ],
+    coreContent: [
+      "the historical impact of pedestrian-only zones on local commerce",
+      "algorithmic bias in public recommendation systems",
+      "working memory limits during multi-tasking environments",
+      "how loss aversion shapes everyday financial decisions",
+      "the postwar reconstruction of rural train networks",
+      "false cognates between Japanese and Portuguese loanwords",
+      "the tradeoffs of carbon pricing versus emissions caps",
+      "whether subjective experience can be fully explained by physical processes",
+      "the untranslatable weight of certain idioms across languages",
+      "how commuting routines quietly shape a city's rhythm",
+    ],
+    densities: ["light", "moderate", "heavy"],
+    micro: [
+      "Satomi highlights a line, then immediately isn't sure it was the right one.",
+      "Satomi flips back a few pages to check something.",
+      "Satomi rubs her temples without looking up.",
+      "Satomi rereads the same sentence a second time.",
+      "Satomi jots a word in the margin.",
+    ],
+  },
+  mystery: {
+    titles: ["The Glass Clockwork", "Silent Night at Blackwood Manor", "The Third Key", "A Ledger of Small Lies", "The Last Ferry to Kurenai"],
+    authors: ["Evelyn Vance", "K. T. Takahashi", "Julian Mercer", "Noa Ashford", "Ren Kobashi"],
+    plotHooks: [
+      "where an investigator reopens a twenty-year-old cold case in a snowbound village.",
+      "following a detective who uncovers a secret room hidden inside a clock tower.",
+      "revolving around a missing diary that holds the key to a family inheritance.",
+      "about a librarian who finds a coded message tucked inside a returned book.",
+      "following a reporter chasing a decades-old disappearance on a small island.",
+    ],
+    readingMoods: ["engrossed", "suspenseful", "wary"],
+    pageRange: [260, 380],
+    pagesPerMinuteRange: [0.9, 1.3], // page-turner pacing
+    micro: [
+      "Satomi's eyes go wide at something on the page.",
+      "Satomi flips back a page to double-check a detail.",
+      "Satomi narrows her eyes, clearly trying to guess who did it.",
+      "Satomi turns the page quickly, barely pausing.",
+    ],
+  },
+  fantasy: {
+    titles: ["Chronicles of the Wind Weaver", "The Starlight Market", "Oath of the Iron Realm", "The Cartographer's Debt", "Winter of the Paper Crown"],
+    authors: ["S. J. Rowan", "Maelis Thorne", "R. K. Sterling", "Ines Calloway", "Toma Higashi"],
+    plotHooks: [
+      "about a wandering cartographer mapping forgotten islands guarded by mythical beasts.",
+      "following an apprentice potion-maker who accidentally opens a gateway to another realm.",
+      "detailing an underground rebellion inside a city built entirely of brass and glass.",
+      "about a minor noble who inherits a crown no one else wants to claim.",
+      "following a librarian tasked with cataloguing books that rewrite themselves overnight.",
+    ],
+    readingMoods: ["cozy", "captivated", "wistful"],
+    pageRange: [340, 520], // fantasy doorstoppers
+    pagesPerMinuteRange: [0.5, 0.8], // denser worldbuilding, slower going
+    micro: [
+      "Satomi's gaze drifts off the page for a second, like she's picturing it.",
+      "A soft smile crosses her face as she keeps reading.",
+      "Satomi lingers on a page longer than she needs to.",
+      "Satomi traces a fingertip along the edge of the page, thinking.",
+    ],
+  },
+  scifi: {
+    titles: ["Echoes from Sector 7", "The Memory Engine", "Orbital Solitude", "Low Earth Static", "The Last Broadcast from Callisto"],
+    authors: ["C. H. Vance", "Aira Lin", "D. M. Vance", "Priya Nakashima", "Owen Farsight"],
+    plotHooks: [
+      "exploring a deep-space station where the AI companion begins archiving lost human memories.",
+      "following a rogue mechanic repairing derelict satellites on the edge of the solar system.",
+      "about a terraforming crew discovering unusual signals beneath an ice moon's crust.",
+      "about a linguist trying to translate a message that arrived decades before it was sent.",
+      "following the last technician aboard a slow generational ship nearing its destination.",
+    ],
+    readingMoods: ["pensive", "curious", "unsettled"],
+    pageRange: [280, 420],
+    pagesPerMinuteRange: [0.6, 0.9],
+    micro: [
+      "Satomi's gaze drifts off the page for a second, like she's picturing it.",
+      "Satomi rereads a paragraph, turning something over in her head.",
+      "A small, thoughtful frown crosses her face.",
+      "Satomi lingers on a page longer than she needs to.",
+    ],
+  },
+  slice_of_life: {
+    titles: ["The Sunday Teahouse", "Notes from a Small Kitchen", "The Rainy Day Bookshop", "Three Streets Over", "A Year at the Corner Stand"],
+    authors: ["Hana Mori", "Clara Bennett", "S. Miller", "Yuki Amano", "Beatrice Lund"],
+    plotHooks: [
+      "a quiet story about a baker restoring an old wooden coffee shop in a seaside town.",
+      "following a group of roommates navigating post-graduation life and weekend cooking.",
+      "revolving around a secondhand bookstore that leaves handwritten notes inside used novels.",
+      "about a florist who learns her regular customers' lives through the arrangements they order.",
+      "following a night-shift train cleaner and the small kindnesses she notices along her route.",
+    ],
+    readingMoods: ["relaxed", "cozy", "nostalgic"],
+    pageRange: [200, 320],
+    pagesPerMinuteRange: [0.7, 1.0],
+    micro: [
+      "Satomi exhales slowly and sinks a little further into her seat.",
+      "Satomi leans back, completely unhurried.",
+      "Satomi smiles faintly to herself and keeps reading.",
+      "Satomi rests the book against her knees for a moment before continuing.",
+    ],
+  },
+  thriller: {
+    titles: ["The Quiet Ward", "Signal Loss", "Nine Days in Hakodate", "The Understudy"],
+    authors: ["Marcus Aldine", "Sana Ishii", "Devon Rourke", "L. F. Whitmore"],
+    plotHooks: [
+      "about a translator who realizes the document she's working on isn't meant to be finished.",
+      "following a night-shift hospital clerk who notices the same visitor logged under three names.",
+      "about a stand-in actress who starts receiving messages meant for the star she's replacing.",
+      "following a courier who is asked to deliver a package one street too far from the address.",
+    ],
+    readingMoods: ["tense", "on edge", "engrossed"],
+    pageRange: [280, 400],
+    pagesPerMinuteRange: [1.0, 1.4], // fastest pace — can't put it down
+    micro: [
+      "Satomi grips the book a little tighter without noticing.",
+      "Satomi glances toward her own door for half a second, then huffs at herself.",
+      "Satomi turns the page fast, barely breathing.",
+      "Satomi's shoulders are up near her ears; she doesn't notice until she shifts.",
+    ],
+  },
+  poetry: {
+    titles: ["Small Weather", "Fieldnotes for a Quiet Year", "The Unhurried Hours", "Salt and Streetlight"],
+    authors: ["Imre Solberg", "Chiyo Ezaki", "Naomi Okafor", "Tobias Wren"],
+    plotHooks: [
+      "a slim collection built around the small, easily missed moments of an ordinary week.",
+      "a set of poems written from train windows during a single commuting season.",
+      "a quiet sequence about a house slowly emptying out one room at a time.",
+      "a collection tracing one coastal town through each of its four seasons.",
+    ],
+    readingMoods: ["reflective", "quiet", "wistful"],
+    pageRange: [70, 140], // slim collection
+    pagesPerMinuteRange: [0.25, 0.4], // savored, not rushed
+    micro: [
+      "Satomi reads the same short poem twice before moving on.",
+      "Satomi rests her finger on the page for a while without turning it.",
+      "Satomi mouths a line under her breath without quite meaning to.",
+      "Satomi closes the book around one finger, thinking.",
+    ],
+  },
+  biography: {
+    titles: ["Letters I Never Sent", "The Long Way to Kyoto", "A Life in Ordinary Rooms", "Fieldwork"],
+    authors: ["Marguerite Okonkwo", "Haruto Segawa", "Dana Whitcombe", "Els Larsen"],
+    plotHooks: [
+      "a memoir about a translator's decades spent moving between three countries and languages.",
+      "an account of a retired teacher's year cataloguing her late mother's letters.",
+      "a memoir following a field biologist's quiet, unglamorous decades studying river otters.",
+      "an essay collection about growing up in a family that ran a small print shop.",
+    ],
+    readingMoods: ["thoughtful", "moved", "quiet"],
+    pageRange: [220, 340],
+    pagesPerMinuteRange: [0.5, 0.75],
+    micro: [
+      "Satomi looks up from the page, somewhere else for a moment.",
+      "Satomi rereads a line, like it landed somewhere unexpected.",
+      "Satomi is quiet for a while, just holding the book open.",
+      "Satomi glances toward her phone, like she's thinking of her mother.",
+    ],
+  },
+};
+// convenience: every leisure genre key, i.e. every READING_CONTENT key
+// except "academic" (which has its own shape and its own code path).
+const READING_LEISURE_GENRES = Object.keys(READING_CONTENT).filter(g=>g!=="academic");
+
 // --- news templates: procedurally assembled phone-notification articles
 // she occasionally reads in full while checking her phone. Each category
 // is source+event+detail+impact+reaction pools (same shape throughout,
@@ -1228,6 +1411,7 @@ const CONTENT = {
   weather: WEATHER_STATES,
   seasons: SEASONS,
   parts: DIALOGUE_PARTS,
+  reading: READING_CONTENT,
 };
 function registerActivity(a){ CONTENT.activities.push(a); }
 function registerDialogue(d){ CONTENT.dialogue.push(d); }
@@ -2008,6 +2192,22 @@ const ActivityEngine = {
   // pool exactly as before. Never changes scoring/eligibility — purely
   // cosmetic, so it can't affect anti-repeat, persistence, etc.
   pickActivityText(activity, prev){
+    // Reading identity: give her a specific book/material instead of the
+    // generic pool, most of the time — leaves a little room (15%/30%) for
+    // the plain fallback line so it doesn't feel mechanically identical
+    // every single time. Either way the book/session itself is always
+    // established here, so page progress (applyLeisureProgress) and
+    // genre-specific micro-reactions stay consistent regardless of which
+    // text variant gets displayed. Effects/duration are untouched either
+    // way (still whatever ACTIVITIES defines for this activity).
+    if(activity.id==="reading_book"){
+      const specific = ReadingEngine.beginLeisure();
+      return RNG.chance(0.85) ? specific : RNG.pick(activity.text);
+    }
+    if(activity.id==="study_reading"){
+      const specific = ReadingEngine.beginAcademic();
+      return RNG.chance(0.7) ? specific : RNG.pick(activity.text);
+    }
     if(activity.id==="lunch"){
       const onCampus = (prev && locationOf(prev)==="university") || (!Clock.isWeekend() && DailyPlan.university.length>0);
       if(onCampus && RNG.chance(0.7)) return RNG.pick(MEAL_FLAVOR.lunch.campus);
@@ -2033,6 +2233,13 @@ const ActivityEngine = {
     const prev = this.current;
     const wasAway = this.isAwayActivity(prev);
     const isAway = this.isAwayActivity(activity);
+
+    // Reading identity only lives for the duration of a reading session —
+    // once she moves on to something else, clear it so a later, unrelated
+    // activity doesn't inherit stale genre/topic context.
+    if(prev && ["reading_book","study_reading"].includes(prev.id) && activity.id!==prev.id){
+      ReadingEngine.session = null;
+    }
 
     // Remember where a commute_home trip started from — needed a few
     // steps later to tell "just got back from work" apart from "just
@@ -2088,6 +2295,7 @@ const ActivityEngine = {
     } else {
       durSec = activity.id==="sleeping" ? this.computeSleepDurationSec() : RNG.range(activity.duration[0], activity.duration[1]);
       text = this.pickActivityText(activity, prev);
+      if(activity.id==="reading_book") ReadingEngine.applyLeisureProgress(durSec);
     }
     this.currentUntil = Date.now() + durSec*1000;
     this.recentIds.push(activity.id);
@@ -2140,6 +2348,14 @@ const ActivityEngine = {
     // show up as "she keeps checking the time tonight" — nothing here
     // is announced, only which small gesture gets picked changes.
     const pool = this.current.micro.map(t=>({text:t, weight:2}));
+    // Reading identity: while a specific book/material is active, favor
+    // its genre/topic-appropriate micro-reactions over the activity's own
+    // plain ones (mystery eyes-widen, fantasy gaze drifts, cozy exhale,
+    // etc. — see reading_activity_engine behavioral rules), without
+    // removing the plain pool entirely.
+    if(["reading_book","study_reading"].includes(this.current.id)){
+      ReadingEngine.microPool().forEach(t=>pool.push({text:t, weight:2.4}));
+    }
     if(f.highStress) GENERIC_MICRO.stress.forEach(t=>pool.push({text:t, weight:1.5}));
     if(f.highBoredom && !focusedWork) GENERIC_MICRO.boredom.forEach(t=>pool.push({text:t, weight:1.3}));
     if(f.lowEnergy) GENERIC_MICRO.lowEnergy.forEach(t=>pool.push({text:t, weight:1.3}));
@@ -2982,6 +3198,208 @@ const NewsEngine = {
 };
 
 /* ============================================================
+   10b. READING ENGINE — gives the existing `study_reading` and
+   `reading_book` hobby activities a *specific* piece of material
+   instead of the generic text pool they've always had. Purely a
+   flavor/identity layer on top: it never touches an activity's own
+   `effects` (those still come from ACTIVITIES as before), it only
+   supplies pickActivityText()/microUpdate() with something concrete
+   to say, and occasionally has her react out loud to it.
+
+   Leisure books persist across multiple reading_book sessions —
+   she's "currently reading" something, same as a real person, rather
+   than starting a brand new novel every evening. Each session's
+   randomly-rolled duration (the same durSec ActivityEngine already
+   rolls to decide how long the activity displays for) converts to a
+   number of pages at a genre-appropriate pace, so a 6-minute session
+   and a 20-minute session genuinely read differently. A book is
+   "finished" only once real accumulated pages cross its total page
+   count — not a flat random chance — and each completion is counted
+   in `finishedCount`, surfaced in the Settings panel as "Books
+   finished". Academic material is rerolled fresh every session
+   instead, since assigned readings genuinely change chapter to
+   chapter/week to week, and course reading doesn't track pages.
+   ============================================================ */
+const ReadingEngine = {
+  book: null,     // {genre, title, author, hook, mood, totalPages, pagesRead} — the leisure book in progress, or null
+  session: null,  // {kind:"leisure"|"academic", ...} — the *current* activity instance's flavor, or null when not reading
+  finishedCount: 0, // lifetime count of leisure books finished — shown in Settings
+  lastReactAt: 0,
+  reactMinGapMs: 10*60*1000, // real minutes between spoken in-book reactions
+
+  // --- leisure book lifecycle -------------------------------------------
+  pickGenre(){
+    // Slight bias toward cozier genres late at night, toward mystery/
+    // thriller in the evening, no real bias otherwise — nothing here is
+    // meant to be a hard rule, just a gentle nudge.
+    const tod = Clock.timeOfDay();
+    const pool = READING_LEISURE_GENRES.map(g=>({ id:g, w:1 }));
+    pool.forEach(p=>{
+      if(tod==="night" || tod==="late_night"){
+        if(["slice_of_life","poetry","fantasy"].includes(p.id)) p.w = 1.6;
+        if(p.id==="thriller") p.w = 0.6;
+      }
+      if(tod==="evening" && ["mystery","thriller"].includes(p.id)) p.w = 1.4;
+    });
+    return RNG.weightedPick(pool, x=>x.w).id;
+  },
+
+  startNewBook(){
+    const genre = this.pickGenre();
+    const pool = READING_CONTENT[genre];
+    this.book = {
+      genre,
+      title: RNG.pick(pool.titles),
+      author: RNG.pick(pool.authors),
+      hook: RNG.pick(pool.plotHooks),
+      mood: RNG.pick(pool.readingMoods),
+      totalPages: RNG.intRange(pool.pageRange[0], pool.pageRange[1]),
+      pagesRead: 0,
+    };
+    Memory.log("activity", `Satomi starts reading "${this.book.title}" by ${this.book.author}.`);
+    return this.book;
+  },
+
+  // Called from ActivityEngine.pickActivityText() when a reading_book
+  // session begins. Guarantees a book exists and a session is recorded —
+  // display text is a separate 85%-of-the-time roll made by the caller,
+  // but the book itself, and its page progress, always advance regardless
+  // of which text variant gets shown (see applyLeisureProgress below).
+  beginLeisure(){
+    const isNewBook = !this.book;
+    if(isNewBook) this.startNewBook();
+    const b = this.book;
+    this.session = { kind:"leisure", genre:b.genre };
+    if(isNewBook){
+      return `Satomi is reading "${b.title}" by ${b.author}, ${b.hook}`;
+    }
+    // Continuing a book already in progress — vary the opening line so it
+    // doesn't just repeat the same full description every sitting.
+    const pagesLeft = Math.max(0, b.totalPages - b.pagesRead);
+    const nearEnd = pagesLeft > 0 && pagesLeft <= 25;
+    const continuing = nearEnd ? [
+      `Satomi picks "${b.title}" back up — she's close to the end now.`,
+      `Satomi settles in with "${b.title}"; just a little left to go.`,
+    ] : [
+      `Satomi picks "${b.title}" back up where she left off.`,
+      `Satomi is back to "${b.title}", curling up with it again.`,
+      `Satomi settles in to keep reading "${b.title}".`,
+    ];
+    return RNG.pick(continuing);
+  },
+
+  // Called from ActivityEngine.pickActivityText() when a study_reading
+  // session begins. Always fresh material — no continuity, no page
+  // tracking (an assigned chapter doesn't carry over like a novel does).
+  beginAcademic(){
+    const pool = READING_CONTENT.academic;
+    const material = {
+      topic: RNG.pick(pool.topics),
+      materialType: RNG.pick(pool.materialTypes),
+      content: RNG.pick(pool.coreContent),
+      density: RNG.pick(pool.densities),
+    };
+    this.session = { kind:"academic", ...material };
+    return `Satomi is reviewing ${material.materialType} ${material.topic}, specifically focusing on ${material.content}.`;
+  },
+
+  // --- realistic time-on-page --------------------------------------------
+  // Called once from ActivityEngine.setActivity(), right after a
+  // reading_book session's duration (durSec) has already been randomly
+  // rolled from the activity's own [min,max] range in ACTIVITIES — so the
+  // "how long did she actually spend reading" number is exactly the same
+  // one driving how long the activity displays for, nothing invented on
+  // the side. That many real minutes, at a genre-appropriate pace (nudged
+  // slower when she's tired or unfocused), is how many pages she gets
+  // through this sitting. When she crosses the book's total page count,
+  // it's finished — a real completion, not a flat random chance.
+  applyLeisureProgress(durSec){
+    const b = this.book;
+    if(!b) return;
+    const minutes = durSec / 60;
+    const pool = READING_CONTENT[b.genre];
+    let pace = RNG.range(pool.pagesPerMinuteRange[0], pool.pagesPerMinuteRange[1]);
+    const f = StateEngine.flags();
+    if(f.lowEnergy) pace *= 0.75;      // tired reading is slower going
+    if(f.highFocus) pace *= 1.15;      // absorbed reading moves faster
+    const pagesThisSession = Math.max(1, Math.round(minutes * pace));
+    b.pagesRead = Math.min(b.totalPages, b.pagesRead + pagesThisSession);
+    if(b.pagesRead >= b.totalPages){
+      this.finishedCount++;
+      Memory.log("major", `Satomi finishes reading "${b.title}".`);
+      if(RNG.chance(0.6)) UI.speak(`I finally finished it. "${b.title}"... I'm glad I picked it up.`);
+      this.book = null;
+    }
+  },
+
+  // Genre/topic-appropriate micro-action pool, blended into
+  // ActivityEngine.microUpdate()'s weighted pool on top of the activity's
+  // own generic micro lines (see that function for how weighting works).
+  microPool(){
+    if(!this.session) return [];
+    if(this.session.kind==="academic") return READING_CONTENT.academic.micro;
+    return READING_CONTENT[this.session.genre].micro || [];
+  },
+
+  eligible(){
+    return !!this.session && !!ActivityEngine.current && ["reading_book","study_reading"].includes(ActivityEngine.current.id);
+  },
+
+  // Occasional short spoken reaction naming the book/topic directly —
+  // same rare, cooldown-gated shape as NewsEngine.maybeTrigger, so it
+  // reads as an occasional real moment rather than constant narration.
+  maybeReact(){
+    if(!this.eligible()) return false;
+    if(Date.now()-this.lastReactAt < this.reactMinGapMs) return false;
+    if(!RNG.chance(0.12)) return false;
+    this.lastReactAt = Date.now();
+    let line;
+    if(this.session.kind==="academic"){
+      const tired = StateEngine.flags().lowEnergy;
+      const lines = tired
+        ? [`This chapter is taking forever...`, `I really need to finish this section before tonight.`, `Two more pages and I'm taking a break.`]
+        : [`Okay, this part actually makes sense.`, `I should remember this for the exam.`, `Huh — I didn't expect that.`];
+      line = RNG.pick(lines);
+    } else if(this.book) {
+      const b = this.book;
+      const pagesLeft = Math.max(0, b.totalPages - b.pagesRead);
+      const generic = [
+        `I did not see that coming.`,
+        `I should recommend this to Mio.`,
+        `Just a little more, then I'll stop for tonight.`,
+        `This part of "${b.title}" is really good.`,
+      ];
+      if(pagesLeft > 0 && pagesLeft <= 15) generic.push(`Only a few pages left in "${b.title}" — I might just finish it tonight.`);
+      line = RNG.pick(generic);
+    } else {
+      return false;
+    }
+    UI.speak(line);
+    Memory.log("dialogue", line);
+    return true;
+  },
+
+  serialize(){
+    return { book: this.book ? Object.assign({}, this.book) : null, finishedCount: this.finishedCount };
+  },
+  restore(saved){
+    this.finishedCount = (saved && Number.isFinite(saved.finishedCount) && saved.finishedCount >= 0) ? saved.finishedCount : 0;
+    if(!saved || !saved.book){ this.book = null; return; }
+    const b = saved.book;
+    const validCore = typeof b.genre==="string" && READING_LEISURE_GENRES.includes(b.genre) &&
+       typeof b.title==="string" && typeof b.author==="string" &&
+       typeof b.hook==="string" && typeof b.mood==="string";
+    if(validCore){
+      const totalPages = Number.isFinite(b.totalPages) && b.totalPages > 0 ? b.totalPages : RNG.intRange(...READING_CONTENT[b.genre].pageRange);
+      const pagesRead = Number.isFinite(b.pagesRead) && b.pagesRead >= 0 ? Math.min(b.pagesRead, totalPages) : 0;
+      this.book = { genre:b.genre, title:b.title, author:b.author, hook:b.hook, mood:b.mood, totalPages, pagesRead };
+    } else {
+      this.book = null;
+    }
+  },
+};
+
+/* ============================================================
    11. LIFE THREAD ENGINE
    ============================================================ */
 const LifeThreadEngine = {
@@ -3447,6 +3865,7 @@ const Persistence = {
         commuteOrigin: ActivityEngine.commuteOrigin || null
       },
       outing: OutingEngine.serialize(),
+      reading: ReadingEngine.serialize(),
       // These are behavioral memory buffers. Persisting them makes an
       // export/import continue with the same anti-repeat context instead of
       // behaving like a completely fresh session.
@@ -3601,6 +4020,12 @@ const Persistence = {
       if(!p.dialogue || typeof p.dialogue !== "object" || !Array.isArray(p.dialogue.recentLineIds)) return false;
       if(p.dialogue.lastSpokenAt !== undefined && (!Number.isFinite(p.dialogue.lastSpokenAt) || p.dialogue.lastSpokenAt < 0)) return false;
     }
+    if(p.reading !== undefined && p.reading !== null){
+      if(typeof p.reading !== "object") return false;
+      // Loose on purpose: ReadingEngine.restore() re-validates each field
+      // itself and quietly drops the in-progress book rather than failing
+      // the whole save if it's malformed — this is just flavor state.
+    }
     if(p.environment !== undefined){
       if(!p.environment || typeof p.environment !== "object" || !Array.isArray(p.environment.recentIds)) return false;
     }
@@ -3651,6 +4076,7 @@ const Persistence = {
         }
       }
       OutingEngine.restore(p.outing || null);
+      ReadingEngine.restore(p.reading || null);
       if(p.dialogue){
         DialogueEngine.recentLineIds = p.dialogue.recentLineIds.filter(id=>typeof id==="string");
         DialogueEngine.lastSpokenAt = Number.isFinite(p.dialogue.lastSpokenAt) ? p.dialogue.lastSpokenAt : 0;
@@ -3978,6 +4404,7 @@ const UI = {
       ["Days together", days],
       ["Time spent together", hours+" hrs"],
       ["Interactions", Presence.interactions],
+      ["Books finished", ReadingEngine.finishedCount],
     ];
     this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
   },
@@ -4460,6 +4887,7 @@ const Sim = {
       if(Availability.isHome()) DialogueEngine.maybeSpeak();
     }
     NewsEngine.maybeTrigger();
+    ReadingEngine.maybeReact();
     Persistence.scheduleSave();
   }
 };
@@ -4499,6 +4927,8 @@ const Debug = {
       ["outing — primary dest.", OutingEngine.current ? OutingEngine.hub().label : "-"],
       ["outing — sub-location (spoiler)", OutingEngine.current ? OutingEngine.sub().label : "-"],
       ["outing — returns at", OutingEngine.current ? new Date(OutingEngine.current.returnAt).toLocaleTimeString() : "-"],
+      ["currently reading", ReadingEngine.book ? `"${ReadingEngine.book.title}" by ${ReadingEngine.book.author} (${ReadingEngine.book.genre}) — p.${ReadingEngine.book.pagesRead}/${ReadingEngine.book.totalPages}` : "-"],
+      ["books finished (leisure)", ReadingEngine.finishedCount],
       ["Birthday", "Feb 8"],
       ["Birthday Greeting", !Birthday.isToday() ? "Not Active" : (Birthday.alreadyGreetedThisYear() ? "Greeted" : (Availability.isHome() ? "Available" : "Not Active (away/asleep)"))],
       ["mood", StateEngine.currentMoodTag()],
@@ -4567,6 +4997,8 @@ const Debug = {
       ["Force Away (Long)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_visiting"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
       ["Force Return Home", ()=>{ const a=CONTENT.activities.find(x=>x.id==="break_stretch"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced return home");} this.render(); }],
       ["Clear Away Cooldown", ()=>{ ActivityEngine.awayCooldownUntil=0; this.note("away cooldown cleared"); this.render(); }],
+      ["Force Reading (leisure)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="reading_book"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced reading_book -> "+(ReadingEngine.book?ReadingEngine.book.title:"?"));} this.render(); }],
+      ["Force Finish Current Book", ()=>{ if(ReadingEngine.book){ const t=ReadingEngine.book.title; ReadingEngine.finishedCount++; ReadingEngine.book=null; this.note("finished (forced): "+t);} else { this.note("no book in progress"); } this.render(); }],
       // --- Outing system testing (schedule constraints, weekday/weekend
       // rules, distance/duration filtering, Life Log, missed returns) ---
       ["Outing: Show Candidates (console)", ()=>{
