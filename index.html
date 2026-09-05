@@ -378,6 +378,23 @@ nav.tabbar button.bs-locked-tab{ opacity:.45; }
 .audio-row input[type="range"]::-moz-range-track{
   background:var(--line); height:3px; border-radius:2px;
 }
+.audio-row-toggle{ flex-direction:row; align-items:center; justify-content:space-between; gap:12px; }
+.toggle-switch{ position:relative; display:inline-block; flex:0 0 auto; width:42px; height:23px; }
+.toggle-switch input{ position:absolute; opacity:0; width:0; height:0; }
+.toggle-slider{
+  position:absolute; inset:0; cursor:pointer; border-radius:24px;
+  background:#565b68; /* off = neutral gray */
+  transition:background .2s ease;
+}
+.toggle-slider::before{
+  content:""; position:absolute; left:3px; top:3px; width:17px; height:17px;
+  background:#f2efe8; border-radius:50%;
+  box-shadow:0 1px 3px rgba(0,0,0,.35);
+  transition:transform .2s ease;
+}
+.toggle-switch input:checked + .toggle-slider{ background:#3f8a5b; /* on = green */ }
+.toggle-switch input:checked + .toggle-slider::before{ transform:translateX(19px); }
+.toggle-switch input:focus-visible + .toggle-slider{ outline:2px solid var(--accent); outline-offset:2px; }
 
 /* music toggle */
 .music-toggle{
@@ -632,9 +649,12 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
         <label for="ambientVolumeSlider">Ambient Sounds</label>
         <input type="range" id="ambientVolumeSlider" min="0" max="100" value="55">
       </div>
-      <div class="audio-row">
+      <div class="audio-row audio-row-toggle">
         <label for="newsRingtoneToggle">News Ringtone</label>
-        <input type="checkbox" id="newsRingtoneToggle" checked>
+        <label class="toggle-switch">
+          <input type="checkbox" id="newsRingtoneToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
       </div>
     </div>
     <button class="settings-btn" id="exportBtn">Export save data</button>
