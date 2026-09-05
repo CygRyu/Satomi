@@ -714,6 +714,16 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
         </label>
       </div>
     </div>
+    <div class="audio-settings immersion-settings">
+      <div class="audio-settings-label">PRESENCE</div>
+      <div class="audio-row audio-row-toggle">
+        <label for="motionAwarenessToggle">Motion Awareness</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="motionAwarenessToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
     <button class="settings-btn" id="importBtn">Import save data</button>
     <input type="file" id="importFile" accept="application/json" style="display:none">
     <button class="settings-btn danger" id="resetBtn">Reset everything</button>
@@ -4700,6 +4710,227 @@ const NewsRingtone = {
 };
 
 /* ============================================================
+   13b3. MOTION AWARENESS — an optional, privacy-conscious signal
+   that lets Satomi occasionally notice the *player* moving in the
+   real world (this is about the phone's own accelerometer, not
+   any of her simulated in-game activity/location). Off by default;
+   the device motion permission is requested only once the player
+   explicitly flips the toggle on. Same gesture-unlock fallback
+   used to recover blocked audio autoplay (see
+   NewsRingtone._armResumeOnGesture / Music._armResumeOnGesture)
+   covers the case where a saved "on" preference can't re-request
+   permission on page load because there's no fresh user gesture yet.
+   No GPS, no location of any kind, ever. No sensor subscription at
+   all while the tab isn't visible (see _onVisibility) — this never
+   monitors in the background.
+   ============================================================ */
+const MotionAwareness = {
+  KEY: "satomi_motion_awareness_pref",
+  enabled: false,           // persisted locally, default OFF
+  permissionGranted: false, // session-only — re-derived each load, never assumed carried over
+  checkbox: null,
+  _subscribed: false,
+  _gestureArmed: false,
+  _visBound: false,
+
+  // Sensing state — session-only, never persisted (no raw sensor data
+  // is ever saved/exported, only the derived cooldown timestamp below).
+  samples: [],
+  baseline: null,
+  sustainedSince: null,
+
+  // Cross-session cooldown so a long walk (or repeated short ones)
+  // can't spam dialogue — see Persistence buildPayload/restore.
+  lastCommentAt: 0,
+
+  WINDOW_MS: 6000,          // rolling window used to judge "sustained"
+  MIN_SUSTAIN_MS: 5000,     // must stay elevated this long — ignores brief jostles/single bumps
+  ACTIVE_THRESHOLD: 1.6,    // m/s^2 deviation from the slow baseline counts as "active"
+  MIN_ACTIVE_RATIO: 0.55,   // fraction of the window that must be "active" to count as sustained
+  COOLDOWN_MS: 20*60000,    // strong cooldown — at most one comment per ~20 minutes
+
+  init(){
+    this.checkbox = document.getElementById("motionAwarenessToggle");
+    let pref;
+    try{ pref = localStorage.getItem(this.KEY); }catch(e){ pref = null; }
+    this.enabled = pref === "1"; // default OFF unless the player explicitly opted in before
+    if(this.checkbox){
+      this.checkbox.checked = this.enabled;
+      this.checkbox.onchange = ()=> this._onToggle(this.checkbox.checked);
+    }
+    if(!this._visBound){
+      this._visBound = true;
+      // The one and only background-monitoring guard: sensor subscription
+      // is torn down the instant the tab/app isn't visible, and only
+      // re-armed once it's visible again (and still enabled/permitted).
+      document.addEventListener("visibilitychange", ()=>{
+        if(document.hidden) this._unsubscribe();
+        else if(this.enabled && this.permissionGranted) this._subscribe();
+      });
+    }
+    if(this.enabled){
+      this._armPermissionOnGesture();
+    }
+  },
+
+  _onToggle(checked){
+    if(checked) this._requestAndStart();
+    else this._turnOff();
+  },
+
+  _requestAndStart(){
+    const DM = window.DeviceMotionEvent;
+    if(!DM){ this._turnOff(); return; } // unsupported — fail silently, rest of the app is unaffected
+    if(typeof DM.requestPermission === "function"){
+      // iOS 13+ style explicit permission flow. This call happens directly
+      // inside the checkbox's onchange handler, i.e. still within the
+      // click gesture, so it's allowed to prompt.
+      DM.requestPermission().then(state=>{
+        if(state === "granted") this._turnOn();
+        else this._turnOff();
+      }).catch(()=>{ this._turnOff(); });
+    } else {
+      this._turnOn(); // platform needs no explicit permission step
+    }
+  },
+
+  _turnOn(){
+    this.enabled = true;
+    this.permissionGranted = true;
+    try{ localStorage.setItem(this.KEY, "1"); }catch(e){}
+    if(this.checkbox) this.checkbox.checked = true;
+    if(!document.hidden) this._subscribe();
+  },
+
+  _turnOff(){
+    this.enabled = false;
+    this.permissionGranted = false;
+    try{ localStorage.setItem(this.KEY, "0"); }catch(e){}
+    if(this.checkbox) this.checkbox.checked = false;
+    this._unsubscribe();
+  },
+
+  // Covers the "was enabled last session" case: iOS requires
+  // requestPermission() to run synchronously inside a fresh user gesture,
+  // which a page-load init() never has. Same one-time
+  // pointerdown/keydown-anywhere pattern NewsRingtone/Music already use
+  // to recover blocked autoplay, reused here for the permission prompt.
+  _armPermissionOnGesture(){
+    if(this._gestureArmed) return;
+    this._gestureArmed = true;
+    const tryUnlock = ()=>{
+      document.removeEventListener("pointerdown", tryUnlock);
+      document.removeEventListener("keydown", tryUnlock);
+      this._gestureArmed = false;
+      if(!this.enabled || this.permissionGranted) return; // turned off, or already granted this session
+      const DM = window.DeviceMotionEvent;
+      if(!DM) return;
+      if(typeof DM.requestPermission === "function"){
+        DM.requestPermission().then(state=>{
+          if(state === "granted") this._turnOn();
+          // denied: stay quiet — don't nag, don't retry automatically
+        }).catch(()=>{});
+      } else {
+        this._turnOn();
+      }
+    };
+    document.addEventListener("pointerdown", tryUnlock, {once:true});
+    document.addEventListener("keydown", tryUnlock, {once:true});
+  },
+
+  _subscribe(){
+    if(this._subscribed) return;
+    this._subscribed = true;
+    this.samples = [];
+    this.baseline = null;
+    this.sustainedSince = null;
+    window.addEventListener("devicemotion", this._onMotion);
+  },
+  _unsubscribe(){
+    if(!this._subscribed) return;
+    this._subscribed = false;
+    window.removeEventListener("devicemotion", this._onMotion);
+    this.samples = [];
+    this.sustainedSince = null;
+  },
+
+  _onMotion(e){
+    if(document.hidden) return; // extra guard alongside the visibilitychange unsubscribe
+    const a = (e.acceleration && e.acceleration.x!=null) ? e.acceleration : e.accelerationIncludingGravity;
+    if(!a || a.x==null) return;
+    const mag = Math.sqrt((a.x||0)**2 + (a.y||0)**2 + (a.z||0)**2);
+    MotionAwareness._sample(mag);
+  },
+
+  _sample(mag){
+    const now = Date.now();
+    // Slow low-pass baseline so detection reacts to *change*, not to
+    // however the phone happens to be held/oriented (which shifts the
+    // raw magnitude a lot on its own, gravity included).
+    this.baseline = (this.baseline==null) ? mag : (this.baseline*0.9 + mag*0.1);
+    const active = Math.abs(mag - this.baseline) > this.ACTIVE_THRESHOLD;
+    this.samples.push({t: now, active});
+    const cutoff = now - this.WINDOW_MS;
+    while(this.samples.length && this.samples[0].t < cutoff) this.samples.shift();
+    this._evaluate(now);
+  },
+
+  // Requires *sustained*, mostly-continuous motion across the window,
+  // not just one or two spikes — a phone picked up, set down, or
+  // briefly jostled never qualifies.
+  _evaluate(now){
+    if(this.samples.length < 10) return; // not enough data yet
+    const activeCount = this.samples.reduce((n,s)=>n+(s.active?1:0), 0);
+    const ratio = activeCount / this.samples.length;
+    const spanMs = now - this.samples[0].t;
+    const sustained = ratio >= this.MIN_ACTIVE_RATIO && spanMs >= this.WINDOW_MS*0.8;
+    if(sustained){
+      if(this.sustainedSince == null) this.sustainedSince = now;
+      if(now - this.sustainedSince >= this.MIN_SUSTAIN_MS) this._maybeComment(now);
+    } else {
+      this.sustainedSince = null;
+    }
+  },
+
+  _maybeComment(now){
+    // Reset the streak marker regardless of the cooldown outcome below,
+    // so one continuous walk can't re-qualify and re-check every sample.
+    this.sustainedSince = now;
+    if(!this.enabled) return;
+    if(now - this.lastCommentAt < this.COOLDOWN_MS) return;
+    this.lastCommentAt = now;
+    Persistence.scheduleSave();
+    // Reuses Familiarity exactly like the other ambient/idle comment
+    // pools (HiddenTapEasterEgg, QUIET_LINES) — more time together
+    // unlocks a warmer, more personal pool, same convention throughout.
+    const tier = Familiarity.tier();
+    const pool = tier>=3 ? this.WARM_LINES : (tier>=1 ? this.MID_LINES : this.LOW_LINES);
+    const text = RNG.pick(pool);
+    UI.speak(text);
+    Memory.log("dialogue", text);
+  },
+
+  LOW_LINES: [
+    "Are you going somewhere?",
+    "Are we going for a walk?",
+    "You're on the move today.",
+    "Hm, feels like you're walking."
+  ],
+  MID_LINES: [
+    "Walking somewhere? Don't trip on my account.",
+    "You're moving around a lot right now.",
+    "Off to somewhere, huh? Try not to keep me waiting.",
+    "Careful out there — you're clearly not sitting still."
+  ],
+  WARM_LINES: [
+    "Wherever you're headed, let me know when you get there. ...Not that I'd worry.",
+    "You always walk fast when you're thinking about something. Is that what's happening?",
+    "On the move again. I don't mind — I just like knowing you're out there, doing something.",
+    "Mm, I can tell you're walking. Watch where you're going, okay?"
+  ]
+};
+
+/* ============================================================
    13c. WEATHER AMBIENT AUDIO
    Drives ambient loops off WeatherEngine's existing state/ids —
    no parallel weather system. Only reacts when the weather id
@@ -5076,6 +5307,11 @@ const Persistence = {
       // saved. This alone is enough to keep the rare-moment cooldown
       // honest across reloads/restarts.
       quietPresence: { lastMomentAt: QuietPresence.lastMomentAt || 0 },
+      // Only the cooldown timestamp — never raw sensor data, and never
+      // the enabled/permission state (that lives in its own localStorage
+      // key, same convention as NewsRingtone/Music, since permission
+      // itself can't be carried across an export/import anyway).
+      motionAwareness: { lastCommentAt: MotionAwareness.lastCommentAt || 0 },
       familyCall: { lastCallDateKey: FamilyCall.lastCallDateKey },
       hiddenTap: { dateKey: HiddenTapEasterEgg.dateKey, triggersToday: HiddenTapEasterEgg.triggersToday },
       log: Memory.entriesForSave(),
@@ -5139,6 +5375,7 @@ const Persistence = {
     }
     if(p.birthday !== undefined && (!p.birthday || typeof p.birthday !== "object" || (p.birthday.lastGreetedYear !== undefined && !Number.isFinite(p.birthday.lastGreetedYear)))) return false;
     if(p.quietPresence !== undefined && (!p.quietPresence || typeof p.quietPresence !== "object" || (p.quietPresence.lastMomentAt !== undefined && (!Number.isFinite(p.quietPresence.lastMomentAt) || p.quietPresence.lastMomentAt < 0)))) return false;
+    if(p.motionAwareness !== undefined && (!p.motionAwareness || typeof p.motionAwareness !== "object" || (p.motionAwareness.lastCommentAt !== undefined && (!Number.isFinite(p.motionAwareness.lastCommentAt) || p.motionAwareness.lastCommentAt < 0)))) return false;
     if(p.familyCall !== undefined && (!p.familyCall || typeof p.familyCall !== "object" || (p.familyCall.lastCallDateKey !== undefined && p.familyCall.lastCallDateKey !== null && typeof p.familyCall.lastCallDateKey !== "string"))) return false;
     if(p.hiddenTap !== undefined){
       if(!p.hiddenTap || typeof p.hiddenTap !== "object") return false;
@@ -5311,6 +5548,7 @@ const Persistence = {
       QuietPresence.activityCategoryAtStart = null;
       QuietPresence.sessionMomentFired = false;
       QuietPresence.lastMomentAt = (p.quietPresence && Number.isFinite(p.quietPresence.lastMomentAt)) ? p.quietPresence.lastMomentAt : 0;
+      MotionAwareness.lastCommentAt = (p.motionAwareness && Number.isFinite(p.motionAwareness.lastCommentAt)) ? p.motionAwareness.lastCommentAt : 0;
       FamilyCall.lastCallDateKey = (p.familyCall && typeof p.familyCall.lastCallDateKey === "string") ? p.familyCall.lastCallDateKey : null;
       HiddenTapEasterEgg.dateKey = (p.hiddenTap && typeof p.hiddenTap.dateKey === "string") ? p.hiddenTap.dateKey : null;
       HiddenTapEasterEgg.triggersToday = (p.hiddenTap && Number.isFinite(p.hiddenTap.triggersToday)) ? p.hiddenTap.triggersToday : 0;
@@ -5953,6 +6191,7 @@ const UI = {
     const a = document.getElementById("ambientVolumeSlider");
     const ai = document.getElementById("ambientVolumeInput");
     const n = document.getElementById("newsRingtoneToggle");
+    const mo = document.getElementById("motionAwarenessToggle");
     const musicPct = Math.round(Music.volume*100);
     const ambientPct = Math.round(WeatherAudio.volume*100);
     if(m){ m.value = musicPct; m.style.setProperty("--fill", musicPct+"%"); }
@@ -5960,6 +6199,7 @@ const UI = {
     if(a){ a.value = ambientPct; a.style.setProperty("--fill", ambientPct+"%"); }
     if(ai) ai.value = ambientPct;
     if(n) n.checked = NewsRingtone.enabled;
+    if(mo) mo.checked = MotionAwareness.enabled;
   }
 };
 function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
@@ -6741,6 +6981,8 @@ const Debug = {
       ["Quiet Presence", QuietPresence.active ? `active (${Math.round((Date.now()-QuietPresence.startedAt)/1000)}s, moment ${QuietPresence.sessionMomentFired?"fired":"pending"})` : "inactive"],
       ["Quiet Presence restart cooldown", (QuietPresence.endedAt && (Date.now()-QuietPresence.endedAt)<QuietPresence.RESTART_COOLDOWN_MS) ? Math.round((QuietPresence.RESTART_COOLDOWN_MS-(Date.now()-QuietPresence.endedAt))/1000)+"s left" : "ready"],
       ["Quiet Presence moment cooldown", (QuietPresence.lastMomentAt && (Date.now()-QuietPresence.lastMomentAt)<QuietPresence.MOMENT_COOLDOWN_MS) ? Math.round((QuietPresence.MOMENT_COOLDOWN_MS-(Date.now()-QuietPresence.lastMomentAt))/1000)+"s left" : "ready"],
+      ["Motion Awareness", `enabled=${MotionAwareness.enabled} permission=${MotionAwareness.permissionGranted} subscribed=${MotionAwareness._subscribed}`],
+      ["Motion Awareness cooldown", (MotionAwareness.lastCommentAt && (Date.now()-MotionAwareness.lastCommentAt)<MotionAwareness.COOLDOWN_MS) ? Math.round((MotionAwareness.COOLDOWN_MS-(Date.now()-MotionAwareness.lastCommentAt))/1000)+"s left" : "ready"],
       ["mood", StateEngine.currentMoodTag()],
       ["energy", Math.round(s.energy)], ["focus", Math.round(s.focus)],
       ["stress", Math.round(s.stress)], ["hunger", Math.round(s.hunger)],
@@ -6792,6 +7034,14 @@ const Debug = {
         UI.tickClock(); UI.refreshInteractGridIfOpen(); this.note("jumped to Feb 8"); this.render();
       }],
       ["Reset Birthday (this year)", ()=>{ Birthday.lastGreetedYear=0; Persistence.scheduleSave(); UI.refreshInteractGridIfOpen(); this.note("birthday greeting reset"); this.render(); }],
+      // --- Motion Awareness testing ---
+      ["Motion Awareness: Force Trigger Comment", ()=>{
+        MotionAwareness.lastCommentAt = 0;
+        MotionAwareness._maybeComment(Date.now());
+        this.note("motion awareness comment forced");
+        this.render();
+      }],
+      ["Motion Awareness: Reset Cooldown", ()=>{ MotionAwareness.lastCommentAt = 0; Persistence.scheduleSave(); this.note("motion awareness cooldown reset"); this.render(); }],
       // --- Quiet Presence testing ---
       ["Quiet Presence: Start", ()=>{ const ok=QuietPresence.start(); this.note(ok?"quiet presence started":"couldn't start (already active, cooling down, or she's not home)"); UI.refreshInteractGridIfOpen(); this.render(); }],
       ["Quiet Presence: End", ()=>{ QuietPresence.end(); this.note("quiet presence ended"); UI.refreshInteractGridIfOpen(); this.render(); }],
@@ -7294,6 +7544,7 @@ function boot(){
   Music.init();
   WeatherAudio.init();
   NewsRingtone.init();
+  MotionAwareness.init();
   CicadaAudio.init();
   const hadSave = Persistence.load();
   UI.syncAudioSliders(); // reflect any restored volumes now that load() has run
