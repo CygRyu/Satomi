@@ -4406,6 +4406,18 @@ const UI = {
       ["Interactions", Presence.interactions],
       ["Books finished", ReadingEngine.finishedCount],
     ];
+    // Currently-reading readout: purely a display of whatever ReadingEngine
+    // already tracks internally (book.title/pagesRead/totalPages) — no
+    // separate input or state of its own, so it can never drift from what
+    // actually drives her reading_book status lines and page progress.
+    const book = ReadingEngine.book;
+    if(book){
+      const pct = book.totalPages>0 ? Math.round((book.pagesRead/book.totalPages)*100) : 0;
+      rows.push(["Currently reading", book.title]);
+      rows.push(["Progress", `p.${book.pagesRead}/${book.totalPages} (${pct}%)`]);
+    } else {
+      rows.push(["Currently reading", "No active book"]);
+    }
     this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
   },
   // Reflects current volumes onto the sliders. Only ever touches the
