@@ -373,6 +373,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
 </div>
 
 <audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
+<audio id="bgMusicSleep" src="sleep_music.mp3" loop preload="auto"></audio>
 <audio id="audioLightRain" src="light_rain.mp3" loop preload="auto"></audio>
 <audio id="audioHeavyRain" src="heavy_rain.mp3" loop preload="auto"></audio>
 <audio id="audioThunderstorm" src="thunderstorm.mp3" loop preload="auto"></audio>
@@ -705,18 +706,18 @@ const DIALOGUE = [
   {id:"family01",category:"family",mood:["any"],context:["phone_call_family"],text:["My mom worries too much.","My brother's exams are coming up too.","I should visit Kanazawa again soon."],weight:3},
 
   // casual / thoughtful
-  {id:"cas01",category:"casual",mood:["any"],context:["any"],text:["I wonder what time it is.","This chair is really not comfortable.","I need a new pen, this one's almost out of ink.","I should probably water that plant.","I've been sitting here for too long.","Where did I put my charger.","I really need to clean this room.","I wonder if there's anything good in the fridge.","I forgot to buy tissues again.","Maybe I should open the window.","I haven't listened to that album in ages.","I should probably replace this notebook soon.","I keep meaning to fix that.","I wonder what the neighbors are doing.","I've been drinking too much tea lately.","I need to remember to take the trash out.","Why is my desk always messy again so quickly.","I should probably stretch for a minute.","My neck always gets stiff when I sit like this.","Did I leave the stove on? No, I didn't even use it.","I need to reorganize my bookshelves one of these days.","Where did that eraser roll off to?","My glasses are getting smudged again.","I think I have an extra notebook in the closet.","I should start buying sticky notes in bulk.","Is it chilly in here or is it just me?","I keep losing my favorite paperclips.","I should go outside tomorrow."],weight:3},
-  {id:"thoughtful01",category:"thoughtful",mood:["relaxed"],context:["any"],text:["Sometimes I wonder if I'm actually going anywhere with all this.","I want to study abroad someday. Vienna, maybe.","I like days like this, even the boring parts.","I wonder if I'll still like the same books ten years from now.","Sometimes it's nice when nothing particularly happens.","I think I remember things better when I write them down.","I wonder what this place will feel like when I graduate.","I'd like to travel somewhere without having an itinerary for once.","I wonder if I'll remember the sound of the rain in this room years from now.","It's strange how a song can make a place feel completely different.","I hope I don't lose touch with everyone after graduation.","Sometimes I feel like time moves slower when I'm actually paying attention.","I wonder what version of myself I'll be five years from now.","It’s funny how a quiet room can feel so full sometimes.","I like how coffee tastes when the morning is still dark.","Maybe being a little lost is just part of figuring things out.","I wonder if anyone else is looking at the same moon right now.","There's something comforting about old, worn-out paper.","Maybe I don't need to have everything figured out yet.","I wonder if people realize how much small things become memories."],weight:2},
+  {id:"cas01",category:"casual",mood:["any"],context:["any"],text:["I wonder what time it is.","This chair is really not comfortable.","I need a new pen, this one's almost out of ink.","I should probably water that plant.","I've been sitting here for too long.","Where did I put my charger.","I really need to clean this room.","I wonder if there's anything good in the fridge.","I forgot to buy tissues again.","Maybe I should open the window.","I haven't listened to that album in ages.","I should probably replace this notebook soon.","I keep meaning to fix that.","I wonder what the neighbors are doing.","I've been drinking too much tea lately.","I need to remember to take the trash out.","Why is my desk always messy again so quickly.","I should go outside tomorrow."],weight:3},
+  {id:"thoughtful01",category:"thoughtful",mood:["relaxed"],context:["any"],text:["Sometimes I wonder if I'm actually going anywhere with all this.","I want to study abroad someday. Vienna, maybe.","I like days like this, even the boring parts.","I wonder if I'll still like the same books ten years from now.","Sometimes it's nice when nothing particularly happens.","I think I remember things better when I write them down.","I wonder what this place will feel like when I graduate.","I'd like to travel somewhere without having an itinerary for once.","Maybe I don't need to have everything figured out yet.","I wonder if people realize how much small things become memories."],weight:2},
 
   // complaint / humor
-  {id:"complaint01",category:"complaint",mood:["stressed"],context:["stats_homework"],text:["I hate statistics.","Why do I need this for a literature degree.","If I have to look at another scatter plot today I might lose my mind.","Who decided standard deviation was necessary knowledge for reading novels?","I'm fairly sure these formulas are written in an ancient, lost language.","My brain officially refuses to process any more data points.","I would trade three statistics midterms for ten term papers right now.","Numbers and I do not get along."],weight:3},
-  {id:"humor01",category:"humor",mood:["any"],context:["any"],text:["I just talked to myself out loud again, didn't I.","If overthinking were a class I'd have a perfect grade.","My productivity peaks precisely five minutes before I go to sleep.","I've spent ten minutes picking a background noise video instead of studying.","If procrastination burned calories I'd be an elite athlete.","I just spent five minutes staring at the wall like it was a museum piece.","My brain has thirty tabs open and twenty of them are frozen."],weight:2},
+  {id:"complaint01",category:"complaint",mood:["stressed"],context:["stats_homework"],text:["I hate statistics.","Why do I need this for a literature degree.","Numbers and I do not get along."],weight:3},
+  {id:"humor01",category:"humor",mood:["any"],context:["any"],text:["I just talked to myself out loud again, didn't I.","If overthinking were a class I'd have a perfect grade.","Don't tell anyone I do this."],weight:2},
 
   // small_observation
-  {id:"obs01",category:"small_observation",mood:["any"],context:["any"],text:["This pen is running out of ink.","I really need to clean my desk one of these days.","My tea's gone cold already.","There's a scratch on the table I don't remember seeing before.","The light outside looks different today.","My bookmark keeps falling out.","I've been using the same mug all week.","The shadow from the streetlamp shifted slightly.","I can hear a train passing in the distance.","The floorboard by the doorway creaks every single time.","There's a tiny crease on the corner of this page.","The street is completely empty right now.","My phone screen lit up, but it was just a low battery warning.","The breeze coming through the window smells like cold pavement.","I can see the steam rising off my cup.","The clock ticking feels louder when I try to focus.","A dry leaf just hit the window glass.","There's dust on the windowsill again.","I can hear someone walking upstairs.","The room feels warmer than it did earlier.","I left the curtains open.","I should probably charge my headphones.","That sound outside again.","My pencil's getting dull.","I forgot to turn the lamp off earlier.","The kettle is still warm.","I can hear the rain against the window.","The apartment is unusually quiet today."],weight:3},
+  {id:"obs01",category:"small_observation",mood:["any"],context:["any"],text:["This pen is running out of ink.","I really need to clean my desk one of these days.","My tea's gone cold already.","There's a scratch on the table I don't remember seeing before.","The light outside looks different today.","My bookmark keeps falling out.","I've been using the same mug all week.","There's dust on the windowsill again.","I can hear someone walking upstairs.","The room feels warmer than it did earlier.","I left the curtains open.","I should probably charge my headphones.","That sound outside again.","My pencil's getting dull.","I forgot to turn the lamp off earlier.","The kettle is still warm.","I can hear the rain against the window.","The apartment is unusually quiet today."],weight:3},
 
   // deep_personal / important_life_event (rare)
-  {id:"deep01",category:"deep_personal",mood:["stressed"],context:["exam_near"],text:["Sometimes I worry I'm not cut out for this.","Everyone else seems to have a clear direction, and I'm just guessing.","I pretend I have it together, but some days I feel completely overwhelmed.","What if I put all this effort in and it still isn't enough?","I get so quiet before exams because I'm trying not to panic.","I'm afraid of disappointing the people who believe in me.","I don't tell people this, but I get nervous about falling behind."],weight:1},
+  {id:"deep01",category:"deep_personal",mood:["stressed"],context:["exam_near"],text:["Sometimes I worry I'm not cut out for this.","I don't tell people this, but I get nervous about falling behind."],weight:1},
   {id:"life01",category:"important_life_event",mood:["any"],context:["thread_complete"],text:["I finally finished it.","Okay. Done. That felt good."],weight:1},
 ];
 
@@ -2072,25 +2073,33 @@ const Music = {
   KEY: "satomi_music_pref",
   enabled: true,
   volume: 0.7, // independent of `enabled` — the main-page toggle mutes/unmutes without touching this
-  el: null,
+  el: null, // always points at whichever track (elNormal/elSleep) is currently active
+  elNormal: null,
+  elSleep: null,
+  trackKey: "normal",
   btn: null,
   _resumeBound: false,
   init(){
-    this.el = document.getElementById("bgMusic");
+    this.elNormal = document.getElementById("bgMusic");
+    this.elSleep = document.getElementById("bgMusicSleep");
+    this.el = this.elNormal;
     this.btn = document.getElementById("musicToggle");
     let pref;
     try{ pref = localStorage.getItem(this.KEY); }catch(e){ pref = null; }
     this.enabled = (pref === null) ? true : (pref === "1");
-    if(this.el) this.el.volume = this.volume;
+    if(this.elNormal) this.elNormal.volume = this.volume;
+    if(this.elSleep) this.elSleep.volume = this.volume;
     this.applyBtn();
     if(this.btn) this.btn.onclick = ()=> this.toggle();
   },
   // Sets the slider-controlled volume. This is the level music plays at
   // whenever the main-page toggle has it ON; toggling OFF just pauses
-  // playback (see toggle()) and never touches this value.
+  // playback (see toggle()) and never touches this value. Applied to
+  // both tracks so switching between them mid-playback never jumps volume.
   setVolume(v){
     this.volume = Math.max(0, Math.min(1, v));
-    if(this.el) this.el.volume = this.volume;
+    if(this.elNormal) this.elNormal.volume = this.volume;
+    if(this.elSleep) this.elSleep.volume = this.volume;
   },
   applyBtn(){
     if(!this.btn) return;
@@ -2118,6 +2127,29 @@ const Music = {
   },
   pause(){
     if(this.el) this.el.pause();
+  },
+  // 8 PM–6 AM, wrapping past midnight.
+  _isNightHour(){
+    const h = Clock.hour();
+    return h>=20 || h<6;
+  },
+  // Swaps between the normal and sleep tracks based on whether Satomi is
+  // actually asleep (not just resting/napping) AND it's nighttime. Called
+  // on every sim tick — cheap, since it no-ops unless the target track
+  // actually differs from the one currently playing. A nap during the
+  // day, or being asleep outside the 8PM–6AM window, keeps using the
+  // normal track, exactly like being awake.
+  updateTrack(){
+    const wantSleep = Availability.isSleeping() && this._isNightHour();
+    const targetKey = wantSleep ? "sleep" : "normal";
+    if(targetKey === this.trackKey) return;
+    const oldEl = this.el;
+    const newEl = targetKey==="sleep" ? this.elSleep : this.elNormal;
+    this.trackKey = targetKey;
+    this.el = newEl;
+    if(oldEl && oldEl!==newEl){ oldEl.pause(); oldEl.currentTime = 0; }
+    if(newEl) newEl.volume = this.volume;
+    if(this.enabled) this.play();
   },
   _armResumeOnGesture(){
     if(this._resumeBound) return;
@@ -3246,6 +3278,7 @@ const Sim = {
     }
 
     WeatherEngine.maybeEvolve();
+    Music.updateTrack();
     UI.updateEnvBar();
     UI.applyAmbientTheme();
     ActivityEngine.advanceIfNeeded();
@@ -3554,6 +3587,7 @@ const Splash = {
         setTimeout(()=>{ if(this.el && this.el.parentNode) this.el.remove(); }, 1200);
         // Entering the main screen is a real user gesture, so this is the
         // right moment to start the music — never during the splash itself.
+        Music.updateTrack();
         Music.play();
         resolve();
       };
@@ -3694,6 +3728,7 @@ function boot(){
     // Straight onto the main screen — try to start the music now; if the
     // browser blocks autoplay without a gesture, Music.play() quietly
     // arms itself to retry on the next tap/click/keypress.
+    Music.updateTrack();
     Music.play();
   }
   // periodic presence save
