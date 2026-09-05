@@ -554,8 +554,8 @@ const ACTIVITIES = [
   { id:"study_reading", category:"study", text:["Satomi is reading an assigned novel for seminar.","Satomi is highlighting a passage.","Satomi is reading the same paragraph for the second time.","Satomi is making a few notes beside a difficult passage.","Satomi is slowly working through this week's reading.","Satomi is comparing two passages from the novel."], micro:["Satomi turns a page slowly.","Satomi rereads the same paragraph.","Satomi dog-ears a page.","Satomi adjusts the bookmark.","Satomi rests her finger on the page while thinking.","Satomi reads a sentence again.","Satomi makes a tiny mark in the margin.","Satomi looks away from the page for a moment."], duration:[300,1200], tod:["afternoon","evening","night"], weekday:"any", effects:{energy:-3,focus:-3,boredom:-4} },
   { id:"essay_writing", category:"study", text:["Satomi is staring at a mostly blank document.","Satomi is slowly writing her essay.","Satomi is rearranging paragraphs in her essay.","Satomi is trying to find a better way to phrase something.","Satomi is staring at her essay, unsure about the next sentence.","Satomi is slowly turning her scattered notes into an argument."], micro:["Satomi deletes a sentence.","Satomi rereads what she just wrote.","Satomi stretches her fingers.","Satomi highlights a sentence and immediately unhighlights it.","Satomi moves the cursor back and forth across the paragraph.","Satomi types three words, then stops.","Satomi checks one of her references.","Satomi leans back and rereads the whole paragraph."], duration:[200,700], tod:["afternoon","evening","night"], weekday:"any", effects:{energy:-5,focus:-4,stress:+2,motivation:-2} },
   { id:"stats_homework", category:"study", text:["Satomi is struggling through a statistics worksheet."], micro:["Satomi sighs at the page.","Satomi rechecks a formula."], duration:[180,500], tod:["afternoon","evening"], weekday:"any", effects:{energy:-5,focus:-3,stress:+4} },
-  { id:"break_stretch", category:"break", text:["Satomi is taking a short break.","Satomi leans back in her chair.","Satomi is taking a moment to do absolutely nothing.","Satomi has stepped away from her desk for a little while.","Satomi is letting her mind wander for a few minutes."], micro:["Satomi rolls her shoulders.","Satomi stares at the ceiling for a moment.","Satomi stretches her arms above her head.","Satomi rolls her neck carefully.","Satomi closes her eyes for a few seconds.","Satomi looks around the room without really focusing on anything.","Satomi takes a slow breath and settles back down."], duration:[60,240], tod:["any"], weekday:"any", effects:{energy:+3,focus:+5,boredom:+1,stress:-2} },
-  { id:"tea_making", category:"break", text:["Satomi gets up to make tea.","Satomi is making herself another cup of tea.","Satomi is standing in the kitchen, waiting for the tea to steep.","Satomi is deciding which tea to have."], micro:["Satomi waits for the kettle.","Satomi warms her hands on the cup.","Satomi checks the color of the tea.","Satomi blows gently across the surface.","Satomi takes a small sip, then waits.","Satomi carries the cup back to her desk.","Satomi warms her hands around the cup."], duration:[120,300], tod:["any"], weekday:"any", effects:{energy:+2,hunger:-2,stress:-2} },
+  { id:"break_stretch", category:"break", text:["Satomi is taking a short break.","Satomi leans back in her chair.","Satomi is taking a moment to do absolutely nothing.","Satomi has stepped away from her desk for a little while.","Satomi is letting her mind wander for a few minutes."], micro:["Satomi rolls her shoulders.","Satomi stares at the ceiling for a moment.","Satomi stretches her arms above her head.","Satomi rolls her neck carefully.","Satomi closes her eyes for a few seconds.","Satomi looks around the room without really focusing on anything.","Satomi takes a slow breath and settles back down."], duration:[60,240], tod:["any"], weekday:"any", effects:{energy:+3,focus:+5,boredom:+1,stress:-2,mood:+1} },
+  { id:"tea_making", category:"break", text:["Satomi gets up to make tea.","Satomi is making herself another cup of tea.","Satomi is standing in the kitchen, waiting for the tea to steep.","Satomi is deciding which tea to have."], micro:["Satomi waits for the kettle.","Satomi warms her hands on the cup.","Satomi checks the color of the tea.","Satomi blows gently across the surface.","Satomi takes a small sip, then waits.","Satomi carries the cup back to her desk.","Satomi warms her hands around the cup."], duration:[120,300], tod:["any"], weekday:"any", effects:{energy:+2,hunger:-2,stress:-2,mood:+1} },
   { id:"phone_check", category:"break", text:["Satomi checks her phone.","Satomi is checking her phone for a moment.","Satomi is catching up on a few messages.","Satomi is looking through her notifications."], micro:["Satomi scrolls slowly.","Satomi types a short reply.","Satomi puts the phone face-down again.","Satomi opens a message, then leaves it unanswered for now.","Satomi reads something twice.","Satomi types a reply and deletes half of it.","Satomi checks the time before putting her phone down.","Satomi turns the phone over again."], duration:[30,180], tod:["any"], weekday:"any", effects:{socialNeed:-3,boredom:-2,focus:-1} },  { id:"desk_organize", category:"break", text:["Satomi is tidying her desk."], micro:["Satomi stacks some loose papers.","Satomi finds a pen she'd been looking for."], duration:[90,240], tod:["any"], weekday:"any", effects:{boredom:-1} },
   { id:"window_watch", category:"observe", text:["Satomi looks out the window for a while.","Satomi is standing by the window for a while.","Satomi is watching the street below.","Satomi pauses by the window without really knowing why."], micro:["Satomi watches something pass by outside.","Satomi watches a cyclist disappear around the corner.","Satomi notices someone hurrying down the street.","Satomi rests her hand against the window frame.","Satomi looks up at the sky.","Satomi watches the lights come on in a nearby building."], duration:[30,150], tod:["any"], weekday:"any", effects:{stress:-1,boredom:+1} },
   // ISSUE #7: meal activities now carry a soft preferred/extended time
@@ -577,8 +577,8 @@ const ACTIVITIES = [
   { id:"commute_to_work", category:"routine", text:["Satomi is heading out to work.","Satomi is on her way to the café."], micro:["Satomi checks the time.","Satomi picks up her pace a little."], duration:[180,420], tod:["afternoon","evening"], weekday:"any", effects:{energy:-2} },
   { id:"at_work", category:"work", awayLength:"normal", text:["Satomi is working her shift at the café."], micro:["Satomi wipes down a counter.","Satomi restocks napkins."], duration:[900,2400], tod:["evening"], weekday:"any", effects:{energy:-8,focus:-2,socialNeed:-4,stress:+1} },
   { id:"return_from_work", category:"routine", text:["Satomi just got back from her shift, tired."], micro:["Satomi drops her bag by the door."], duration:[60,180], tod:["evening","night"], weekday:"any", effects:{energy:-2,sleepiness:+3} },
-  { id:"reading_book", category:"hobby", text:["Satomi is reading a novel for herself, not for class.","Satomi is curled up with a novel she picked up recently.","Satomi is reading a few chapters before bed.","Satomi hasn't looked up from her book in a while.","Satomi is rereading a part she particularly liked."], micro:["Satomi smiles slightly at a line.","Satomi turns the page carefully.","Satomi pauses at a sentence.","Satomi smiles briefly at something she read.","Satomi loses her place and finds it again.","Satomi adjusts the book in her hands.","Satomi glances at how many pages are left."], duration:[300,1200], tod:["evening","night"], weekday:"any", effects:{boredom:-5,stress:-2,energy:-2} },
-  { id:"sketching", category:"hobby", text:["Satomi is sketching something small in the margin of a notebook.","Satomi is making a small sketch without much of a plan.","Satomi is doodling without really looking at what she's drawing.","Satomi is filling a blank corner of her notebook.","Satomi is trying to capture something she noticed earlier."], micro:["Satomi erases a line and tries again.","Satomi adds a few tiny details.","Satomi tilts the notebook to look at the drawing.","Satomi taps the pencil against the page.","Satomi shades in a small section.","Satomi quietly turns to a fresh page."], duration:[180,500], tod:["evening","night"], weekday:"any", effects:{boredom:-3,stress:-2} },
+  { id:"reading_book", category:"hobby", text:["Satomi is reading a novel for herself, not for class.","Satomi is curled up with a novel she picked up recently.","Satomi is reading a few chapters before bed.","Satomi hasn't looked up from her book in a while.","Satomi is rereading a part she particularly liked."], micro:["Satomi smiles slightly at a line.","Satomi turns the page carefully.","Satomi pauses at a sentence.","Satomi smiles briefly at something she read.","Satomi loses her place and finds it again.","Satomi adjusts the book in her hands.","Satomi glances at how many pages are left."], duration:[300,1200], tod:["evening","night"], weekday:"any", effects:{boredom:-5,stress:-2,energy:-2,mood:+2} },
+  { id:"sketching", category:"hobby", text:["Satomi is sketching something small in the margin of a notebook.","Satomi is making a small sketch without much of a plan.","Satomi is doodling without really looking at what she's drawing.","Satomi is filling a blank corner of her notebook.","Satomi is trying to capture something she noticed earlier."], micro:["Satomi erases a line and tries again.","Satomi adds a few tiny details.","Satomi tilts the notebook to look at the drawing.","Satomi taps the pencil against the page.","Satomi shades in a small section.","Satomi quietly turns to a fresh page."], duration:[180,500], tod:["evening","night"], weekday:"any", effects:{boredom:-3,stress:-2,mood:+1} },
   { id:"listening_music", category:"hobby", text:["Satomi has music playing quietly while she works.","Satomi is listening to music while taking a break.","Satomi has put on some music to fill the quiet.","Satomi is listening to an old favorite while she works.","Satomi is letting a playlist run in the background."], micro:["Satomi hums along without noticing.","Satomi reaches over to adjust the volume.","Satomi pauses when a familiar song comes on.","Satomi quietly hums along.","Satomi lets the song finish before choosing another.","Satomi taps her fingers lightly against the desk."], duration:[600,1800], tod:["any"], weekday:"any", effects:{stress:-1,boredom:-1} },
   { id:"laundry_avoidance", category:"chore", text:["Satomi glances at the pile of laundry and turns back to her desk.","Satomi looks at the laundry, sighs, and closes the closet door on it.","Satomi looks at the laundry pile for a while, then walks away.","Satomi notices the laundry pile has gotten slightly worse."], micro:["Satomi moves one shirt out of the way and gives up.","Satomi stares at the laundry basket.","Satomi glances at the basket one more time, then leaves it.","Satomi picks something clean from the chair instead."], duration:[20,60], tod:["evening","night"], weekday:"any", effects:{stress:+1} },
   { id:"laundry_doing", category:"chore", text:["Satomi is finally doing her laundry.","Satomi is finally sorting through her laundry.","Satomi is folding clothes while listening to something.","Satomi keeps at the laundry, a little faster than usual."], micro:["Satomi folds a shirt.","Satomi checks her phone while waiting.","Satomi matches two socks.","Satomi folds a shirt and puts it aside.","Satomi checks whether something is actually dry.","Satomi shakes out a shirt before folding it.","Satomi sighs at how much laundry there is."], duration:[300,700], tod:["afternoon","weekend"], weekday:"any", effects:{stress:-1,motivation:+2} },
@@ -587,7 +587,7 @@ const ACTIVITIES = [
   // Sunday 15:00-19:30 soft window (see ActivityEngine.score()) has
   // room to land at a different, plausible minute each time rather
   // than only ever in the old single "evening" bucket.
-  { id:"phone_call_family", category:"social", text:["Satomi is on the phone with her mother."], micro:["Satomi laughs quietly at something.","Satomi paces slowly while talking."], duration:[300,900], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-8,stress:-2} },
+  { id:"phone_call_family", category:"social", text:["Satomi is on the phone with her mother."], micro:["Satomi laughs quietly at something.","Satomi paces slowly while talking."], duration:[300,900], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-8,stress:-2,mood:+3} },
   { id:"relaxing_phone", category:"break", text:["Satomi is relaxing, scrolling through her phone."], micro:["Satomi smiles faintly at something.","Satomi switches apps."], duration:[180,600], tod:["night","late_night"], weekday:"any", effects:{boredom:-3,socialNeed:-2,sleepiness:+1} },
   { id:"getting_sleepy", category:"routine", text:["Satomi keeps blinking hard to stay awake at her desk.","Satomi rereads the same line for the third time.","Satomi is trying to finish one last thing before bed.","Satomi is barely keeping her attention on the screen."], micro:["Satomi's eyes drift half-shut.","Satomi rubs her eyes.","Satomi blinks slowly.","Satomi rests her forehead against her hand.","Satomi yawns and tries to continue.","Satomi rereads the same line.","Satomi nearly drops her pen."], duration:[60,240], tod:["night","late_night"], weekday:"any", effects:{sleepiness:+4,focus:-4} },
   { id:"preparing_bed", category:"routine", text:["Satomi is getting ready for bed."], micro:["Satomi sets an alarm.","Satomi turns off the lamp."], duration:[180,420], tod:["night","late_night"], weekday:"any", effects:{sleepiness:+2,energy:+1} },
@@ -617,8 +617,8 @@ const ACTIVITIES = [
       "She stirs slightly, then settles again.",
     ], duration:[23400,32400], tod:["night","late_night"], weekday:"any", effects:{sleepiness:-60,energy:+30,stress:-10} },
   { id:"waking_up", category:"routine", text:["Satomi is slowly waking up.","Satomi is still half-asleep, lying in bed for a moment longer.","Satomi's alarm went off a few minutes ago; she's only just stirring.","Satomi stretches and blinks against the morning light."], micro:["Satomi rubs her eyes.","Satomi reaches for her phone to check the time.","Satomi pulls the blanket back over her head for a moment."], duration:[60,240], tod:["morning"], weekday:"any", effects:{sleepiness:-10,energy:+3} },
-  { id:"weekend_lazing", category:"break", text:["Satomi is lazing around, in no hurry to do anything.","Satomi is still in pajamas, scrolling idly.","Satomi is having a very slow weekend morning.","Satomi isn't in any hurry to start the day.","Satomi is sitting around in comfortable clothes, doing very little.","Satomi hasn't made any plans for the morning."], micro:["Satomi stretches out on the floor cushion.","Satomi checks the time, then pulls the blanket back up.","Satomi pulls the blanket closer around herself.","Satomi stretches and settles back down.","Satomi looks at the ceiling for a while.","Satomi starts to sit up, then lies back down.",], duration:[300,900], tod:["morning","afternoon"], weekday:"weekend", effects:{energy:+3,boredom:+3,stress:-2} },
-  { id:"meeting_friend", category:"social", awayLength:"normal", text:["Satomi is out meeting a friend."], micro:[], duration:[1200,3000], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-15,stress:-3,energy:-3} },
+  { id:"weekend_lazing", category:"break", text:["Satomi is lazing around, in no hurry to do anything.","Satomi is still in pajamas, scrolling idly.","Satomi is having a very slow weekend morning.","Satomi isn't in any hurry to start the day.","Satomi is sitting around in comfortable clothes, doing very little.","Satomi hasn't made any plans for the morning."], micro:["Satomi stretches out on the floor cushion.","Satomi checks the time, then pulls the blanket back up.","Satomi pulls the blanket closer around herself.","Satomi stretches and settles back down.","Satomi looks at the ceiling for a while.","Satomi starts to sit up, then lies back down.",], duration:[300,900], tod:["morning","afternoon"], weekday:"weekend", effects:{energy:+3,boredom:+3,stress:-2,mood:+2} },
+  { id:"meeting_friend", category:"social", awayLength:"normal", text:["Satomi is out meeting a friend."], micro:[], duration:[1200,3000], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-15,stress:-3,energy:-3,mood:+4} },
 
   // --- occasional outings: Satomi is away from the apartment.
   // Scored deliberately low in ActivityEngine.score() so they stay
@@ -678,6 +678,15 @@ const DIALOGUE = [
   {id:"st03",category:"self_talk",mood:["any"],context:["any"],text:["Hm.","...huh.","Wait, what was I doing."],weight:3},
   {id:"st04",category:"self_talk",mood:["stressed"],context:["essay_writing","stats_homework"],text:["This is due when.","I should not have left this until now.","Okay, okay, it's fine. Probably."],weight:4},
   {id:"st05",category:"self_talk",mood:["relaxed"],context:["reading_book","sketching"],text:["This is nice.","I could stay like this for a while.","I like quiet evenings like this."],weight:3},
+  // #6: a line that lands right after the player encourages her — feels
+  // influenced by the player's presence without ever saying so.
+  {id:"st06",category:"self_talk",mood:["any"],context:["afterEncourage"],text:["Okay. Focus.","Right. Let's actually do this.","...yeah, okay."],weight:6},
+  // #4: named combinations get their own small, contradictory beats.
+  {id:"st07",category:"self_talk",mood:["any"],context:["wantsButCantFocus"],text:["Come on, concentrate.","Why can't I focus today...","Okay, focus. Focus. ...okay, maybe not."],weight:4},
+  {id:"st08",category:"self_talk",mood:["any"],context:["productiveButTense"],text:["Almost done. Almost done.","Just get through this part.","Don't stop now."],weight:3},
+  {id:"st09",category:"self_talk",mood:["any"],context:["lowEffortDay"],text:["I just don't feel like doing anything today.","Maybe later.","Nothing's really wrong, I just don't want to."],weight:3},
+  {id:"st10",category:"self_talk",mood:["any"],context:["likelyToAbandonStudy"],text:["Okay, I need a real break from this.","I can't look at this anymore right now.","This isn't going anywhere tonight."],weight:4},
+  {id:"st11",category:"self_talk",mood:["any"],context:["fightingSleepToFinish"],text:["Just one more thing, then bed.","Okay, five more minutes.","I should really sleep. ...after this."],weight:4},
 
   // environment_reaction
   {id:"er01",category:"environment_reaction",mood:["any"],context:["weather:light_rain","weather:heavy_rain"],text:["Oh, it's raining.","I hope I don't need to go out later.","I like the sound of rain, actually."],weight:5},
@@ -1110,12 +1119,76 @@ const StateEngine = {
     energy:70, focus:70, stress:20, hunger:20, boredom:20, socialNeed:20,
     sleepiness:10, motivation:60, mood:60,
   },
+  // Small behavioral memory — NOT more numeric stats, just a few facts
+  // about what just happened. Nothing here is ever shown to the player;
+  // it exists so a response can feel like it noticed the player's last
+  // action ("Okay. Focus." right after encouragement) without a visible
+  // relationship/approval meter driving it.
+  memory: {
+    recentPlayerInteraction: null,   // "hello" | "encourage" | "askHow" | null
+    recentInteractionAt: 0,
+    lastActivityCategory: null,
+    lastActivityId: null,
+    lastPlayerVisitDay: null,        // dateString() of the last day the player showed up
+  },
   clamp(v){ return Math.max(0, Math.min(100, v)); },
   apply(effects){
     if(!effects) return;
     for(const k in effects){
       if(k in this.data) this.data[k] = this.clamp(this.data[k] + effects[k]);
     }
+  },
+  // Recently interacted with, for softening "afterX" bonuses over time
+  // rather than treating them as an on/off switch.
+  recentlyInteracted(kind, windowMs){
+    return this.memory.recentPlayerInteraction===kind &&
+      (Date.now()-this.memory.recentInteractionAt) <= (windowMs||180000);
+  },
+  // ============================================================
+  // BEHAVIOR FLAGS — the single source of truth for "is a stat high/
+  // low enough to matter right now", plus a handful of named
+  // combinations. Deliberately NOT "if stress>50 modify everything":
+  // each stat keeps a primary behavioral domain (see table below),
+  // and only a few named combinations are allowed to reach across
+  // domains. Everything downstream (dialogue tone, micro-action
+  // selection, activity scoring, response probability) reads from
+  // here instead of re-deriving its own thresholds, so the thresholds
+  // only need to be tuned in one place.
+  //
+  //   Stat          Primary domain
+  //   energy        physical willingness to continue / respond
+  //   focus         concentration vs. distraction
+  //   stress        tension, patience, avoidance
+  //   hunger        meals / irritability
+  //   boredom       novelty-seeking / idle behavior
+  //   socialNeed    responsiveness / social activities
+  //   sleepiness    bedtime / sluggishness
+  //   motivation    starting & persisting with effortful tasks
+  //   mood          overall tone (see currentMoodTag)
+  // ============================================================
+  flags(){
+    const d = this.data;
+    return {
+      highEnergy: d.energy>70, lowEnergy: d.energy<30,
+      highFocus: d.focus>65, lowFocus: d.focus<35,
+      highStress: d.stress>65, lowStress: d.stress<30,
+      highHunger: d.hunger>60,
+      highBoredom: d.boredom>60, lowBoredom: d.boredom<25,
+      highSocialNeed: d.socialNeed>65, lowSocialNeed: d.socialNeed<25,
+      highSleepiness: d.sleepiness>70,
+      highMotivation: d.motivation>=70, lowMotivation: d.motivation<40, veryLowMotivation: d.motivation<20,
+      // named combinations — deliberately few, deliberately named after
+      // the behavior they produce rather than the numbers behind them
+      wantsButCantFocus: d.motivation>60 && d.focus<45,          // #4: motivated, can't concentrate
+      productiveButTense: d.focus>65 && d.stress>65,             // #4: efficient but terse
+      lowEffortDay: d.motivation<40 && d.stress<40,              // #4: not upset, just unmotivated
+      restlessAndSocial: d.boredom>65 && d.socialNeed>65,        // #4: bored + wants company
+      fightingSleepToFinish: d.sleepiness>75 && d.motivation>60, // #4/#9: "one more thing" before bed
+      pushingThroughFatigue: d.energy<25 && d.motivation>60,     // #9: tired but keeps at it
+      likelyToAbandonStudy: d.stress>75 && d.focus<40,           // #9
+      pulledOutside: d.boredom>60 && d.energy>40,                // #9
+      procrastinating: d.motivation<30 && d.stress<40,           // #9
+    };
   },
   tickNatural(minutesElapsed){
     // slow natural drift over real elapsed time
@@ -1128,6 +1201,15 @@ const StateEngine = {
     if(tod==="night") this.data.sleepiness = this.clamp(this.data.sleepiness + m*0.15);
     if(tod==="late_night") this.data.sleepiness = this.clamp(this.data.sleepiness + m*0.35);
     if(tod==="morning" && this.data.sleepiness>0) this.data.sleepiness = this.clamp(this.data.sleepiness - m*0.2);
+    // Gentle mean-reversion for `mood`. Unlike every other stat, nothing
+    // in the activity list ever nudges `mood` directly — historically it
+    // only moved via weather transitions, which have no pull back toward
+    // a baseline. A bad-weather streak could leave her stuck below the
+    // "relaxed" threshold indefinitely. This pulls mood slowly back
+    // toward a neutral-good baseline (55) so weather still matters as a
+    // temporary lean, but never becomes a permanent trap.
+    const moodBaseline = 55;
+    this.data.mood = this.clamp(this.data.mood + (moodBaseline - this.data.mood) * Math.min(1, m*0.01));
   },
   currentMoodTag(){
     const d=this.data;
@@ -1372,6 +1454,39 @@ const Schedule = {
 /* ============================================================
    8. ACTIVITY ENGINE
    ============================================================ */
+// Generic body-language micro-actions, independent of any one activity.
+// These only ever supplement an activity's own `micro` list (see
+// ActivityEngine.microUpdate) when the relevant hidden stat is actually
+// high — they're written to slot into almost any seated/at-home activity
+// without being specific to what she's doing.
+const GENERIC_MICRO = {
+  stress: [
+    "Satomi checks the time.",
+    "Satomi rereads something she just wrote.",
+    "Satomi sighs quietly.",
+    "Satomi rubs her forehead.",
+    "Satomi checks her phone without replying.",
+    "Satomi switches to something else for a moment.",
+  ],
+  boredom: [
+    "Satomi checks her phone.",
+    "Satomi looks around the room.",
+    "Satomi glances out the window.",
+    "Satomi gets up to make tea.",
+    "Satomi changes the music.",
+  ],
+  lowEnergy: [
+    "Satomi stretches.",
+    "Satomi rests her head on her hand.",
+    "Satomi pauses for a long moment.",
+    "Satomi rubs her eyes.",
+  ],
+  sleepy: [
+    "Satomi's eyes drift half-closed for a moment.",
+    "Satomi blinks slowly.",
+  ],
+};
+
 const ActivityEngine = {
   current:null,
   currentUntil:0,
@@ -1444,6 +1559,9 @@ const ActivityEngine = {
       // Schedule.candidatePool's Layer 1) — rain makes staying in a
       // little more likely, not a rule, just a lean.
       if(WeatherEngine.isRaining()) base *= 0.7;
+      // #9: bored and still has the energy for it -> outings/outside
+      // activities read as more appealing than usual.
+      if(StateEngine.flags().pulledOutside) base *= 1.4;
       return base;
     }
     let score = 1;
@@ -1460,7 +1578,38 @@ const ActivityEngine = {
     if(activity.id==="getting_sleepy" && s.sleepiness>60) score += 3;
     if(activity.id==="preparing_bed" && s.sleepiness>65) score += 4;
     if(activity.id==="sleeping" && s.sleepiness>75) score += 6;
-    if(activity.category==="study" && s.motivation>40 && Clock.timeOfDay()!=="late_night") score += 1.5;
+
+    // --- motivation, in bands (see idea #5: this used to just be a
+    // single ">40" check with a flat +1.5 to study). A stat literally
+    // called "motivation" should shape more than one line of code. ---
+    const f = StateEngine.flags();
+    const isProcrastinationActivity = activity.category==="break" || activity.id==="desk_organize" || activity.id==="phone_check" || activity.id==="laundry_doing";
+    if(activity.category==="study" || activity.category==="chore"){
+      if(s.motivation>=70) score += 2.5;               // starts difficult work readily
+      else if(s.motivation>=40) score += 1.5;           // normal — same as before
+      else if(s.motivation>=20) score -= 1;             // procrastinates instead
+      else score -= 1.8;                                // trouble starting at all
+    }
+    if(Clock.timeOfDay()==="late_night" && activity.category==="study") score *= 0.8;
+    if(isProcrastinationActivity){
+      if(s.motivation<40) score += 1;                   // #5/#9: procrastination behaviors
+      if(s.motivation<20) score += 0.8;                 // still wants to, just can't start — leans harder on displacement activities
+    }
+    // #9 threshold behaviors — named combinations from StateEngine.flags(),
+    // each one a small, specific contradiction rather than a blanket
+    // "modify everything" rule.
+    if(activity.category==="study"){
+      if(f.likelyToAbandonStudy) score *= 0.5;          // tense + can't concentrate -> more likely to bail
+      if(f.pushingThroughFatigue) score += 1;           // tired but motivated -> keeps at it anyway
+    }
+    if(isProcrastinationActivity && f.wantsButCantFocus) score += 1.2; // wants to work, can't focus -> visible displacement
+    if(activity.category==="break" && f.procrastinating) score += 0.8;
+    if((activity.id==="phone_check" || activity.id==="phone_call_family" || activity.id==="meeting_friend") && f.restlessAndSocial) score *= 1.35;
+    // "one more thing before bed": sleepy but still motivated makes the
+    // sleep/bedtime anchors a little less overwhelming, so a quick task
+    // has a real chance of winning the roll first.
+    if((activity.id==="getting_sleepy" || activity.id==="preparing_bed") && f.fightingSleepToFinish) score *= 0.75;
+
     if(activity.id==="prep_for_work") { if(ActivityEngine.isWorkWindow()) score += 10; }
     // Soft-anchor transitions: eligible only in the right context (see
     // Schedule.candidatePool), and each usually gets exactly one roll —
@@ -1675,6 +1824,8 @@ const ActivityEngine = {
     this.recentIds.push(activity.id);
     if(this.recentIds.length>6) this.recentIds.shift();
     StateEngine.apply(activity.effects);
+    StateEngine.memory.lastActivityCategory = activity.category || null;
+    StateEngine.memory.lastActivityId = activity.id || null;
     // ISSUE #9: record today's mother call so its score collapses for
     // the remainder of the day (see ActivityEngine.score()).
     if(activity.id==="phone_call_family") FamilyCall.markCalled();
@@ -1705,7 +1856,27 @@ const ActivityEngine = {
     // than not — never a genuine "no-op" (asleep stays asleep, the
     // timer/duration/currentUntil are all untouched either way).
     if(this.current.id==="sleeping" && !RNG.chance(0.25)) return;
-    const text = RNG.pick(this.current.micro);
+
+    const f = StateEngine.flags();
+    // High focus during study/work means sustained attention — fewer
+    // visible fidgets, not more. Sometimes skip the beat entirely so the
+    // activity text just holds, which reads as "she hasn't looked up".
+    const focusedWork = f.highFocus && (this.current.category==="study" || this.current.category==="work");
+    if(focusedWork && RNG.chance(0.4)) return;
+
+    // Weighted pool: the activity's own micro-actions are always in the
+    // running; a handful of generic body-language beats only enter when
+    // a hidden stat has actually crossed a threshold. This is the
+    // mechanism that lets a stat stay invisible as a number but still
+    // show up as "she keeps checking the time tonight" — nothing here
+    // is announced, only which small gesture gets picked changes.
+    const pool = this.current.micro.map(t=>({text:t, weight:2}));
+    if(f.highStress) GENERIC_MICRO.stress.forEach(t=>pool.push({text:t, weight:1.5}));
+    if(f.highBoredom && !focusedWork) GENERIC_MICRO.boredom.forEach(t=>pool.push({text:t, weight:1.3}));
+    if(f.lowEnergy) GENERIC_MICRO.lowEnergy.forEach(t=>pool.push({text:t, weight:1.3}));
+    if(StateEngine.data.sleepiness>70) GENERIC_MICRO.sleepy.forEach(t=>pool.push({text:t, weight:1.1}));
+    const chosen = RNG.weightedPick(pool, x=>x.weight);
+    const text = chosen ? chosen.text : RNG.pick(this.current.micro);
     this.currentText = text;
     UI.setActivityText(text, true);
   }
@@ -2265,6 +2436,19 @@ const DialogueEngine = {
     if(StateEngine.data.hunger>60) tags.push("hungry");
     const exam = LifeThreadEngine.active.find(t=>t.def.id==="exam_prep");
     if(exam) tags.push("exam_near");
+    // #4/#6: named stat combinations and short-lived interaction memory,
+    // exposed as ordinary context tags so dialogue content can react to
+    // them the same way it reacts to weather or time of day — no
+    // separate mechanism needed.
+    const f = StateEngine.flags();
+    if(f.wantsButCantFocus) tags.push("wantsButCantFocus");
+    if(f.productiveButTense) tags.push("productiveButTense");
+    if(f.lowEffortDay) tags.push("lowEffortDay");
+    if(f.restlessAndSocial) tags.push("restlessAndSocial");
+    if(f.fightingSleepToFinish) tags.push("fightingSleepToFinish");
+    if(f.pushingThroughFatigue) tags.push("pushingThroughFatigue");
+    if(f.likelyToAbandonStudy) tags.push("likelyToAbandonStudy");
+    if(StateEngine.recentlyInteracted("encourage")) tags.push("afterEncourage");
     return tags;
   },
   scoreLine(line){
@@ -2540,12 +2724,29 @@ const Presence = {
   majorEventsWitnessed: 0,
   totalTimeMs: 0,
   lastTickAt: Date.now(),
+  // #7: when the player's last deliberate interaction landed. Not a
+  // relationship meter — just enough to tell "frequent company" from
+  // "hasn't been around in a while", so responsiveness can drift a
+  // little without ever reading as upset or delighted about it.
+  lastInteractionAt: 0,
   registerTick(){
     const nowDay = new Date().toDateString();
     this.daysTogether.add(nowDay);
     const now = Date.now();
     this.totalTimeMs += (now - this.lastTickAt);
     this.lastTickAt = now;
+  },
+  // Small, bounded nudge to response probability: a small positive lean
+  // after recent frequent contact (she's used to the player being
+  // around), a small negative lean after a long stretch of silence (she
+  // simply expects it less) — never negative enough to feel punishing,
+  // and never phrased anywhere as "she missed you" or "she's annoyed".
+  comfortLean(){
+    if(!this.lastInteractionAt) return 0;
+    const hoursSince = (Date.now()-this.lastInteractionAt)/3600000;
+    if(hoursSince < 6) return 0.06;
+    if(hoursSince > 72) return -0.05;
+    return 0;
   }
 };
 
@@ -2914,7 +3115,16 @@ const Persistence = {
         daysTogether: Array.from(Presence.daysTogether),
         interactions: Presence.interactions,
         majorEventsWitnessed: Presence.majorEventsWitnessed,
-        totalTimeMs: Presence.totalTimeMs
+        totalTimeMs: Presence.totalTimeMs,
+        lastInteractionAt: Presence.lastInteractionAt || 0
+      },
+      // #6: small behavioral memory buffer — see StateEngine.memory.
+      stateMemory: {
+        recentPlayerInteraction: StateEngine.memory.recentPlayerInteraction || null,
+        recentInteractionAt: StateEngine.memory.recentInteractionAt || 0,
+        lastActivityCategory: StateEngine.memory.lastActivityCategory || null,
+        lastActivityId: StateEngine.memory.lastActivityId || null,
+        lastPlayerVisitDay: StateEngine.memory.lastPlayerVisitDay || null
       },
       savedAt: Date.now()
     };
@@ -2977,11 +3187,19 @@ const Persistence = {
     }
     if(p.presence !== undefined){
       if(!p.presence || typeof p.presence !== "object") return false;
-      for(const k of ["interactions","majorEventsWitnessed","totalTimeMs"]){
+      for(const k of ["interactions","majorEventsWitnessed","totalTimeMs","lastInteractionAt"]){
         if(p.presence[k] !== undefined && (!Number.isFinite(p.presence[k]) || p.presence[k] < 0)) return false;
       }
       if(p.presence.firstOpened !== undefined && p.presence.firstOpened !== null && (!Number.isFinite(p.presence.firstOpened) || p.presence.firstOpened < 0)) return false;
       if(p.presence.daysTogether !== undefined && !Array.isArray(p.presence.daysTogether)) return false;
+    }
+    if(p.stateMemory !== undefined){
+      if(!p.stateMemory || typeof p.stateMemory !== "object") return false;
+      if(p.stateMemory.recentPlayerInteraction !== undefined && p.stateMemory.recentPlayerInteraction !== null && typeof p.stateMemory.recentPlayerInteraction !== "string") return false;
+      if(p.stateMemory.recentInteractionAt !== undefined && (!Number.isFinite(p.stateMemory.recentInteractionAt) || p.stateMemory.recentInteractionAt < 0)) return false;
+      if(p.stateMemory.lastActivityCategory !== undefined && p.stateMemory.lastActivityCategory !== null && typeof p.stateMemory.lastActivityCategory !== "string") return false;
+      if(p.stateMemory.lastActivityId !== undefined && p.stateMemory.lastActivityId !== null && typeof p.stateMemory.lastActivityId !== "string") return false;
+      if(p.stateMemory.lastPlayerVisitDay !== undefined && p.stateMemory.lastPlayerVisitDay !== null && typeof p.stateMemory.lastPlayerVisitDay !== "string") return false;
     }
     if(p.state !== undefined){
       if(!p.state || typeof p.state !== "object" || Array.isArray(p.state)) return false;
@@ -3111,6 +3329,14 @@ const Persistence = {
         Presence.interactions=Number.isFinite(p.presence.interactions) ? p.presence.interactions : 0;
         Presence.majorEventsWitnessed=Number.isFinite(p.presence.majorEventsWitnessed) ? p.presence.majorEventsWitnessed : 0;
         Presence.totalTimeMs=Number.isFinite(p.presence.totalTimeMs) ? p.presence.totalTimeMs : 0;
+        Presence.lastInteractionAt=Number.isFinite(p.presence.lastInteractionAt) ? p.presence.lastInteractionAt : 0;
+      }
+      if(p.stateMemory){
+        StateEngine.memory.recentPlayerInteraction = typeof p.stateMemory.recentPlayerInteraction === "string" ? p.stateMemory.recentPlayerInteraction : null;
+        StateEngine.memory.recentInteractionAt = Number.isFinite(p.stateMemory.recentInteractionAt) ? p.stateMemory.recentInteractionAt : 0;
+        StateEngine.memory.lastActivityCategory = typeof p.stateMemory.lastActivityCategory === "string" ? p.stateMemory.lastActivityCategory : null;
+        StateEngine.memory.lastActivityId = typeof p.stateMemory.lastActivityId === "string" ? p.stateMemory.lastActivityId : null;
+        StateEngine.memory.lastPlayerVisitDay = typeof p.stateMemory.lastPlayerVisitDay === "string" ? p.stateMemory.lastPlayerVisitDay : null;
       }
       this.lastSavedAt = Number.isFinite(p.savedAt) ? p.savedAt : Date.now();
       return true;
@@ -3517,10 +3743,17 @@ const HELLO_LINES = [
   {text:"Hi there.", weight:4},
   {text:"Hey there.", weight:3},
   {text:"Oh. Hi.", weight:3},
-  {text:"Hm?", weight:2},
-  {text:"Mm.", weight:1.5},
-  {text:"Mm? ...sorry, what?", weight:1.5, when:ctx=>ctx.category==="study"||ctx.category==="work"},
+  {text:"Hm?", weight:2, terse:true},
+  {text:"Mm.", weight:1.5, terse:true},
+  {text:"Mm? ...sorry, what?", weight:1.5, terse:true, when:ctx=>ctx.category==="study"||ctx.category==="work"},
   {text:"Oh — sorry, I was reading.", weight:1.5, when:ctx=>ctx.activityId==="reading_book"||ctx.activityId==="study_reading"},
+  // #2: word choice/tone driven directly by hidden stats, not just the
+  // collapsed mood tag — same trigger (a hello), different flavor
+  // depending on what's actually going on underneath.
+  {text:"Mm. Hi.", weight:3, terse:true, when:ctx=>ctx.f.lowEnergy},
+  {text:"Hey. Sorry, I'm a little distracted.", weight:3, terse:true, when:ctx=>ctx.f.highStress},
+  {text:"Oh, you're here.", weight:2.5, when:ctx=>ctx.f.highSocialNeed},
+  {text:"Hey. What are you up to?", weight:2.5, when:ctx=>ctx.f.highBoredom},
   // tier 1 — a little more range, plus a handful of situational replies
   {text:"Oh, hello.", weight:3, tier:1},
   {text:"Hey, you.", weight:2, tier:1},
@@ -3565,11 +3798,14 @@ const ENCOURAGE_LINES = [
   {text:"Mm. I'll do my best.", weight:2, tier:1},
   {text:"I needed to hear that, actually.", weight:2, tier:1, when:ctx=>ctx.mood==="stressed"||ctx.category==="study"},
   {text:"Okay. Back to it, I guess.", weight:2, tier:1, when:ctx=>ctx.category==="study"},
+  // #2/#5: motivation itself changes how encouragement lands.
+  {text:"Yeah — let's do this.", weight:3, when:ctx=>ctx.f.highMotivation},
+  {text:"...yeah.", weight:2, terse:true, when:ctx=>ctx.f.lowMotivation},
   // tier 2
   {text:"Heh. I'm trying.", weight:1.5, tier:2},
   {text:"Thanks. I mean it.", weight:1, tier:2},
   {text:"One second.", weight:1, tier:2, when:ctx=>ctx.category==="study"||ctx.category==="work"},
-  {text:"Mm.", weight:1, tier:2},
+  {text:"Mm.", weight:1, tier:2, terse:true},
   // tier 3 — rare
   {text:"I forgot what I was stressed about for a second.", weight:0.3, tier:3},
   {text:"Huh. Okay. Thanks.", weight:0.3, tier:3},
@@ -3615,6 +3851,10 @@ const ASKHOW_LINES = [
   {text:"I've been sitting in the same position for too long.", weight:1.5, tier:2},
   {text:"I should probably clean this up.", weight:1, tier:2},
   {text:"I keep losing my pen.", weight:1, tier:2, when:ctx=>ctx.category==="study"},
+  // #2/#4: named combinations get their own line, not just single-stat mood
+  {text:"I want to get this done, I just can't focus.", weight:2, tier:1, when:ctx=>ctx.f.wantsButCantFocus},
+  {text:"Honestly, I just don't feel like doing anything today.", weight:2, tier:1, when:ctx=>ctx.f.lowEffortDay},
+  {text:"Fine. Getting there, slowly.", weight:2, terse:true, when:ctx=>ctx.f.productiveButTense},
   // tier 3 — rare surprise lines
   {text:"It's weirdly peaceful today.", weight:0.3, tier:3},
   {text:"I think I've been sitting here for an hour.", weight:0.3, tier:3},
@@ -3637,6 +3877,7 @@ const Interactions = {
   buildContext(){
     return {
       s: StateEngine.data,
+      f: StateEngine.flags(),
       mood: StateEngine.currentMoodTag(),
       activity: ActivityEngine.current,
       category: ActivityEngine.current ? ActivityEngine.current.category : null,
@@ -3651,8 +3892,10 @@ const Interactions = {
   // Picks one line out of `pool` that's eligible for the player's
   // current familiarity tier and the current situational context,
   // weighted at random, while softly avoiding whatever this same
-  // interaction just said a moment ago.
-  pickLine(pool, key){
+  // interaction just said a moment ago. `opts.terse`, when true, leans
+  // the pick toward lines flagged `terse:true` (short, a little clipped)
+  // without ever excluding the rest of the pool outright.
+  pickLine(pool, key, opts){
     const ctx = this.buildContext();
     let eligible = pool.filter(e => (e.tier||0) <= ctx.tier && (!e.when || e.when(ctx)));
     if(eligible.length===0) eligible = pool.filter(e => (e.tier||0)===0 && !e.when);
@@ -3660,12 +3903,24 @@ const Interactions = {
     const recent = this._recent[key] || [];
     let choices = eligible.filter(e => !recent.includes(e.text));
     if(choices.length===0) choices = eligible;
-    const chosen = RNG.weightedPick(choices, e=>e.weight||1);
+    const terse = opts && opts.terse;
+    const chosen = RNG.weightedPick(choices, e=>{
+      let w = e.weight||1;
+      if(terse && e.terse) w *= 3;
+      return w;
+    });
     if(!chosen) return null;
     recent.push(chosen.text);
     if(recent.length>4) recent.shift();
     this._recent[key] = recent;
     return chosen.text;
+  },
+  // #7: called by every interaction that gets an actual spoken response,
+  // so Presence has a real "last contact" timestamp to lean on.
+  _noteInteraction(kind){
+    StateEngine.memory.recentPlayerInteraction = kind;
+    StateEngine.memory.recentInteractionAt = Date.now();
+    Presence.lastInteractionAt = Date.now();
   },
   sayHello(){
     if(!Availability.isHome()){
@@ -3675,14 +3930,28 @@ const Interactions = {
     StateEngine.apply({socialNeed:-6});
     Memory.log("activity", "You say hello.");
     const mood = StateEngine.currentMoodTag();
-    let p = 0.7;
+    const f = StateEngine.flags();
+    // #1: response probability now reads several stats, each in its own
+    // domain, rather than only the collapsed mood tag.
+    let p = 0.55;
+    if(f.highEnergy) p += 0.15;          // more likely to answer
+    if(f.lowEnergy) p -= 0.1;            // shorter/delayed responses instead
+    if(f.highFocus) p -= 0.15;           // less likely to respond while concentrating
+    if(f.highStress) p += 0.1;           // more likely, but tersely (handled below)
+    if(f.highBoredom) p += 0.15;         // more likely to engage
+    if(f.highSocialNeed) p += 0.15;      // more receptive
+    if(f.lowSocialNeed) p -= 0.05;       // less need to respond
     if(mood==="sleepy") p -= 0.15;
     if(mood==="relaxed") p += 0.05;
-    p = Math.max(0.35, Math.min(0.9, p));
+    p += Presence.comfortLean();
+    p = Math.max(0.25, Math.min(0.92, p));
+    this._noteInteraction("hello");
     if(RNG.chance(p)){
-      const line = this.pickLine(HELLO_LINES, "hello");
+      const terse = f.highStress || f.lowEnergy;
+      const line = this.pickLine(HELLO_LINES, "hello", {terse});
       if(line){
-        setTimeout(()=>{ UI.speak(line, {interaction:true}); Memory.log("dialogue", "(response to hello)"); }, RNG.range(500,2500));
+        const delayLo = f.lowEnergy ? 1400 : 500, delayHi = f.lowEnergy ? 3800 : 2500;
+        setTimeout(()=>{ UI.speak(line, {interaction:true}); Memory.log("dialogue", "(response to hello)"); }, RNG.range(delayLo,delayHi));
       }
     }
   },
@@ -3691,14 +3960,23 @@ const Interactions = {
       Memory.log("activity", Availability.isSleeping() ? "She doesn't stir." : Availability.absenceLine());
       return;
     }
-    StateEngine.apply({motivation:+8, stress:-4});
+    const f = StateEngine.flags();
+    StateEngine.apply({motivation: f.lowMotivation ? +4 : +8, stress:-4});
     Memory.log("activity", "You offer some encouragement.");
     const mood = StateEngine.currentMoodTag();
     let p = 0.55;
     if(mood==="stressed") p += 0.1;
-    p = Math.max(0.3, Math.min(0.85, p));
+    if(f.highStress) p += 0.05;
+    // #1: high motivation reacts more warmly; low motivation can still
+    // land flat — encouragement doesn't just work automatically.
+    if(f.highMotivation) p += 0.1;
+    if(f.lowMotivation) p -= 0.1;
+    p += Presence.comfortLean();
+    p = Math.max(0.25, Math.min(0.88, p));
+    this._noteInteraction("encourage");
     if(RNG.chance(p)){
-      const line = this.pickLine(ENCOURAGE_LINES, "encourage");
+      const terse = f.lowMotivation;
+      const line = this.pickLine(ENCOURAGE_LINES, "encourage", {terse});
       if(line){
         setTimeout(()=>{ UI.speak(line, {interaction:true}); }, RNG.range(800,3000));
       }
@@ -3711,12 +3989,19 @@ const Interactions = {
     }
     Memory.log("activity", "You ask how she's doing.");
     const mood = StateEngine.currentMoodTag();
+    const f = StateEngine.flags();
     let p = 0.6;
     if(mood==="sleepy") p -= 0.1;
     if(mood==="relaxed") p += 0.05;
-    p = Math.max(0.3, Math.min(0.85, p));
+    if(f.highFocus) p -= 0.1;
+    if(f.highBoredom) p += 0.1;
+    if(f.highSocialNeed) p += 0.1;
+    p += Presence.comfortLean();
+    p = Math.max(0.25, Math.min(0.85, p));
+    this._noteInteraction("askHow");
     if(RNG.chance(p)){
-      const line = this.pickLine(ASKHOW_LINES, "askHow");
+      const terse = f.highStress;
+      const line = this.pickLine(ASKHOW_LINES, "askHow", {terse});
       if(line){
         setTimeout(()=>{ UI.speak(line, {interaction:true}); }, RNG.range(600,2600));
       } else {
