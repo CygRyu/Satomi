@@ -528,6 +528,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
 <audio id="audioLightRain" src="light_rain.mp3" loop preload="auto"></audio>
 <audio id="audioHeavyRain" src="heavy_rain.mp3" loop preload="auto"></audio>
 <audio id="audioThunderstorm" src="thunderstorm.mp3" loop preload="auto"></audio>
+<audio id="audioCicada" src="cicada.mp3" loop preload="auto"></audio>
 <button class="music-toggle" id="musicToggle" aria-label="Toggle music" aria-pressed="false" title="Music"></button>
 
 <div class="wrap">
@@ -679,6 +680,13 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
         </div>
       </div>
       <div class="audio-row audio-row-toggle">
+        <label for="nightAmbienceToggle">Night Ambience</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="nightAmbienceToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="audio-row audio-row-toggle">
         <label for="newsRingtoneToggle">News Ringtone</label>
         <label class="toggle-switch">
           <input type="checkbox" id="newsRingtoneToggle" checked>
@@ -686,10 +694,10 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
         </label>
       </div>
     </div>
-    <button class="settings-btn" id="exportBtn">Export save data</button>
     <button class="settings-btn" id="importBtn">Import save data</button>
     <input type="file" id="importFile" accept="application/json" style="display:none">
     <button class="settings-btn danger" id="resetBtn">Reset everything</button>
+    <button class="settings-btn" id="exportBtn" style="margin-top:14px;">Export save data</button>
     <button class="panel-close" data-close="settings">Close</button>
     <div class="settings-footer">
       <strong>Stay with Satomi</strong>
@@ -1763,6 +1771,7 @@ const WeatherEngine = {
     this.lastChange = Date.now();
     StateEngine.apply(w.moodMod);
     WeatherAudio.setWeather(id);
+    CicadaAudio.refresh();
   },
   isRaining(){ return ["light_rain","heavy_rain","thunderstorm"].includes(this.currentId); },
   // Adverse enough that an optional outdoor plan (a walk, a coffee run,
@@ -1804,6 +1813,7 @@ const WeatherEngine = {
     this.lastChange = Date.now();
     StateEngine.apply(w.moodMod);
     WeatherAudio.setWeather(this.currentId);
+    CicadaAudio.refresh();
   },
 };
 
@@ -4552,6 +4562,7 @@ const Music = {
     try{ localStorage.setItem(this.KEY, this.enabled ? "1" : "0"); }catch(e){}
     this.applyBtn();
     if(this.enabled) this.play(); else this.pause();
+    CicadaAudio.refresh();
   },
   // Called once the main game screen is actually showing (never during
   // the splash). Browsers may still block playback until they've seen a
@@ -4589,6 +4600,7 @@ const Music = {
     if(oldEl && oldEl!==newEl){ oldEl.pause(); oldEl.currentTime = 0; }
     if(newEl) newEl.volume = this.volume;
     if(this.enabled) this.play();
+    CicadaAudio.refresh();
   },
   _armResumeOnGesture(){
     if(this._resumeBound) return;
@@ -4598,6 +4610,7 @@ const Music = {
       document.removeEventListener("keydown", resume);
       this._resumeBound = false;
       this.play();
+      CicadaAudio.refresh();
     };
     document.addEventListener("pointerdown", resume, {once:true});
     document.addEventListener("keydown", resume, {once:true});
@@ -4749,6 +4762,117 @@ const WeatherAudio = {
       const el = this.current ? this.els[this.current] : null;
       if(el && el.paused){
         const p = el.play();
+        if(p && p.catch) p.catch(()=>{});
+      }
+    };
+    document.addEventListener("pointerdown", tryResume);
+    document.addEventListener("keydown", tryResume);
+    document.addEventListener("touchstart", tryResume, {passive:true});
+  }
+};
+
+/* ============================================================
+   13d. NIGHT AMBIENCE (cicadas) — one more looping ambient bed,
+   layered on top of the SAME infrastructure as WeatherAudio (fade
+   pattern, gesture-unlock, "bare filename next to music.mp3" path
+   convention) rather than a parallel audio system. Cicadas are the
+   "nothing else is going on" sound: they only fade in when it's
+   night, no music is audible, the weather isn't rainy/stormy
+   (reusing WeatherEngine.isRaining() — the same check that already
+   decides whether a rain/thunder loop should be playing instead),
+   and Satomi is actually home and awake/undistracted (reusing
+   Availability.isHome(), the same gate DialogueEngine/EventEngine
+   already use for "she's here and free to notice things"). Never
+   evaluated by polling weather/activity itself — refresh() is just
+   called from the handful of places those things already change
+   (sim tick, weather transitions, music start/stop, the settings
+   toggle), same as Music.updateTrack()/WeatherAudio.setWeather().
+   ============================================================ */
+const CicadaAudio = {
+  KEY: "satomi_night_ambience_pref",
+  enabled: true,
+  el: null,
+  checkbox: null,
+  volume: 0.55, // kept in step with the shared Ambient Sounds slider (see wireVolumeControl)
+  playing: false, // current fade target — true once fully faded in
+  FADE_MS: 1500,
+  _fadeTimer: null,
+  _fading: false,
+  _fadeGen: 0,
+  _unlockBound: false,
+  init(){
+    this.el = document.getElementById("audioCicada");
+    this.checkbox = document.getElementById("nightAmbienceToggle");
+    let pref;
+    try{ pref = localStorage.getItem(this.KEY); }catch(e){ pref = null; }
+    this.enabled = (pref === null) ? true : (pref === "1"); // default ON, same as News Ringtone
+    if(this.el) this.el.volume = 0;
+    if(this.checkbox){
+      this.checkbox.checked = this.enabled;
+      this.checkbox.onchange = ()=> this.setEnabled(this.checkbox.checked);
+    }
+    this._armUnlock();
+  },
+  setEnabled(v){
+    this.enabled = !!v;
+    try{ localStorage.setItem(this.KEY, this.enabled ? "1" : "0"); }catch(e){}
+    if(this.checkbox) this.checkbox.checked = this.enabled;
+    this.refresh();
+  },
+  // Ambient Sounds slider. Same contract as WeatherAudio.setVolume:
+  // never restarts playback, just rescales whichever state we're in.
+  setVolume(v){
+    this.volume = Math.max(0, Math.min(1, v));
+    if(this.playing && this.el && !this._fading) this.el.volume = this.volume;
+  },
+  // Re-checks every condition from scratch and only fades if the
+  // desired on/off state actually changed — cheap to call redundantly.
+  refresh(){
+    if(!this.el) return;
+    const musicPlaying = !!(Music.el && !Music.el.paused);
+    const shouldPlay = this.enabled
+      && Music._isNightHour()      // same night window as the sleep-track switch
+      && !musicPlaying
+      && !WeatherEngine.isRaining() // clear/cloudy/etc. only — no rain or thunder
+      && Availability.isHome();    // present, not away, not asleep
+    if(shouldPlay === this.playing) return;
+    this.playing = shouldPlay;
+    this._fade(shouldPlay);
+  },
+  _fade(target){
+    const el = this.el;
+    const gen = ++this._fadeGen;
+    if(target){
+      el.volume = 0;
+      const p = el.play();
+      if(p && p.catch) p.catch(()=>{}); // autoplay block — _armUnlock retries below
+    }
+    const steps = 20, stepMs = this.FADE_MS/steps;
+    let i = 0;
+    clearInterval(this._fadeTimer);
+    this._fading = true;
+    this._fadeTimer = setInterval(()=>{
+      if(gen !== this._fadeGen){ clearInterval(this._fadeTimer); return; }
+      i++;
+      const t = i/steps;
+      el.volume = target ? Math.min(this.volume, this.volume*t) : Math.max(0, this.volume*(1-t));
+      if(i>=steps){
+        clearInterval(this._fadeTimer);
+        this._fading = false;
+        if(!target){ el.pause(); el.currentTime = 0; }
+        else el.volume = this.volume;
+      }
+    }, stepMs);
+  },
+  // Same persistent-resume pattern as WeatherAudio: automatic (non-
+  // gesture) fade-ins are very likely blocked by autoplay policy, so
+  // just keep retrying on the next tap/click/keypress until it sticks.
+  _armUnlock(){
+    if(this._unlockBound) return;
+    this._unlockBound = true;
+    const tryResume = ()=>{
+      if(this.playing && this.el && this.el.paused){
+        const p = this.el.play();
         if(p && p.catch) p.catch(()=>{});
       }
     };
@@ -5114,7 +5238,7 @@ const Persistence = {
           Music.applyBtn();
         }
         if(Number.isFinite(p.audio.musicVolume)) Music.setVolume(p.audio.musicVolume);
-        if(Number.isFinite(p.audio.ambientVolume)) WeatherAudio.setVolume(p.audio.ambientVolume);
+        if(Number.isFinite(p.audio.ambientVolume)){ WeatherAudio.setVolume(p.audio.ambientVolume); CicadaAudio.setVolume(p.audio.ambientVolume); }
       }
       if(p.activity){
         ActivityEngine.awayCooldownUntil = Number.isFinite(p.activity.awayCooldownUntil) ? p.activity.awayCooldownUntil : 0;
@@ -6450,6 +6574,7 @@ const Sim = {
     // across midnight, or across Satomi leaving/returning home — no page
     // reload needed, this just rides the existing tick.
     UI.refreshInteractGridIfOpen();
+    CicadaAudio.refresh();
 
     if(now-this.lastMicroDecision > this.nextMicroGapMs){
       this.lastMicroDecision = now;
@@ -6828,7 +6953,7 @@ function wireVolumeControl(sliderEl, numberEl, setter){
   sliderEl.style.setProperty("--fill", sliderEl.value+"%"); // initial paint
 }
 wireVolumeControl(musicVolumeSlider, musicVolumeInput, (v)=> Music.setVolume(v));
-wireVolumeControl(ambientVolumeSlider, ambientVolumeInput, (v)=> WeatherAudio.setVolume(v));
+wireVolumeControl(ambientVolumeSlider, ambientVolumeInput, (v)=> { WeatherAudio.setVolume(v); CicadaAudio.setVolume(v); });
 
 /* ============================================================
    20. DUST PARTICLES (purely decorative, generated once)
@@ -6928,6 +7053,7 @@ const Splash = {
         // right moment to start the music — never during the splash itself.
         Music.updateTrack();
         Music.play();
+        CicadaAudio.refresh();
         resolve();
       };
     });
@@ -7076,6 +7202,7 @@ function boot(){
   Music.init();
   WeatherAudio.init();
   NewsRingtone.init();
+  CicadaAudio.init();
   const hadSave = Persistence.load();
   UI.syncAudioSliders(); // reflect any restored volumes now that load() has run
   Memory.checkDayRollover();
@@ -7115,6 +7242,7 @@ function boot(){
     // arms itself to retry on the next tap/click/keypress.
     Music.updateTrack();
     Music.play();
+    CicadaAudio.refresh();
   }
   // periodic presence save
   setInterval(()=>Persistence.save(), 30000);
