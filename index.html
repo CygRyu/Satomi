@@ -1977,6 +1977,23 @@ const GENERIC_MICRO = {
   ],
 };
 
+// The three real timed-transition trips. Kept as one shared list so the
+// "is she mid-commute" question is answered the same way everywhere
+// (microUpdate's macro-lock, forcedAnchorActivity's guard, pickNext's
+// guard) instead of drifting into separate scattered id checks.
+const MACRO_LOCKED_TRAVEL_IDS = ["commute_out","commute_to_work","commute_home"];
+
+// Bug 3: grounded, observable arrival-bridge lines — the small "she's
+// physically back inside" beat logged once between a commute/away/work/
+// university state and the first home activity that follows it. Kept to
+// concrete, external actions only, never her private thoughts/feelings.
+const ARRIVAL_HOME_LINES = [
+  "Satomi unlocked the door and stepped inside, setting her things down by the entrance.",
+  "Satomi stepped inside and left her bag by the door.",
+  "Satomi unlocked the door, stepped in, and closed it behind her.",
+  "Satomi came inside and put her things down near the entrance."
+];
+
 const ActivityEngine = {
   current:null,
   currentUntil:0,
@@ -1992,6 +2009,15 @@ const ActivityEngine = {
   commuteOrigin:null,
   isAwayActivity(a){
     return !!a && a.id!=="sleeping" && (a.category==="away" || this.EXTRA_AWAY_IDS.includes(a.id));
+  },
+  // Bugs 1 & 3 share one definition of "she is currently represented by
+  // a macro/out-of-home state": any away-category activity, at_work,
+  // at_university, meeting_friend, or an active commute leg. Bug 1 uses
+  // this to keep micro-actions from overwriting the main stage; Bug 3
+  // uses the exact same set to detect a genuine "arrived back home"
+  // transition. One helper, so the two bugs can't drift out of sync.
+  isMacroLockedActivity(a){
+    return !!a && (this.isAwayActivity(a) || MACRO_LOCKED_TRAVEL_IDS.includes(a.id));
   },
   inAwayCooldown(){ return Date.now() < (this.awayCooldownUntil||0); },
   // ISSUE #8 helper: applies Saturday/Sunday weighting to a raw score.
@@ -2141,6 +2167,18 @@ const ActivityEngine = {
     return nowMin>=w.prepStart && nowMin<w.shiftEnd;
   },
   pickNext(){
+    // Bug 2 guard: this is the path that would otherwise let a hard
+    // schedule anchor (Schedule.candidatePool's Layer 1, e.g. "only
+    // at_work is a valid candidate right now") substitute the
+    // destination in for an active commute — the literal teleport bug.
+    // A commute that hasn't reached its own currentUntil yet is never a
+    // valid target for replacement here; it only ever ends by expiring.
+    // (An explicit debug time-jump that zeroes currentUntil is a
+    // deliberate full-advance and is intentionally exempt from this,
+    // since Date.now() is never less than 0.)
+    if(this.current && MACRO_LOCKED_TRAVEL_IDS.includes(this.current.id) && Date.now() < this.currentUntil){
+      return null;
+    }
     const pool = Schedule.candidatePool();
     if(pool.length===0) return null;
     const choice = RNG.weightedPick(pool, a=>this.score(a));
@@ -2214,6 +2252,17 @@ const ActivityEngine = {
     DailyPlan.ensureForToday();
     const nowMin = Clock.minutesOfDay();
     const curId = this.current ? this.current.id : null;
+
+    // Bug 2 guard: an active, not-yet-expired commute is a real timed
+    // transition, not a placeholder to be pre-empted the moment a class/
+    // shift boundary is crossed. This is belt-and-suspenders alongside
+    // the curId exemptions below (which already let a matching in-
+    // progress commute run), so a future schedule change can't
+    // accidentally reopen the teleport bug here.
+    if(this.current && MACRO_LOCKED_TRAVEL_IDS.includes(curId) && Date.now() < this.currentUntil){
+      return null;
+    }
+
     const inClass = DailyPlan.activeUniversityBlock(nowMin);
     const inShift = DailyPlan.isWithinWorkShift(nowMin);
 
@@ -2284,6 +2333,16 @@ const ActivityEngine = {
     const prev = this.current;
     const wasAway = this.isAwayActivity(prev);
     const isAway = this.isAwayActivity(activity);
+    // Bug 3: this is the central transition point (per the refactor
+    // brief), so the arrival bridge is detected right here from the
+    // exact same prev/next pair everything else in this function
+    // already uses — no second location system, just isMacroLockedActivity
+    // (which already covers away/at_work/at_university/meeting_friend/
+    // commute_*) reused in both directions:
+    //   commute_home -> home activity        = arrival (bridge fires)
+    //   at_work / at_university -> commute_home = NOT arrival yet (still "out")
+    //   commute_to_work -> at_work            = destination arrival, not home
+    const isHomeArrival = this.isMacroLockedActivity(prev) && !this.isMacroLockedActivity(activity);
 
     // Reading identity only lives for the duration of a reading session —
     // once she moves on to something else, clear it so a later, unrelated
@@ -2367,6 +2426,26 @@ const ActivityEngine = {
     // Auto-purchase: opportunistic check against whatever free-ish activity
     // she just landed on (see BookshelfEngine.maybeTriggerPurchase).
     BookshelfEngine.maybeTriggerPurchase(activity);
+
+    // Bug 3: the arrival bridge — a transition EVENT, not a normal
+    // activity. Logged once, right before the new activity's own line,
+    // so the Life Log reads "...on her way home." / "unlocked the
+    // door..." / "...is stretching." It never touches this.current or
+    // currentUntil (those are already set/being set independently of
+    // this), so it can't affect activity duration or scoring at all.
+    // Skipped for return_from_work specifically: that activity's own
+    // text ("just got back from her shift, tired") and micro pool
+    // ("drops her bag by the door") already narrate this exact beat, so
+    // adding the generic bridge in front of it would just be a duplicate.
+    // Offline reconstruction never hits this line with a real prev in
+    // hand — OfflineReconstruct.placeIntoSchedule() explicitly nulls out
+    // ActivityEngine.current before it ever calls setActivity()/
+    // advanceIfNeeded(), so isHomeArrival is already false by the time
+    // reconstruction's own backdated entry has (or hasn't) been written.
+    if(isHomeArrival && activity.id!=="return_from_work"){
+      Memory.log("activity", RNG.pick(ARRIVAL_HOME_LINES));
+    }
+
     this.currentText = text;
     Memory.log("activity", text);
     UI.setActivityText(text);
@@ -2376,9 +2455,11 @@ const ActivityEngine = {
     if(wasAway && !isAway){
       this.awayCooldownUntil = Date.now() + RNG.range(2,4)*3600000; // 2-4 real hours before another absence can be rolled
       // The specific sub-location was already logged by OutingEngine.resolve()
-      // above (req 6) — this is just the occasional extra physical "she's
-      // back" beat on top, same cadence as before.
-      if(RNG.chance(0.4)) Memory.log("activity", Availability.returnCue());
+      // above (req 6); the generic physical "she's back" beat that used
+      // to live here (a 40%-chance Availability.returnCue() line) has
+      // been folded into the single isHomeArrival bridge above, which
+      // now also covers the work/university commute pathway that
+      // previously had no bridge at all — see Bug 3.
     }
     // Note: isAway && !wasAway no longer logs a generic departure hint —
     // OutingEngine.statusLine() (set as `text` above) already gives a
@@ -2387,6 +2468,17 @@ const ActivityEngine = {
   },
   microUpdate(){
     if(!this.current || !this.current.micro || this.current.micro.length===0) return;
+    // Bug 1: macro/out-of-home states (work, university, social outings,
+    // and any commute leg) are authoritative visual states. The original
+    // bug was that this function picked from the activity's own `micro`
+    // pool and pushed it to the main stage via UI.setActivityText(text,
+    // true) unconditionally — and at_work/at_university/commute_* all
+    // define non-empty `micro` pools (small idle gestures), so every
+    // ~15-45s tick had a real chance of silently replacing "Satomi is
+    // working her shift at the café." with "Satomi wipes down a
+    // counter." Bail out before ever computing/selecting a micro line
+    // for these states, so the main stage is simply never touched.
+    if(this.isMacroLockedActivity(this.current)) return;
     // Sleep stays mostly undisturbed: even when the normal micro-update
     // timer fires (Sim.tick's own 15-45s/50% cadence), a sleeping Satomi
     // only actually shows one of these small movements/sounds on top of
@@ -5019,6 +5111,19 @@ const UI = {
     if(!el) return;
     el.classList.add("swap");
     setTimeout(()=>{
+      // Bug 1 (delayed-callback half): this is the single rendering
+      // choke point every micro/reaction line goes through (microUpdate,
+      // event-glance reactions, dialogue reactions, reading skim lines),
+      // and each of those queues its text via its own setTimeout before
+      // landing here. Checking the macro-lock again right at write time
+      // — not just at call time — catches the case where Satomi entered
+      // a protected activity (started a commute, clocked in) *during*
+      // that delay: a stale micro line queued a moment earlier can no
+      // longer clobber the stage once that's happened.
+      if(isMicro && ActivityEngine.isMacroLockedActivity(ActivityEngine.current)){
+        el.classList.remove("swap");
+        return;
+      }
       el.textContent = text;
       el.classList.remove("swap");
     }, isMicro? 350:550);
