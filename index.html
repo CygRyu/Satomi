@@ -4780,9 +4780,10 @@ const WeatherAudio = {
    night, no music is audible, the weather isn't rainy/stormy
    (reusing WeatherEngine.isRaining() — the same check that already
    decides whether a rain/thunder loop should be playing instead),
-   and Satomi is actually home and awake/undistracted (reusing
-   Availability.isHome(), the same gate DialogueEngine/EventEngine
-   already use for "she's here and free to notice things"). Never
+   and Satomi is actually present (reusing Availability.isAway() —
+   sleeping still counts as "quiet"/home, since Music already owns
+   the sleep-track slot whenever music is on; only being physically
+   out of the apartment excludes cicadas). Never
    evaluated by polling weather/activity itself — refresh() is just
    called from the handful of places those things already change
    (sim tick, weather transitions, music start/stop, the settings
@@ -4834,7 +4835,7 @@ const CicadaAudio = {
       && Music._isNightHour()      // same night window as the sleep-track switch
       && !musicPlaying
       && !WeatherEngine.isRaining() // clear/cloudy/etc. only — no rain or thunder
-      && Availability.isHome();    // present, not away, not asleep
+      && !Availability.isAway();   // present — asleep still counts as "quiet", only away excludes it
     if(shouldPlay === this.playing) return;
     this.playing = shouldPlay;
     this._fade(shouldPlay);
@@ -6623,7 +6624,23 @@ const Debug = {
       ["weekday", Clock.isWeekend()?"weekend":"weekday"],
       ["today's work", workStr],
       ["today's classes", uniStr],
-      ["weather", WeatherEngine.currentId+" "+WeatherEngine.temp+"°C"],
+      ["weather", WeatherEngine.currentId+" "+WeatherEngine.temp+"°C"+(WeatherEngine.isRaining()?" (raining — blocks cicadas)":"")],
+      ["Night Ambience", (()=>{
+        const el = CicadaAudio.el;
+        if(!el) return "no <audio id=audioCicada> element found";
+        const netState = ["NETWORK_EMPTY","NETWORK_IDLE","NETWORK_LOADING","NETWORK_NO_SOURCE"][el.networkState] || el.networkState;
+        const fileStatus = el.error ? `FILE ERROR (code ${el.error.code} — cicada.mp3 likely missing/404 next to music.mp3)` : netState;
+        const conds = [
+          ["enabled (toggle)", CicadaAudio.enabled],
+          ["night hour (8pm-6am)", Music._isNightHour()],
+          ["music NOT playing", !(Music.el && !Music.el.paused)],
+          ["weather clear (no rain/storm)", !WeatherEngine.isRaining()],
+          ["Satomi present (not away)", !Availability.isAway()],
+        ];
+        const failing = conds.filter(([,ok])=>!ok).map(([label])=>label);
+        return `target=${CicadaAudio.playing?"ON":"off"} actual=${el.paused?"paused":"playing"} vol=${el.volume.toFixed(2)} src-status=${fileStatus}`
+          + (failing.length ? ` | blocked by: ${failing.join(", ")}` : "");
+      })()],
       ["activity", ActivityEngine.current? ActivityEngine.current.id : "-"],
       ["location", Availability.location()],
       ["commute origin", ActivityEngine.commuteOrigin || "-"],
