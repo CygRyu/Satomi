@@ -245,22 +245,6 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .bs-progress-fill{ height:100%; background:var(--accent); border-radius:5px; transition:width .4s ease; }
 .bs-progress-fill.binge{ background:var(--accent-bright); }
 .bs-progress-label{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--ink-2); }
-.bs-tbr-item{ display:flex; align-items:center; gap:10px; background:var(--bg-1); border:1px solid var(--line); border-radius:10px; padding:11px 12px; margin-bottom:8px; }
-.bs-tbr-main{ flex:1; min-width:0; }
-.bs-tbr-title{ font-size:13px; color:var(--ink-0); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.bs-tbr-meta{ font-size:10.5px; color:var(--ink-2); margin-top:2px; font-family:var(--font-mono); }
-.bs-tbr-author{ font-weight:400; color:var(--ink-2); font-size:11.5px; }
-.bs-tbr-controls{ display:flex; flex-direction:column; gap:3px; }
-.bs-tbr-controls button{ background:none; border:1px solid var(--line); color:var(--ink-2); width:24px; height:22px; border-radius:5px; cursor:pointer; font-size:11px; line-height:1; }
-.bs-tbr-controls button:hover{ color:var(--ink-0); border-color:var(--accent-dim); }
-.bs-tbr-remove{ background:none; border:1px solid #4a2c2c; color:#e08a8a; width:24px; height:22px; border-radius:5px; cursor:pointer; font-size:11px; }
-.bs-fund-bar{ margin-top:2px; margin-bottom:16px; }
-.bs-fund-label{ font-size:11px; color:var(--ink-2); margin-bottom:5px; font-family:var(--font-mono); }
-.bs-shelf-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-.bs-shelf-item{ background:var(--bg-1); border:1px solid var(--line); border-radius:8px; padding:10px 8px; cursor:pointer; text-align:center; transition:border-color .25s ease; }
-.bs-shelf-item:hover{ border-color:var(--accent-dim); }
-.bs-shelf-item .bs-shelf-title{ font-size:11px; color:var(--ink-0); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
-.bs-shelf-item .bs-shelf-stars{ font-size:11px; color:var(--accent-bright); letter-spacing:1px; }
 .bs-addbtn{ width:100%; margin-bottom:6px; background:none; border:1px dashed var(--line); color:var(--ink-1); padding:11px; border-radius:8px; font-size:12.5px; cursor:pointer; }
 .bs-addbtn:hover{ border-color:var(--accent-dim); color:var(--ink-0); }
 .bs-form-row{ margin-bottom:12px; }
@@ -275,6 +259,88 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .bs-detail-row span:last-child{ color:var(--ink-0); font-family:var(--font-mono); text-align:right; max-width:65%; }
 .bs-detail-review{ font-family:var(--font-display); font-style:italic; color:var(--ink-0); font-size:13.5px; line-height:1.6; margin:14px 0; padding:12px; background:var(--bg-1); border-radius:8px; }
 nav.tabbar button.bs-locked-tab{ opacity:.45; }
+
+/* bookshelf — my library (search/filter/sort/group + compact list) */
+.bs-fund-row{ display:flex; align-items:center; gap:8px; margin:14px 0 18px; opacity:.72; }
+.bs-fund-label{ font-size:10.5px; color:var(--ink-2); font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46%; }
+.bs-fund-track{ flex:1; height:4px; border-radius:4px; background:var(--line); overflow:hidden; }
+.bs-fund-fill{ height:100%; background:var(--accent-dim); border-radius:4px; transition:width .4s ease; }
+.bs-fund-pct{ font-size:10px; font-family:var(--font-mono); color:var(--ink-2); }
+
+.bs-library-title{ display:flex; align-items:baseline; gap:7px; }
+.bs-library-count{ font-family:var(--font-mono); color:var(--ink-2); font-size:10px; letter-spacing:0; opacity:.8; }
+
+.bs-search-input{
+  width:100%; background:var(--bg-1); border:1px solid var(--line); color:var(--ink-0);
+  padding:9px 11px; border-radius:8px; font-size:13px; font-family:var(--font-body);
+  box-sizing:border-box; margin-bottom:10px;
+}
+.bs-search-input:focus{ outline:none; border-color:var(--accent-dim); }
+
+.bs-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.bs-quickfilters{ display:flex; gap:6px; flex-wrap:wrap; }
+.bs-qf-btn{
+  background:none; border:1px solid var(--line); color:var(--ink-2);
+  font-size:11px; padding:5px 12px; border-radius:14px; cursor:pointer; letter-spacing:.03em;
+}
+.bs-qf-btn.active{ color:var(--bg-0); background:var(--accent); border-color:var(--accent); }
+.bs-toolbar-right{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-left:auto; }
+.bs-filter-toggle{
+  background:none; border:1px solid var(--line); color:var(--ink-2);
+  font-size:11px; padding:5px 11px; border-radius:14px; cursor:pointer;
+}
+.bs-filter-toggle.has-filters{ color:var(--accent-bright); border-color:var(--accent-dim); }
+.bs-select-compact{
+  background:var(--bg-1); border:1px solid var(--line); color:var(--ink-1);
+  font-size:11px; padding:5px 8px; border-radius:8px; cursor:pointer; font-family:var(--font-body);
+  max-width:132px;
+}
+.bs-secondary-panel{
+  display:grid; grid-template-columns:1fr 1fr; gap:8px 10px;
+  background:var(--bg-1); border:1px solid var(--line); border-radius:10px;
+  padding:11px 12px; margin-bottom:12px;
+}
+.bs-secondary-panel label{ font-size:10.5px; color:var(--ink-2); display:flex; flex-direction:column; gap:4px; }
+.bs-secondary-panel select{
+  background:var(--bg-2); border:1px solid var(--line); color:var(--ink-0);
+  font-size:12px; padding:6px 8px; border-radius:6px; font-family:var(--font-body);
+}
+
+.bs-group-title{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.12em; color:var(--ink-2); text-transform:uppercase; margin:16px 0 6px; opacity:.85; }
+.bs-group-title:first-child{ margin-top:0; }
+
+.bs-book-row{
+  display:flex; align-items:center; gap:10px; background:var(--bg-1); border:1px solid var(--line);
+  border-radius:10px; padding:10px 12px; margin-bottom:7px; cursor:pointer; transition:border-color .2s ease;
+}
+.bs-book-row:hover{ border-color:var(--accent-dim); }
+.bs-book-main{ flex:1; min-width:0; }
+.bs-book-title{ font-size:13px; color:var(--ink-0); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bs-book-author{ font-weight:400; color:var(--ink-2); font-size:11.5px; }
+.bs-book-meta{ font-size:10.5px; color:var(--ink-2); margin-top:2px; font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bs-book-status{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.bs-book-status-text{ font-size:10.5px; color:var(--ink-2); font-family:var(--font-mono); white-space:nowrap; }
+.bs-book-stars{ font-size:11px; color:var(--accent-bright); letter-spacing:1px; white-space:nowrap; }
+.bs-book-progress-mini{ width:44px; height:4px; border-radius:4px; background:var(--line); overflow:hidden; }
+.bs-book-progress-fill{ height:100%; background:var(--accent); border-radius:4px; }
+.bs-book-controls{ display:flex; align-items:center; gap:3px; flex-shrink:0; }
+.bs-book-controls button{ background:none; border:1px solid var(--line); color:var(--ink-2); width:22px; height:20px; border-radius:5px; cursor:pointer; font-size:10px; line-height:1; }
+.bs-book-controls button:hover{ color:var(--ink-0); border-color:var(--accent-dim); }
+.bs-book-controls button:disabled{ opacity:.35; cursor:default; }
+.bs-book-controls .bs-book-remove{ border-color:#4a2c2c; color:#e08a8a; }
+
+/* book detail — visual hierarchy per spec: author, status/progress,
+   metadata, history, note, rating */
+.bs-detail-author{ text-align:center; font-size:12px; color:var(--ink-2); margin:-10px 0 16px; }
+.bs-detail-status-row{ text-align:center; margin-bottom:14px; }
+.bs-detail-status-badge{
+  display:inline-block; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.06em;
+  color:var(--ink-1); background:var(--bg-1); border:1px solid var(--line); border-radius:12px; padding:4px 12px;
+}
+.bs-detail-status-badge.bs-detail-status-reading{ color:var(--accent-bright); border-color:var(--accent-dim); }
+.bs-detail-status-badge.bs-detail-status-completed{ color:var(--accent-bright); }
+.bs-detail-subhead{ font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; color:var(--ink-2); text-transform:uppercase; margin:18px 0 6px; }
+.bs-detail-note{ font-size:13px; color:var(--ink-1); line-height:1.6; background:var(--bg-1); border-radius:8px; padding:10px 12px; }
 
 /* settings/about */
 .stat-row{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; color:var(--ink-1); transition:color var(--transition-slow) ease, border-color var(--transition-slow) ease;}
@@ -3541,6 +3607,12 @@ const BOOK_GENRES = ["fiction","mystery","sci-fi/fantasy","self-help","romance",
 // genre-pick weighting elsewhere and for the rating system's "genre
 // compatibility" modifier below.
 const FAVORITE_BOOK_GENRES = ["slice-of-life","mystery","fiction"];
+// Display labels for genres — purely cosmetic, for library rows/filters.
+const GENRE_LABELS = {
+  "fiction":"Fiction", "mystery":"Mystery", "sci-fi/fantasy":"Sci-Fi/Fantasy",
+  "self-help":"Self-Help", "romance":"Romance", "slice-of-life":"Slice-of-Life"
+};
+function capWord(s){ return s ? String(s).charAt(0).toUpperCase()+String(s).slice(1) : s; }
 
 const BookshelfEngine = {
   savingsJpy: 0,
@@ -3849,6 +3921,158 @@ const BookshelfEngine = {
       };
     }) : [];
   }
+};
+
+/* ============================================================
+   10c. BOOKSHELF UI STATE — search/filter/sort/group state for the
+   "My Library" panel. Purely a view concern layered on top of
+   BookshelfEngine.books; never mutates books or their statuses, so it
+   can't affect save data, reading progression, or the existing
+   purchase/reading lifecycle. Persisted to its own localStorage key,
+   completely separate from Persistence's save/import/export payload.
+   ============================================================ */
+const BOOKSHELF_SORTS = [
+  {id:"added", label:"Recently added"},
+  {id:"title", label:"Title"},
+  {id:"author", label:"Author"},
+  {id:"progress", label:"Progress"},
+  {id:"started", label:"Recently started"},
+  {id:"finished", label:"Recently finished"},
+  {id:"pages", label:"Page count"},
+  {id:"rating", label:"Rating"},
+];
+const BOOKSHELF_GROUPS = [
+  {id:"none", label:"No grouping"},
+  {id:"status", label:"Status"},
+  {id:"genre", label:"Genre"},
+  {id:"author", label:"Author"},
+];
+const BookshelfUI = {
+  KEY: "satomi_bookshelf_ui_v1",
+  search: "",
+  statusFilter: "all", // all | unread | reading | finished
+  secondaryOpen: false,
+  filters: { genre:"", complexity:"", pacing:"", addedBy:"" },
+  sortBy: "added",
+  groupBy: "none",
+  _loaded: false,
+
+  load(){
+    if(this._loaded) return;
+    this._loaded = true;
+    let raw = null;
+    try{ raw = localStorage.getItem(this.KEY); }catch(e){ raw = null; }
+    if(!raw) return;
+    try{
+      const p = JSON.parse(raw);
+      if(typeof p.search==="string") this.search = p.search.slice(0,200);
+      if(["all","unread","reading","finished"].includes(p.statusFilter)) this.statusFilter = p.statusFilter;
+      if(p.filters && typeof p.filters==="object"){
+        if(BOOK_GENRES.includes(p.filters.genre)) this.filters.genre = p.filters.genre;
+        if(["light","moderate","dense"].includes(p.filters.complexity)) this.filters.complexity = p.filters.complexity;
+        if(["fast","slow"].includes(p.filters.pacing)) this.filters.pacing = p.filters.pacing;
+        if(typeof p.filters.addedBy==="string") this.filters.addedBy = p.filters.addedBy.slice(0,80);
+      }
+      if(BOOKSHELF_SORTS.some(s=>s.id===p.sortBy)) this.sortBy = p.sortBy;
+      if(BOOKSHELF_GROUPS.some(g=>g.id===p.groupBy)) this.groupBy = p.groupBy;
+    }catch(e){ /* ignore malformed local UI state */ }
+  },
+  save(){
+    try{
+      localStorage.setItem(this.KEY, JSON.stringify({
+        search:this.search, statusFilter:this.statusFilter, filters:this.filters,
+        sortBy:this.sortBy, groupBy:this.groupBy
+      }));
+    }catch(e){ /* ignore quota/private-mode errors — UI state is non-critical */ }
+  },
+  hasSecondaryFilters(){
+    const f = this.filters;
+    return !!(f.genre || f.complexity || f.pacing || f.addedBy);
+  },
+
+  // Recently-added ordering has no explicit timestamp field on a book,
+  // but every id is minted as "bk_"+Date.now()+"_"+rand (see
+  // BookshelfEngine.addRecommendation), so the creation time can be
+  // recovered straight from the id instead of adding a new save field.
+  addedTsOf(b){
+    const m = /^bk_(\d+)_/.exec(b.id||"");
+    return m ? Number(m[1]) : 0;
+  },
+
+  matchesSearch(b){
+    const q = this.search.trim().toLowerCase();
+    if(!q) return true;
+    const hay = [b.title, b.author, b.genre, b.userNote].filter(Boolean).join(" \n ").toLowerCase();
+    return hay.includes(q);
+  },
+  matchesStatusFilter(b){
+    switch(this.statusFilter){
+      case "unread": return b.status==="queued" || b.status==="purchased";
+      case "reading": return b.status==="reading";
+      case "finished": return b.status==="completed";
+      default: return true;
+    }
+  },
+  matchesSecondaryFilters(b){
+    const f = this.filters;
+    if(f.genre && b.genre!==f.genre) return false;
+    if(f.complexity && b.complexity!==f.complexity) return false;
+    if(f.pacing && b.pacing!==f.pacing) return false;
+    if(f.addedBy && (b.addedBy||"Player")!==f.addedBy) return false;
+    return true;
+  },
+
+  comparator(){
+    const addedTs = b=>this.addedTsOf(b);
+    switch(this.sortBy){
+      case "title": return (a,b)=> a.title.localeCompare(b.title, undefined, {sensitivity:"base"});
+      case "author": return (a,b)=> (a.author||"\uffff").localeCompare(b.author||"\uffff", undefined, {sensitivity:"base"});
+      case "progress": return (a,b)=>{
+        const pa = a.totalPages>0 ? a.currentPage/a.totalPages : 0;
+        const pb = b.totalPages>0 ? b.currentPage/b.totalPages : 0;
+        return pb-pa;
+      };
+      case "started": return (a,b)=> (b.dateStarted||0) - (a.dateStarted||0);
+      case "finished": return (a,b)=> (b.dateFinished||0) - (a.dateFinished||0);
+      case "pages": return (a,b)=> (b.totalPages||0) - (a.totalPages||0);
+      case "rating": return (a,b)=> (b.satomiRating==null?-1:b.satomiRating) - (a.satomiRating==null?-1:a.satomiRating);
+      case "added":
+      default: return (a,b)=> addedTs(b) - addedTs(a);
+    }
+  },
+
+  getFilteredSortedBooks(all){
+    return all
+      .filter(b=> this.matchesSearch(b) && this.matchesStatusFilter(b) && this.matchesSecondaryFilters(b))
+      .slice()
+      .sort(this.comparator());
+  },
+
+  // Only used when groupBy !== "none"; groups the already filtered+sorted
+  // list, preserving each group's internal (already-sorted) order.
+  groupBooks(list){
+    if(this.groupBy==="status"){
+      const buckets = [
+        {key:"reading", label:"Reading", test:b=>b.status==="reading"},
+        {key:"tbr", label:"To Be Read", test:b=>b.status==="queued"||b.status==="purchased"},
+        {key:"finished", label:"Finished", test:b=>b.status==="completed"},
+      ];
+      return buckets.map(bk=>({label:bk.label, books:list.filter(bk.test)})).filter(g=>g.books.length);
+    }
+    if(this.groupBy==="genre"){
+      const byGenre = {};
+      list.forEach(b=>{ (byGenre[b.genre] = byGenre[b.genre]||[]).push(b); });
+      return Object.keys(byGenre).sort((a,b)=>(GENRE_LABELS[a]||a).localeCompare(GENRE_LABELS[b]||b))
+        .map(g=>({label: GENRE_LABELS[g]||g, books: byGenre[g]}));
+    }
+    if(this.groupBy==="author"){
+      const byAuthor = {};
+      list.forEach(b=>{ const k = b.author || "Unknown"; (byAuthor[k]=byAuthor[k]||[]).push(b); });
+      return Object.keys(byAuthor).sort((a,b)=>a.localeCompare(b))
+        .map(a=>({label:a, books:byAuthor[a]}));
+    }
+    return [{label:"", books:list}];
+  },
 };
 
 /* ============================================================
@@ -4646,6 +4870,7 @@ const UI = {
     this.els.logList = document.getElementById("logList");
     this.els.interactGrid = document.getElementById("interactGrid");
     this.els.statsList = document.getElementById("statsList");
+    BookshelfUI.load();
     this.bindNav();
     this.buildInteractOptions();
     setInterval(()=>this.tickClock(), 1000);
@@ -4854,27 +5079,31 @@ const UI = {
       el.innerHTML = `<div class="bs-locked"><span class="bs-lock-icon">🔒</span>Unlocks as your relationship with Satomi grows.</div>`;
       return;
     }
+    BookshelfUI.load();
+    const all = BookshelfEngine.books;
     const active = BookshelfEngine.activeBook();
     const queue = BookshelfEngine.queuedBooks();
-    const purchased = BookshelfEngine.purchasedBooks();
-    const completed = BookshelfEngine.completedBooks().slice().reverse();
     const fund = BookshelfEngine.savingsProgress();
 
-    // NOTE: this must include purchased.length — a book that's been bought
-    // but hasn't started being read yet is neither active, queued, nor
-    // completed, so without this check the panel fell through to the
-    // "Recommend her first book" empty state and the purchased book was
-    // invisible until some other change (e.g. adding a new recommendation)
-    // forced a non-empty render.
-    if(!active && queue.length===0 && purchased.length===0 && completed.length===0){
+    if(all.length===0){
       el.innerHTML = `<div class="bs-empty"><span class="bs-empty-icon">📚</span>Satomi isn't reading anything right now.<br>Recommend her first book to get started!</div>`
         + `<button class="bs-addbtn" id="bsAddBtn">+ Add Recommendation</button>`;
       document.getElementById("bsAddBtn").onclick = ()=> UI.openAddBookForm();
       return;
     }
 
+    // The search input is the one control here a person might be
+    // mid-keystroke in when some unrelated event (a reading tick, a
+    // purchase firing) forces a re-render — capture focus/caret so it can
+    // be restored after the innerHTML swap below, instead of the input
+    // silently losing focus while they're typing.
+    const prevSearchEl = document.getElementById("bsSearchInput");
+    const searchWasFocused = document.activeElement === prevSearchEl;
+    const caret = searchWasFocused ? prevSearchEl.selectionStart : null;
+
     let html = "";
-    html += `<div class="bs-section-title">Currently Reading</div>`;
+
+    // --- Currently Reading (only while a book is actively being read) ---
     if(active){
       const pct = active.totalPages>0 ? Math.round((active.currentPage/active.totalPages)*100) : 0;
       // Fallback chain: guards the display only, in case a future save-data
@@ -4883,83 +5112,152 @@ const UI = {
       // this itself; every stage already reads/writes `title`/`author`.
       const displayTitle = active.title || active.bookTitle || active.name || "Untitled";
       const displayAuthor = active.author || active.bookAuthor || "";
-      html += `<div class="bs-current-card">
+      const sessionsNote = active.sessionsCount ? ` · ${active.sessionsCount} session${active.sessionsCount===1?"":"s"}` : "";
+      html += `<div class="bs-section-title">Currently Reading</div>`;
+      html += `<div class="bs-current-card" id="bsCurrentCard">
         <div class="bs-current-title">${escapeHtml(displayTitle)}</div>
         <div class="bs-current-author">${displayAuthor?escapeHtml(displayAuthor):""}</div>
         <div class="bs-current-status">${ActivityEngine.current && ActivityEngine.current.id==="reading_book" ? escapeHtml(ActivityEngine.currentText||"") : `Satomi is cozying up with "${escapeHtml(displayTitle)}"...`}</div>
         <div class="bs-progress-track"><div class="bs-progress-fill${BookshelfEngine.isBingeActive?" binge":""}" style="width:${pct}%"></div></div>
-        <div class="bs-progress-label"><span>Page ${active.currentPage} / ${active.totalPages}</span><span>${pct}%</span></div>
+        <div class="bs-progress-label"><span>Page ${active.currentPage} / ${active.totalPages}${sessionsNote}</span><span>${pct}%</span></div>
       </div>`;
-    } else {
-      html += `<div class="bs-empty" style="padding:22px 12px;">Satomi isn't reading anything right now. Add a recommendation to her TBR list!</div>`;
     }
 
-    html += `<div class="bs-section-title">To Be Read</div>`;
-    // Purchased-but-not-started books previously had no home in this view:
-    // once maybeTriggerPurchase()/the debug purchase action flips a book's
-    // status from "queued" to "purchased", queuedBooks() no longer includes
-    // it, and it doesn't show up in "Currently Reading" until an actual
-    // reading_book activity calls beginReading(). Surface it here so a
-    // purchased title never appears to just vanish from the shelf.
-    const waitingToStart = purchased;
-    if(waitingToStart.length){
-      waitingToStart.forEach(b=>{
-        const dTitle = b.title || b.bookTitle || b.name || "Untitled";
-        const dAuthor = b.author || b.bookAuthor || "";
-        html += `<div class="bs-tbr-item" data-id="${b.id}">
-          <div class="bs-tbr-main">
-            <div class="bs-tbr-title">${escapeHtml(dTitle)}${dAuthor?` <span class="bs-tbr-author">by ${escapeHtml(dAuthor)}</span>`:""}</div>
-            <div class="bs-tbr-meta">Bought · waiting for her to start it</div>
-          </div>
-        </div>`;
-      });
-    }
+    // --- Book Fund: visible, but deliberately understated so it never
+    // competes with the current book or the library list below it. ---
     if(fund){
-      html += `<div class="bs-fund-bar">
-        <div class="bs-fund-label">Book Fund — "${escapeHtml(fund.book.title)}"</div>
-        <div class="bs-progress-track"><div class="bs-progress-fill" style="width:${fund.pct}%"></div></div>
-        <div class="bs-progress-label"><span></span><span>${fund.pct}%</span></div>
+      html += `<div class="bs-fund-row">
+        <span class="bs-fund-label">Book Fund → "${escapeHtml(fund.book.title)}"</span>
+        <div class="bs-fund-track"><div class="bs-fund-fill" style="width:${fund.pct}%"></div></div>
+        <span class="bs-fund-pct">${fund.pct}%</span>
       </div>`;
     }
-    queue.forEach((b,i)=>{
-      const dTitle = b.title || b.bookTitle || b.name || "Untitled";
-      html += `<div class="bs-tbr-item" data-id="${b.id}">
-        <div class="bs-tbr-main">
-          <div class="bs-tbr-title">${escapeHtml(dTitle)}</div>
-          <div class="bs-tbr-meta">${b.totalPages}p · ${b.genre} · ¥${b.jpyCost}</div>
-        </div>
-        <div class="bs-tbr-controls">
-          <button data-act="up" ${i===0?"disabled":""}>▲</button>
-          <button data-act="down" ${i===queue.length-1?"disabled":""}>▼</button>
-        </div>
-        <button class="bs-tbr-remove" data-act="remove">✕</button>
+
+    // --- My Library ---
+    html += `<div class="bs-section-title bs-library-title">My Library <span class="bs-library-count">${all.length}</span></div>`;
+    html += `<input type="text" id="bsSearchInput" class="bs-search-input" placeholder="Search books..." autocomplete="off" value="${escapeHtml(BookshelfUI.search)}">`;
+
+    const qf = [["all","All"],["unread","Unread"],["reading","Reading"],["finished","Finished"]];
+    html += `<div class="bs-toolbar">
+      <div class="bs-quickfilters">${qf.map(([k,label])=>
+        `<button type="button" class="bs-qf-btn${BookshelfUI.statusFilter===k?" active":""}" data-qf="${k}">${label}</button>`
+      ).join("")}</div>
+      <div class="bs-toolbar-right">
+        <button type="button" class="bs-filter-toggle${BookshelfUI.hasSecondaryFilters()?" has-filters":""}" id="bsFilterToggle">Filter${BookshelfUI.hasSecondaryFilters()?" •":" ▾"}</button>
+        <select class="bs-select-compact" id="bsSortSelect" title="Sort by">
+          ${BOOKSHELF_SORTS.map(s=>`<option value="${s.id}"${BookshelfUI.sortBy===s.id?" selected":""}>${s.label}</option>`).join("")}
+        </select>
+        <select class="bs-select-compact" id="bsGroupSelect" title="Group by">
+          ${BOOKSHELF_GROUPS.map(g=>`<option value="${g.id}"${BookshelfUI.groupBy===g.id?" selected":""}>${g.label}</option>`).join("")}
+        </select>
+      </div>
+    </div>`;
+
+    if(BookshelfUI.secondaryOpen){
+      const addedByOptions = Array.from(new Set(all.map(b=>b.addedBy||"Player")));
+      const opt = (val,label,sel)=>`<option value="${escapeHtml(val)}"${sel?" selected":""}>${escapeHtml(label)}</option>`;
+      html += `<div class="bs-secondary-panel">
+        <label>Genre<select id="bsFGenre">${opt("","All",!BookshelfUI.filters.genre)}${BOOK_GENRES.map(g=>opt(g,GENRE_LABELS[g]||g,BookshelfUI.filters.genre===g)).join("")}</select></label>
+        <label>Complexity<select id="bsFComplexity">${opt("","All",!BookshelfUI.filters.complexity)}${["light","moderate","dense"].map(c=>opt(c,capWord(c),BookshelfUI.filters.complexity===c)).join("")}</select></label>
+        <label>Pacing<select id="bsFPacing">${opt("","All",!BookshelfUI.filters.pacing)}${["fast","slow"].map(p=>opt(p,capWord(p),BookshelfUI.filters.pacing===p)).join("")}</select></label>
+        <label>Added by<select id="bsFAddedBy">${opt("","All",!BookshelfUI.filters.addedBy)}${addedByOptions.map(a=>opt(a,a,BookshelfUI.filters.addedBy===a)).join("")}</select></label>
       </div>`;
-    });
+    }
+
+    const filtered = BookshelfUI.getFilteredSortedBooks(all);
+    html += `<div id="bsLibraryList">`;
+    if(filtered.length===0){
+      html += `<div class="bs-empty" style="padding:26px 12px;">No books match your filters.</div>`;
+    } else if(BookshelfUI.groupBy==="none"){
+      html += filtered.map(b=>UI.renderBookRow(b, queue)).join("");
+    } else {
+      html += BookshelfUI.groupBooks(filtered).map(g=>
+        `<div class="bs-group-title">${escapeHtml(g.label)}</div>` + g.books.map(b=>UI.renderBookRow(b, queue)).join("")
+      ).join("");
+    }
+    html += `</div>`;
+
     const slotsUsed = queue.length, slotsMax = BookshelfEngine.maxSlots();
     html += `<button class="bs-addbtn" id="bsAddBtn" ${slotsUsed>=slotsMax?"disabled":""}>+ Add Recommendation (${slotsUsed}/${slotsMax})</button>`;
 
-    html += `<div class="bs-section-title">Bookshelf</div>`;
-    if(completed.length===0){
-      html += `<div class="bs-empty" style="padding:18px 12px;">Nothing finished yet.</div>`;
+    el.innerHTML = html;
+
+    if(active) document.getElementById("bsCurrentCard").onclick = ()=> UI.openBookDetail(active.id);
+    document.getElementById("bsAddBtn").onclick = ()=> UI.openAddBookForm();
+
+    const si = document.getElementById("bsSearchInput");
+    si.oninput = (e)=>{ BookshelfUI.search = e.target.value; BookshelfUI.save(); UI.renderBookshelf(); };
+    if(searchWasFocused){ si.focus(); if(caret!=null) si.setSelectionRange(caret, caret); }
+
+    el.querySelectorAll(".bs-qf-btn").forEach(btn=>{
+      btn.onclick = ()=>{ BookshelfUI.statusFilter = btn.dataset.qf; BookshelfUI.save(); UI.renderBookshelf(); };
+    });
+    document.getElementById("bsFilterToggle").onclick = ()=>{ BookshelfUI.secondaryOpen = !BookshelfUI.secondaryOpen; UI.renderBookshelf(); };
+
+    const bindSel = (id, apply)=>{
+      const s = document.getElementById(id);
+      if(s) s.onchange = (e)=>{ apply(e.target.value); BookshelfUI.save(); UI.renderBookshelf(); };
+    };
+    bindSel("bsSortSelect", v=>BookshelfUI.sortBy=v);
+    bindSel("bsGroupSelect", v=>BookshelfUI.groupBy=v);
+    bindSel("bsFGenre", v=>BookshelfUI.filters.genre=v);
+    bindSel("bsFComplexity", v=>BookshelfUI.filters.complexity=v);
+    bindSel("bsFPacing", v=>BookshelfUI.filters.pacing=v);
+    bindSel("bsFAddedBy", v=>BookshelfUI.filters.addedBy=v);
+
+    el.querySelectorAll(".bs-book-row").forEach(row=>{
+      const id = row.dataset.id;
+      row.onclick = (e)=>{ if(e.target.closest(".bs-book-controls")) return; UI.openBookDetail(id); };
+      const up = row.querySelector('[data-act="up"]');
+      const down = row.querySelector('[data-act="down"]');
+      const rm = row.querySelector('[data-act="remove"]');
+      if(up) up.onclick = (e)=>{ e.stopPropagation(); BookshelfEngine.reorderQueue(id,-1); };
+      if(down) down.onclick = (e)=>{ e.stopPropagation(); BookshelfEngine.reorderQueue(id,1); };
+      if(rm) rm.onclick = (e)=>{ e.stopPropagation(); if(confirm("Remove this book from her TBR list?")) BookshelfEngine.removeBook(id); };
+    });
+  },
+  // Single-column "My Library" row. `queue` is BookshelfEngine.queuedBooks()
+  // — needed to know a queued book's position for the up/down reorder
+  // controls (queue priority still drives which book auto-purchases next,
+  // via BookshelfEngine.topQueuedBook(), so that control is preserved here
+  // rather than dropped in favor of the new sort options).
+  renderBookRow(b, queue){
+    const dTitle = b.title || b.bookTitle || b.name || "Untitled";
+    const dAuthor = b.author || b.bookAuthor || "";
+    const genreLabel = GENRE_LABELS[b.genre] || b.genre;
+    const meta = `${genreLabel} · ${capWord(b.complexity)} · ${b.totalPages} pages`;
+
+    let statusHtml;
+    if(b.status==="reading"){
+      const pct = b.totalPages>0 ? Math.round((b.currentPage/b.totalPages)*100) : 0;
+      statusHtml = `<div class="bs-book-progress-mini"><div class="bs-book-progress-fill" style="width:${pct}%"></div></div><span class="bs-book-status-text">${pct}%</span>`;
+    } else if(b.status==="completed"){
+      const stars = "★".repeat(Math.round(b.satomiRating||0)) + "☆".repeat(5-Math.round(b.satomiRating||0));
+      statusHtml = `<span class="bs-book-stars" title="${b.satomiRating!=null?b.satomiRating.toFixed(1):""}">${stars}</span>`;
+    } else if(b.status==="purchased"){
+      statusHtml = `<span class="bs-book-status-text">Bought · TBR</span>`;
     } else {
-      html += `<div class="bs-shelf-grid">` + completed.map(b=>{
-        const stars = "★".repeat(Math.round(b.satomiRating||0)) + "☆".repeat(5-Math.round(b.satomiRating||0));
-        const dTitle = b.title || b.bookTitle || b.name || "Untitled";
-        return `<div class="bs-shelf-item" data-id="${b.id}"><div class="bs-shelf-title">${escapeHtml(dTitle)}</div><div class="bs-shelf-stars">${stars}</div></div>`;
-      }).join("") + `</div>`;
+      statusHtml = `<span class="bs-book-status-text">Queued</span>`;
     }
 
-    el.innerHTML = html;
-    document.getElementById("bsAddBtn").onclick = ()=> UI.openAddBookForm();
-    el.querySelectorAll(".bs-tbr-item").forEach(row=>{
-      const id = row.dataset.id;
-      row.querySelector('[data-act="up"]').onclick = ()=> BookshelfEngine.reorderQueue(id,-1);
-      row.querySelector('[data-act="down"]').onclick = ()=> BookshelfEngine.reorderQueue(id,1);
-      row.querySelector('[data-act="remove"]').onclick = ()=>{ if(confirm("Remove this book from her TBR list?")) BookshelfEngine.removeBook(id); };
-    });
-    el.querySelectorAll(".bs-shelf-item").forEach(item=>{
-      item.onclick = ()=> UI.openBookDetail(item.dataset.id);
-    });
+    let controls = "";
+    if(b.status==="queued"){
+      const i = queue.findIndex(x=>x.id===b.id);
+      controls = `<div class="bs-book-controls">
+        <button type="button" data-act="up" ${i<=0?"disabled":""} aria-label="Move up">▲</button>
+        <button type="button" data-act="down" ${i<0||i===queue.length-1?"disabled":""} aria-label="Move down">▼</button>
+        <button type="button" class="bs-book-remove" data-act="remove" aria-label="Remove">✕</button>
+      </div>`;
+    }
+
+    return `<div class="bs-book-row" data-id="${b.id}">
+      <div class="bs-book-main">
+        <div class="bs-book-title">${escapeHtml(dTitle)}${dAuthor?` <span class="bs-book-author">— ${escapeHtml(dAuthor)}</span>`:""}</div>
+        <div class="bs-book-meta">${escapeHtml(meta)}</div>
+      </div>
+      <div class="bs-book-status">${statusHtml}</div>
+      ${controls}
+    </div>`;
   },
   openAddBookForm(){
     document.getElementById("bsTitle").value = "";
@@ -4998,26 +5296,54 @@ const UI = {
     const dAuthor = b.author || b.bookAuthor || "";
     document.getElementById("bsDetailTitle").textContent = dTitle;
     const fmtDate = ts => ts ? new Date(ts).toLocaleDateString() : "—";
-    const minutesTotal = null; // session-length isn't tracked per-book beyond stress samples; omitted from the detail view
     const stars = b.satomiRating!=null ? "★".repeat(Math.round(b.satomiRating)) + "☆".repeat(5-Math.round(b.satomiRating)) : "—";
-    let rows = [
-      ["Author", dAuthor || "—"],
-      ["Genre", b.genre],
-      ["Complexity", b.complexity],
-      ["Pacing", b.pacing],
-      ["Total pages", b.totalPages],
-      ["Recommended by", b.addedBy],
-      ["Date purchased", fmtDate(b.datePurchased)],
-      ["Date started", fmtDate(b.dateStarted)],
-      ["Date finished", fmtDate(b.dateFinished)],
-      ["Sessions spent reading", b.sessionsCount||0],
-    ];
-    if(b.userNote) rows.push(["Your note", b.userNote]);
-    let html = rows.map(([k,v])=>`<div class="bs-detail-row"><span>${k}</span><span>${escapeHtml(String(v))}</span></div>`).join("");
+    const statusLabel = {queued:"Queued", purchased:"Bought · waiting to start", reading:"Reading", completed:"Finished"}[b.status] || b.status;
+    const row = (k,v)=>`<div class="bs-detail-row"><span>${k}</span><span>${escapeHtml(String(v))}</span></div>`;
+
+    let html = "";
+    // 1. title/author — title is already the modal heading; author sits
+    //    directly beneath it as the subtitle.
+    if(dAuthor) html += `<div class="bs-detail-author">${escapeHtml(dAuthor)}</div>`;
+
+    // 2. reading status/progress — the thing most worth scanning first.
+    html += `<div class="bs-detail-status-row"><span class="bs-detail-status-badge bs-detail-status-${b.status}">${statusLabel}</span></div>`;
+    if(b.status==="reading" || b.status==="completed"){
+      const pct = b.status==="completed" ? 100 : (b.totalPages>0 ? Math.round((b.currentPage/b.totalPages)*100) : 0);
+      html += `<div class="bs-progress-track"><div class="bs-progress-fill" style="width:${pct}%"></div></div>
+        <div class="bs-progress-label"><span>Page ${b.currentPage} / ${b.totalPages}</span><span>${pct}%</span></div>`;
+    }
+
+    // 3. core metadata
+    html += [
+      row("Genre", GENRE_LABELS[b.genre]||b.genre),
+      row("Complexity", capWord(b.complexity)),
+      row("Pacing", capWord(b.pacing)),
+      row("Total pages", b.totalPages),
+      row("Recommended by", b.addedBy),
+    ].join("");
+
+    // 4. dates & reading history
+    html += `<div class="bs-detail-subhead">History</div>`;
+    html += [
+      row("Date purchased", fmtDate(b.datePurchased)),
+      row("Date started", fmtDate(b.dateStarted)),
+      row("Date finished", fmtDate(b.dateFinished)),
+      row("Sessions spent reading", b.sessionsCount||0),
+    ].join("");
+
+    // 5. user note
+    if(b.userNote){
+      html += `<div class="bs-detail-subhead">Your Note</div>`;
+      html += `<div class="bs-detail-note">${escapeHtml(b.userNote)}</div>`;
+    }
+
+    // 6. Satomi's rating/review, only once finished
     if(b.status==="completed"){
-      html += `<div class="bs-detail-row"><span>Satomi's rating</span><span>${stars} (${b.satomiRating})</span></div>`;
+      html += `<div class="bs-detail-subhead">Satomi's Rating</div>`;
+      html += row("Rating", `${stars} (${b.satomiRating})`);
       html += `<div class="bs-detail-review">"${escapeHtml(b.satomiReview||"")}"</div>`;
     }
+
     document.getElementById("bsDetailBody").innerHTML = html;
     Panels.open("bookdetail");
   },
