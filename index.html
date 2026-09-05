@@ -413,6 +413,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
       <button data-filter="dialogue">Dialogue</button>
       <button data-filter="activity">Activities</button>
       <button data-filter="environment">Environment</button>
+      <button data-filter="news">News</button>
     </div>
     <div id="logList"></div>
     <button class="panel-close" data-close="log">Close</button>
@@ -556,7 +557,7 @@ const ACTIVITIES = [
   { id:"stats_homework", category:"study", text:["Satomi is struggling through a statistics worksheet."], micro:["Satomi sighs at the page.","Satomi rechecks a formula."], duration:[180,500], tod:["afternoon","evening"], weekday:"any", effects:{energy:-5,focus:-3,stress:+4} },
   { id:"break_stretch", category:"break", text:["Satomi is taking a short break.","Satomi leans back in her chair.","Satomi is taking a moment to do absolutely nothing.","Satomi has stepped away from her desk for a little while.","Satomi is letting her mind wander for a few minutes."], micro:["Satomi rolls her shoulders.","Satomi stares at the ceiling for a moment.","Satomi stretches her arms above her head.","Satomi rolls her neck carefully.","Satomi closes her eyes for a few seconds.","Satomi looks around the room without really focusing on anything.","Satomi takes a slow breath and settles back down."], duration:[60,240], tod:["any"], weekday:"any", effects:{energy:+3,focus:+5,boredom:+1,stress:-2,mood:+1} },
   { id:"tea_making", category:"break", text:["Satomi gets up to make tea.","Satomi is making herself another cup of tea.","Satomi is standing in the kitchen, waiting for the tea to steep.","Satomi is deciding which tea to have."], micro:["Satomi waits for the kettle.","Satomi warms her hands on the cup.","Satomi checks the color of the tea.","Satomi blows gently across the surface.","Satomi takes a small sip, then waits.","Satomi carries the cup back to her desk.","Satomi warms her hands around the cup."], duration:[120,300], tod:["any"], weekday:"any", effects:{energy:+2,hunger:-2,stress:-2,mood:+1} },
-  { id:"phone_check", category:"break", text:["Satomi checks her phone.","Satomi is checking her phone for a moment.","Satomi is catching up on a few messages.","Satomi is looking through her notifications."], micro:["Satomi scrolls slowly.","Satomi types a short reply.","Satomi puts the phone face-down again.","Satomi opens a message, then leaves it unanswered for now.","Satomi reads something twice.","Satomi types a reply and deletes half of it.","Satomi checks the time before putting her phone down.","Satomi turns the phone over again."], duration:[30,180], tod:["any"], weekday:"any", effects:{socialNeed:-3,boredom:-2,focus:-1} },  { id:"desk_organize", category:"break", text:["Satomi is tidying her desk."], micro:["Satomi stacks some loose papers.","Satomi finds a pen she'd been looking for."], duration:[90,240], tod:["any"], weekday:"any", effects:{boredom:-1} },
+  { id:"phone_check", category:"break", text:["Satomi checks her phone.","Satomi is checking her phone for a moment.","Satomi is catching up on a few messages.","Satomi is looking through her notifications."], micro:["Satomi scrolls slowly.","Satomi types a short reply.","Satomi puts the phone face-down again.","Satomi opens a message, then leaves it unanswered for now.","Satomi reads something twice.","Satomi types a reply and deletes half of it.","Satomi checks the time before putting her phone down.","Satomi turns the phone over again.","Satomi's thumb pauses mid-scroll on something.","Satomi's eyes settle on a headline for a moment."], duration:[30,180], tod:["any"], weekday:"any", effects:{socialNeed:-3,boredom:-2,focus:-1} },  { id:"desk_organize", category:"break", text:["Satomi is tidying her desk."], micro:["Satomi stacks some loose papers.","Satomi finds a pen she'd been looking for."], duration:[90,240], tod:["any"], weekday:"any", effects:{boredom:-1} },
   { id:"window_watch", category:"observe", text:["Satomi looks out the window for a while.","Satomi is standing by the window for a while.","Satomi is watching the street below.","Satomi pauses by the window without really knowing why."], micro:["Satomi watches something pass by outside.","Satomi watches a cyclist disappear around the corner.","Satomi notices someone hurrying down the street.","Satomi rests her hand against the window frame.","Satomi looks up at the sky.","Satomi watches the lights come on in a nearby building."], duration:[30,150], tod:["any"], weekday:"any", effects:{stress:-1,boredom:+1} },
   // ISSUE #7: meal activities now carry a soft preferred/extended time
   // window (minutes-of-day) alongside the existing coarse `tod` bucket.
@@ -689,6 +690,206 @@ const COMMUTE_FLAVOR = {
     "Satomi steps inside, damp from the walk back.",
     "Satomi is glad to be back before it started coming down harder.",
   ],
+};
+
+// --- news templates: procedurally assembled phone-notification articles
+// she occasionally reads in full while checking her phone. Each category
+// is source+event+detail+impact+reaction pools (same shape throughout,
+// see NewsEngine.generate) plus a statChange and a pool of short,
+// personal reaction lines grounded in her own life rather than the
+// article's exact wording — see NewsEngine.playReaction for the
+// skim -> connect-to-her-life -> react sequencing. ---
+const NEWS_TEMPLATES = {
+  bad_transit: {
+    sources: ["Commuter Alert", "City Transit Beat", "Metro Daily Update"],
+    events: [
+      "Major signaling errors have halted train services along the Central Line near Westside Station.",
+      "An unexpected power grid failure has suspended all suburban rail operations during afternoon hours.",
+      "Emergency track maintenance has caused severe bottlenecks across all main transit lines.",
+      "A minor derailment at a rail junction has closed two platforms for the rest of the day.",
+    ],
+    details: [
+      "Technicians on site report that replacement hardware is being brought in, though repairs are taking longer than anticipated.",
+      "Official statements confirm the outage was triggered by heavy rain damage to overhead power lines.",
+      "Crews are actively working to clear the route, but safety protocols require reduced train speeds throughout the corridor.",
+      "Investigators say the cause is still under review, with a full report expected sometime tomorrow.",
+    ],
+    impacts: [
+      "Commuters are warned to expect delays of at least 45 to 60 minutes during peak travel times.",
+      "Crowds are already building up at main hubs, with shuttle buses operating at maximum capacity.",
+      "Riders are strongly advised to seek alternative road transit or delay non-essential travel until evening.",
+      "Some lines are running at half their usual frequency for the remainder of the day.",
+    ],
+    reactions: [
+      "Local transit authorities have issued an apology and promised full updates on their app every 20 minutes.",
+      "Frustrated passengers have turned to social media to share real-time updates and alternative routes.",
+      "Station staff are currently distributing single-ride vouchers to affected travelers.",
+    ],
+    statChange: { stress: +12, mood: -8 },
+    personalLines: [
+      "Great, that's going to add to my commute.",
+      "I should leave earlier than usual today.",
+      "So much for getting there on time.",
+      "Guess I'll check the app before I head out.",
+    ],
+  },
+  good_community: {
+    sources: ["Local Pulse", "City Life Section", "Neighbourhood News"],
+    events: [
+      "The city council officially opened the newly renovated riverside park complex earlier today.",
+      "The annual neighborhood food and arts festival kicked off this afternoon with a record turnout.",
+      "A popular local bookstore and cafe chain opened its newest two-story location right off the main avenue.",
+      "A small community garden project finally opened to the public after months of volunteer work.",
+    ],
+    details: [
+      "The project features shaded seating, local artisan coffee kiosks, and open seating green spaces.",
+      "Organizers highlighted over forty local vendors offering handcrafted goods, pastries, and live acoustic music.",
+      "Designed specifically for students and remote workers, the space offers quiet study alcoves and high-speed Wi-Fi.",
+      "Volunteers say the plots will be open for anyone in the neighborhood to help tend through the season.",
+    ],
+    impacts: [
+      "Visitors gathered early to catch the opening ceremony and try out the complimentary food samples.",
+      "The area was bustling with foot traffic as residents took advantage of the warm weather.",
+      "Initial reviews online have been overwhelmingly positive, praising the cozy atmosphere and affordable menu.",
+    ],
+    reactions: [
+      "Community leaders expressed optimism that the new spot will become a favorite local hangout.",
+      "Attendees are already sharing photos online, tagging the event as this weekend's top local attraction.",
+      "The owners announced they will host free weekly community workshops starting next month.",
+    ],
+    statChange: { stress: -5, mood: +10 },
+    personalLines: [
+      "That actually looks nice — maybe I'll check it out this weekend.",
+      "I should drag Mio along if we ever go.",
+      "That's close by, isn't it? Might be worth a look.",
+      "Sounds like a nice way to spend an afternoon.",
+    ],
+  },
+  campus_news: {
+    sources: ["University Wire", "Campus Bulletin", "Student Affairs Update"],
+    events: [
+      "The literature department announced a change to next term's seminar schedule.",
+      "The main library building will extend its hours through the end of exam season.",
+      "A visiting author is scheduled to give a guest lecture open to all students next week.",
+      "The registrar's office confirmed the deadline for course withdrawal is approaching.",
+    ],
+    details: [
+      "Faculty say the change is meant to reduce overlap between required courses.",
+      "Staff confirmed the extended hours will include the group study rooms on the third floor.",
+      "The talk will focus on translation and contemporary fiction, with a Q&A session afterward.",
+      "Students who miss the deadline will need to petition individually to drop a course.",
+    ],
+    impacts: [
+      "Several students have already posted about the schedule change in the department group chat.",
+      "Seating in the extended-hours reading room is expected to fill up quickly during finals week.",
+      "Tickets for the guest lecture are limited and expected to go fast among literature majors.",
+    ],
+    reactions: [
+      "The department has asked students to check the portal for the finalized timetable.",
+      "The library recommends reserving a study room in advance during the busier weeks.",
+      "Faculty encouraged students to RSVP early if they plan to attend.",
+    ],
+    statChange: { stress: +3, mood: +1 },
+    personalLines: [
+      "I should double-check my schedule doesn't clash with that now.",
+      "Kana's going to want to go to that lecture.",
+      "I should book a study room before they're all gone.",
+      "I need to actually check the portal for once.",
+    ],
+  },
+  cafe_industry: {
+    sources: ["Food & Beverage Weekly", "Cafe Culture Notes", "Trade Wire"],
+    events: [
+      "Coffee bean import costs have risen again this quarter, according to industry reports.",
+      "A wave of small independent cafes across the city have announced extended evening hours.",
+      "A major coffee chain is piloting a new loyalty app in select neighborhoods.",
+      "Local cafe owners report an ongoing shortage of part-time weekend staff.",
+    ],
+    details: [
+      "Analysts point to shipping costs and weather-related crop shortfalls as the main drivers.",
+      "Owners cite steady demand from students and remote workers as the reason for the change.",
+      "The app offers point-based rewards and early access to seasonal menu items.",
+      "Several shops say they're relying more heavily on existing staff picking up extra shifts.",
+    ],
+    impacts: [
+      "Some cafes are expected to quietly adjust menu prices in the coming weeks.",
+      "Regulars have welcomed the longer hours, especially ahead of exam season.",
+      "Early sign-ups for the new app have reportedly been strong.",
+    ],
+    reactions: [
+      "Owners say they'll try to hold off on price changes as long as possible.",
+      "Staff at several locations mentioned the later hours make closing shifts busier than before.",
+      "The chain says it plans to expand the pilot citywide by next quarter.",
+    ],
+    statChange: { stress: +4, mood: -1 },
+    personalLines: [
+      "Great, prices going up again.",
+      "Please don't let my manager decide we need a loyalty app too.",
+      "That explains why we've been short-staffed lately.",
+      "At least it's not just us struggling to find weekend help.",
+    ],
+  },
+  weather_advisory: {
+    sources: ["Weather Watch", "City Advisory Board", "Forecast Update"],
+    events: [
+      "Forecasters are warning of a sharp temperature swing heading into the weekend.",
+      "A prolonged rain system is expected to move through the region over the next two days.",
+      "An air quality advisory has been issued for the afternoon due to high pollen and dust levels.",
+      "Meteorologists say this week's humidity levels are unusually high for the season.",
+    ],
+    details: [
+      "Residents are advised to keep an umbrella handy and check the forecast before heading out.",
+      "The system is expected to bring intermittent heavy showers rather than one continuous downpour.",
+      "Those with allergies or respiratory conditions are advised to limit time outdoors.",
+      "Officials say conditions should ease slightly by evening.",
+    ],
+    impacts: [
+      "Several outdoor events scheduled for this weekend may be affected or rescheduled.",
+      "Local shops report a small rush on umbrellas and rain gear.",
+      "Commute times could be affected if the rain coincides with peak hours.",
+    ],
+    reactions: [
+      "The advisory board recommends checking official updates before making outdoor plans.",
+      "Forecasters say they'll issue an update if conditions change significantly.",
+    ],
+    statChange: { stress: +2, mood: -2 },
+    personalLines: [
+      "Guess I should keep my umbrella by the door this week.",
+      "So much for any outdoor plans this weekend.",
+      "I should check the forecast before I decide anything.",
+    ],
+  },
+  book_release: {
+    sources: ["Literary Digest", "Bookstore Wire", "Arts & Letters"],
+    events: [
+      "A long-awaited translation of a acclaimed novel is finally hitting shelves this week.",
+      "An indie publisher announced a surprise reprint of an out-of-print favorite.",
+      "A local bookstore is hosting a late-night release event for a popular series' final volume.",
+      "A well-known author announced a new collection of short stories due out this fall.",
+    ],
+    details: [
+      "Early reviews describe the translation as faithful while still reading naturally.",
+      "Copies of the original printing had been selling for high prices secondhand for years.",
+      "The store plans to stay open past midnight with tea and snacks for attendees.",
+      "The author says the collection was inspired by several years of travel notes.",
+    ],
+    impacts: [
+      "Preorders have reportedly sold out at several stores already.",
+      "Longtime fans of the original are already sharing their excitement online.",
+      "The release event is expected to draw a long line by early evening.",
+    ],
+    reactions: [
+      "The publisher says a second printing is already being planned.",
+      "The store is asking attendees to reserve a spot in advance if possible.",
+    ],
+    statChange: { stress: -3, mood: +6 },
+    personalLines: [
+      "I might actually need to get a copy of that.",
+      "I should see if Mio wants to go to that release thing.",
+      "That's going straight on my list.",
+      "I really don't need more books, but... I kind of want this one.",
+    ],
+  },
 };
 
 // --- dialogue: explicit lines with contextual weighting ---
@@ -2706,6 +2907,81 @@ DialogueEngine.fireReaction = function(r){
 };
 
 /* ============================================================
+   10a. NEWS ENGINE — procedurally generated phone articles she
+   occasionally stops to actually read, rather than just glancing at.
+   Rare and cooldown-gated (see maybeTrigger) so it reads as an
+   occasional real moment, not something that happens every phone check.
+   Staged in three beats to match how someone actually reads a short
+   article on their phone: skim first, then a pause once a detail
+   registers, then a short, grounded reaction tied to her own day —
+   never a dramatic monologue about the news itself.
+   ============================================================ */
+const NewsEngine = {
+  lastAt: 0,
+  minGapMs: 18*60*1000, // real minutes — keeps this a rare event, not a running feed
+
+  eligible(){
+    return !!ActivityEngine.current && ["phone_check","relaxing_phone"].includes(ActivityEngine.current.id) && Availability.isHome();
+  },
+
+  // Which category feels plausible to land on right now — weighted by
+  // what's actually relevant to her day, not picked uniformly at random.
+  pickCategory(){
+    const nowMin = Clock.minutesOfDay();
+    const pool = [
+      { id:"good_community", w:2 },
+      { id:"book_release", w:1.5 },
+    ];
+    const approachingTrip = DailyPlan.isApproachingUniversity(nowMin) || DailyPlan.isApproachingWorkDeparture(nowMin) || Availability.isAway();
+    pool.push({ id:"bad_transit", w: approachingTrip ? 3 : 1 });
+    pool.push({ id:"campus_news", w: Clock.isWeekend() ? 0.4 : 2 });
+    pool.push({ id:"cafe_industry", w: 1.5 });
+    pool.push({ id:"weather_advisory", w: WeatherEngine.isAdverse() ? 3 : 0.8 });
+    return RNG.weightedPick(pool, x=>x.w).id;
+  },
+
+  generate(categoryId){
+    const pool = NEWS_TEMPLATES[categoryId];
+    const content = `[${RNG.pick(pool.sources)}] ${RNG.pick(pool.events)} ${RNG.pick(pool.details)} ${RNG.pick(pool.impacts)} ${RNG.pick(pool.reactions)}`;
+    return { category:categoryId, content, effects:pool.statChange, personalLines:pool.personalLines };
+  },
+
+  // Body-language-only skim beats before anything registers — no words yet.
+  SKIM_TEXTS: [
+    "Satomi's thumb pauses mid-scroll on something.",
+    "Satomi tilts her phone slightly, reading more closely.",
+    "Satomi's eyes move down the screen, unhurried.",
+    "Satomi stops scrolling to actually read something.",
+  ],
+
+  maybeTrigger(){
+    if(!this.eligible()) return false;
+    if(Date.now()-this.lastAt < this.minGapMs) return false;
+    if(!RNG.chance(0.15)) return false; // even when eligible, most phone checks stay ordinary
+    this.lastAt = Date.now();
+    const news = this.generate(this.pickCategory());
+    this.playReaction(news);
+    return true;
+  },
+
+  // Stage 1 (now): a pure skim — the activity text itself changes to show
+  // her actually stopping on something, no dialogue yet.
+  // Stage 2 (after a short realistic delay): stats update, she reacts out
+  // loud with a short line grounded in her own schedule/budget/plans, and
+  // the full generated article is written to the Life Log for flavor.
+  playReaction(news){
+    UI.setActivityText(RNG.pick(this.SKIM_TEXTS), true);
+    setTimeout(()=>{
+      StateEngine.apply(news.effects);
+      const line = RNG.pick(news.personalLines);
+      UI.speak(line);
+      Memory.log("dialogue", line);
+      Memory.log("news", news.content);
+    }, RNG.range(1400,3200));
+  },
+};
+
+/* ============================================================
    11. LIFE THREAD ENGINE
    ============================================================ */
 const LifeThreadEngine = {
@@ -4183,6 +4459,7 @@ const Sim = {
       this.nextDialogueGapMs = RNG.range(20,55)*1000;
       if(Availability.isHome()) DialogueEngine.maybeSpeak();
     }
+    NewsEngine.maybeTrigger();
     Persistence.scheduleSave();
   }
 };
