@@ -363,21 +363,36 @@ nav.tabbar button.bs-locked-tab{ opacity:.45; }
 .audio-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
 .audio-row:last-child{ margin-bottom:0; }
 .audio-row label{ font-size:12.5px; color:var(--ink-1); letter-spacing:.02em; transition:color var(--transition-slow) ease; }
+.slider-line{ display:flex; align-items:center; gap:12px; }
 .audio-row input[type="range"]{
-  -webkit-appearance:none; appearance:none; width:100%; height:3px;
-  background:var(--line); border-radius:2px; outline:none; cursor:pointer;
-  transition:background var(--transition-slow) ease;
+  -webkit-appearance:none; appearance:none; flex:1 1 auto; width:100%; height:8px;
+  border-radius:4px; outline:none; cursor:pointer;
+  background:linear-gradient(to right, var(--accent) 0%, var(--accent) var(--fill,50%), var(--line) var(--fill,50%), var(--line) 100%);
+  transition:background .12s ease;
 }
 .audio-row input[type="range"]::-webkit-slider-thumb{
-  -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%;
-  background:var(--accent); cursor:pointer; border:none; margin-top:-5.5px;
+  -webkit-appearance:none; appearance:none; width:11px; height:18px; border-radius:4px;
+  background:var(--accent-bright); cursor:pointer; border:none; margin-top:-5px;
+  box-shadow:0 1px 3px rgba(0,0,0,.35);
 }
 .audio-row input[type="range"]::-moz-range-thumb{
-  width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; border:none;
+  width:11px; height:18px; border-radius:4px; background:var(--accent-bright); cursor:pointer; border:none;
+  box-shadow:0 1px 3px rgba(0,0,0,.35);
 }
 .audio-row input[type="range"]::-moz-range-track{
-  background:var(--line); height:3px; border-radius:2px;
+  background:var(--line); height:8px; border-radius:4px;
 }
+.audio-row input[type="range"]::-moz-range-progress{
+  background:var(--accent); height:8px; border-radius:4px;
+}
+.volume-input{
+  flex:0 0 auto; width:42px; text-align:center; -moz-appearance:textfield;
+  background:var(--bg-2); border:1px solid var(--line); border-radius:6px;
+  color:var(--ink-0); font-family:var(--font-mono); font-size:11.5px;
+  padding:4px 2px; outline:none; transition:border-color .15s ease;
+}
+.volume-input:focus{ border-color:var(--accent-dim); }
+.volume-input::-webkit-outer-spin-button, .volume-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 .audio-row-toggle{ flex-direction:row; align-items:center; justify-content:space-between; gap:12px; }
 .toggle-switch{ position:relative; display:inline-block; flex:0 0 auto; width:42px; height:23px; }
 .toggle-switch input{ position:absolute; opacity:0; width:0; height:0; }
@@ -643,11 +658,17 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
       <div class="audio-settings-label">AUDIO</div>
       <div class="audio-row">
         <label for="musicVolumeSlider">Music</label>
-        <input type="range" id="musicVolumeSlider" min="0" max="100" value="70">
+        <div class="slider-line">
+          <input type="range" id="musicVolumeSlider" min="0" max="100" value="70">
+          <input type="number" id="musicVolumeInput" class="volume-input" min="0" max="100" value="70">
+        </div>
       </div>
       <div class="audio-row">
         <label for="ambientVolumeSlider">Ambient Sounds</label>
-        <input type="range" id="ambientVolumeSlider" min="0" max="100" value="55">
+        <div class="slider-line">
+          <input type="range" id="ambientVolumeSlider" min="0" max="100" value="55">
+          <input type="number" id="ambientVolumeInput" class="volume-input" min="0" max="100" value="55">
+        </div>
       </div>
       <div class="audio-row audio-row-toggle">
         <label for="newsRingtoneToggle">News Ringtone</label>
@@ -5715,10 +5736,16 @@ const UI = {
   // restarts or triggers audio.
   syncAudioSliders(){
     const m = document.getElementById("musicVolumeSlider");
+    const mi = document.getElementById("musicVolumeInput");
     const a = document.getElementById("ambientVolumeSlider");
+    const ai = document.getElementById("ambientVolumeInput");
     const n = document.getElementById("newsRingtoneToggle");
-    if(m) m.value = Math.round(Music.volume*100);
-    if(a) a.value = Math.round(WeatherAudio.volume*100);
+    const musicPct = Math.round(Music.volume*100);
+    const ambientPct = Math.round(WeatherAudio.volume*100);
+    if(m){ m.value = musicPct; m.style.setProperty("--fill", musicPct+"%"); }
+    if(mi) mi.value = musicPct;
+    if(a){ a.value = ambientPct; a.style.setProperty("--fill", ambientPct+"%"); }
+    if(ai) ai.value = ambientPct;
     if(n) n.checked = NewsRingtone.enabled;
   }
 };
@@ -6512,19 +6539,32 @@ document.getElementById("resetBtn").onclick = ()=>{
   }
 };
 const musicVolumeSlider = document.getElementById("musicVolumeSlider");
+const musicVolumeInput = document.getElementById("musicVolumeInput");
 const ambientVolumeSlider = document.getElementById("ambientVolumeSlider");
-if(musicVolumeSlider){
-  musicVolumeSlider.oninput = ()=>{
-    Music.setVolume(musicVolumeSlider.value/100);
+const ambientVolumeInput = document.getElementById("ambientVolumeInput");
+// Shared wiring for a range+number volume pair: dragging the slider live-
+// updates the number field, editing the number field (on commit) updates
+// the slider, and either one applies the volume via `setter` and paints
+// the filled portion of the rail through the --fill custom property (the
+// standard trick for a colored "progress" fill on a WebKit range input).
+function wireVolumeControl(sliderEl, numberEl, setter){
+  if(!sliderEl || !numberEl) return;
+  const apply = (raw, fromSlider)=>{
+    let v = Math.round(Number(raw));
+    if(!Number.isFinite(v)) v = fromSlider ? Number(sliderEl.value) : Number(numberEl.value)||0;
+    v = Math.max(0, Math.min(100, v));
+    sliderEl.value = v;
+    numberEl.value = v;
+    sliderEl.style.setProperty("--fill", v+"%");
+    setter(v/100);
     Persistence.scheduleSave();
   };
+  sliderEl.oninput = ()=> apply(sliderEl.value, true);
+  numberEl.onchange = ()=> apply(numberEl.value, false);
+  sliderEl.style.setProperty("--fill", sliderEl.value+"%"); // initial paint
 }
-if(ambientVolumeSlider){
-  ambientVolumeSlider.oninput = ()=>{
-    WeatherAudio.setVolume(ambientVolumeSlider.value/100);
-    Persistence.scheduleSave();
-  };
-}
+wireVolumeControl(musicVolumeSlider, musicVolumeInput, (v)=> Music.setVolume(v));
+wireVolumeControl(ambientVolumeSlider, ambientVolumeInput, (v)=> WeatherAudio.setVolume(v));
 
 /* ============================================================
    20. DUST PARTICLES (purely decorative, generated once)
