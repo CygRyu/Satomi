@@ -1335,6 +1335,12 @@ const Schedule = {
 
     const tod = Clock.timeOfDay();
     const weekend = Clock.isWeekend();
+    // req 3: computed once per lookup — an "away" activity is only ever
+    // offered as a candidate when OutingEngine can actually build a real
+    // outing for it right now (fits the schedule window, weekday/weekend
+    // rules, etc). This guarantees setActivity() never has to fall back
+    // when one is eventually chosen.
+    const outingFeasible = OutingEngine.hasFeasibleOuting();
     return CONTENT.activities.filter(a=>{
       const todOk = a.tod.includes("any") || a.tod.includes(tod);
       const wkOk = a.weekday==="any" || (a.weekday==="weekday" && !weekend) || (a.weekday==="weekend" && weekend);
@@ -1343,6 +1349,7 @@ const Schedule = {
       // "at_university"/"at_work" are only ever eligible via the hard-anchor
       // branches above — outside their real window, they're impossible.
       if(a.id==="at_university" || a.id==="at_work") return false;
+      if(a.category==="away" && !outingFeasible) return false;
 
       // --- Layer 2: soft anchors — real, but not the only option.
       if(a.id==="prep_for_work") return DailyPlan.isWithinPrepWindow(nowMin);
@@ -1616,6 +1623,16 @@ const ActivityEngine = {
       this.commuteOrigin = locationOf(prev);
     }
 
+    // Outing system (req 6): the moment she's no longer "away", resolve
+    // whatever outing was in progress — this is what writes the specific
+    // sub-location to the Life Log, backdated to right now, since this is
+    // the live in-app path. (OfflineReconstruct handles the "away for
+    // hours, resolved while the tab was closed" case with its own
+    // backdated timestamp, before setActivity is ever reached.)
+    if(wasAway && !isAway && OutingEngine.current){
+      OutingEngine.resolve(Date.now());
+    }
+
     // Lightweight validation net (Priority 4/5): this should never fire
     // given the gating in Schedule/forcedAnchorActivity above, but if a
     // future activity addition ever slips through, surface it instead
@@ -1630,7 +1647,30 @@ const ActivityEngine = {
     }
 
     this.current = activity;
-    const durSec = activity.id==="sleeping" ? this.computeSleepDurationSec() : RNG.range(activity.duration[0], activity.duration[1]);
+
+    let durSec, text;
+    if(isAway && !wasAway){
+      // Outing system (req 1-5): pick the concrete sub-location, real
+      // transit + activity duration (bounded by the schedule/day-of-week
+      // rules), and a natural "Primary Destination only" status line.
+      // The specific sub-location stays hidden until she's actually
+      // back — it's only ever surfaced via OutingEngine.resolve() above.
+      const chosen = OutingEngine.beginFor(activity);
+      if(chosen){
+        durSec = Math.round((OutingEngine.current.returnAt - Date.now())/1000);
+        text = OutingEngine.statusLine();
+      } else {
+        // Shouldn't normally happen — Schedule.candidatePool already
+        // keeps "away" off the table unless OutingEngine can build a
+        // real outing for it — but fail safe onto the activity's own
+        // numbers rather than leave her outing state broken.
+        durSec = RNG.range(activity.duration[0], activity.duration[1]);
+        text = this.pickActivityText(activity, prev);
+      }
+    } else {
+      durSec = activity.id==="sleeping" ? this.computeSleepDurationSec() : RNG.range(activity.duration[0], activity.duration[1]);
+      text = this.pickActivityText(activity, prev);
+    }
     this.currentUntil = Date.now() + durSec*1000;
     this.recentIds.push(activity.id);
     if(this.recentIds.length>6) this.recentIds.shift();
@@ -1638,20 +1678,23 @@ const ActivityEngine = {
     // ISSUE #9: record today's mother call so its score collapses for
     // the remainder of the day (see ActivityEngine.score()).
     if(activity.id==="phone_call_family") FamilyCall.markCalled();
-    const text = this.pickActivityText(activity, prev);
     this.currentText = text;
     Memory.log("activity", text);
     UI.setActivityText(text);
 
     // Satomi-away feature: fires only at this natural activity boundary,
     // never mid-interaction. Subtle and occasional by design (section 6/7).
-    if(isAway && !wasAway){
-      const hint = Availability.departureHint(activity.awayLength);
-      if(hint) Memory.log("activity", hint);
-    } else if(wasAway && !isAway){
+    if(wasAway && !isAway){
       this.awayCooldownUntil = Date.now() + RNG.range(2,4)*3600000; // 2-4 real hours before another absence can be rolled
+      // The specific sub-location was already logged by OutingEngine.resolve()
+      // above (req 6) — this is just the occasional extra physical "she's
+      // back" beat on top, same cadence as before.
       if(RNG.chance(0.4)) Memory.log("activity", Availability.returnCue());
     }
+    // Note: isAway && !wasAway no longer logs a generic departure hint —
+    // OutingEngine.statusLine() (set as `text` above) already gives a
+    // natural, specific status ("Out at the Park; should be back around
+    // 2:15 PM.") per req 7, so a second generic line would be redundant.
   },
   microUpdate(){
     if(!this.current || !this.current.micro || this.current.micro.length===0) return;
@@ -1748,6 +1791,270 @@ const Availability = {
       "Satomi isn't here right now.",
     ]);
   }
+};
+
+/* ============================================================
+   8b2. OUTING SYSTEM — dynamic, time-weighted sub-locations
+   layered on top of the existing "away" activities above. The
+   away_* entries in ACTIVITIES still decide WHETHER/WHEN an
+   outing happens (weekday/weekend bias, weather, cooldown,
+   anti-repeat — unchanged); OutingEngine decides WHERE, exactly
+   how long, and what goes in the Life Log, subject to:
+     - schedule constraints (never during class/work/sleep, and
+       never something that can't fit before the next one — req 1/3)
+     - weekday = quick nearby errands only, hard-capped short;
+       weekend = farther primary destinations, longer hard cap (req 2)
+     - time-of-day weighting per sub-location (req 4)
+     - only the Primary Destination is ever shown while she's away;
+       the specific sub-location is revealed solely through the
+       Life Log entry written at the moment she's actually back (req 5/6)
+   ============================================================ */
+const PRIMARY_DESTINATIONS = {
+  neighborhood: {
+    id:"neighborhood", label:"the neighborhood",
+    weekday:true, weekend:true,
+    subLocations:[
+      { id:"bakery", label:"the bakery down the street", tod:["morning"],
+        transitRoundTripMin:[4,8], activityMin:[8,15],
+        logLines:[
+          "Walked down to the bakery. Picked up something warm for later.",
+          "Stopped at the bakery down the street — the melon bread looked too good to pass up.",
+        ] },
+      { id:"morning_market", label:"the morning market stalls", tod:["morning"],
+        transitRoundTripMin:[6,10], activityMin:[10,20],
+        logLines:["Wandered through the morning market stalls for a bit. Nothing planned, just looking."] },
+      { id:"quiet_cafe", label:"the quiet café on the corner", tod:["morning","afternoon"],
+        transitRoundTripMin:[6,10], activityMin:[15,25],
+        logLines:["Sat at the quiet café on the corner for a while with something warm to drink."] },
+      { id:"nearby_bench", label:"the bench near the apartment", tod:["afternoon","evening"],
+        transitRoundTripMin:[3,6], activityMin:[10,20],
+        logLines:["Sat on the bench near the apartment for a while, just watching the street."] },
+      { id:"convenience_store", label:"the convenience store", tod:["evening"],
+        transitRoundTripMin:[3,6], activityMin:[5,12],
+        logLines:["Ran to the convenience store for a couple of things."] },
+      { id:"neighborhood_stroll", label:"a stroll around the block", tod:["evening"],
+        transitRoundTripMin:[8,14], activityMin:[8,16],
+        logLines:["Took a slow lap around the block before heading back in."] },
+    ]
+  },
+  shopping_district: {
+    id:"shopping_district", label:"the Shopping District",
+    weekday:false, weekend:true,
+    subLocations:[
+      { id:"stationery_shop", label:"the stationery shop", tod:["afternoon"],
+        transitRoundTripMin:[30,45], activityMin:[20,40],
+        logLines:["Walked over to the stationery shop in the Shopping District. Picked up a fresh notebook."] },
+      { id:"clothing_boutique", label:"a small clothing boutique", tod:["afternoon","evening"],
+        transitRoundTripMin:[30,50], activityMin:[20,45],
+        logLines:["Browsed a little boutique in the Shopping District. Didn't buy anything, just looked."] },
+      { id:"bookshop_district", label:"the bookshop", tod:["afternoon","evening"],
+        transitRoundTripMin:[30,45], activityMin:[20,40],
+        logLines:["Lost some time in the bookshop in the Shopping District."] },
+    ]
+  },
+  park: {
+    id:"park", label:"the Park",
+    weekday:false, weekend:true,
+    subLocations:[
+      { id:"park_bench", label:"a bench under the trees", tod:["afternoon"],
+        transitRoundTripMin:[20,35], activityMin:[20,45],
+        logLines:["Sat on a bench in the park for a while. Good weather for it."] },
+      { id:"park_pond", label:"the pond path", tod:["morning","afternoon"],
+        transitRoundTripMin:[20,35], activityMin:[20,40],
+        logLines:["Walked the path around the pond in the park."] },
+      { id:"park_lawn", label:"the open lawn", tod:["afternoon","evening"],
+        transitRoundTripMin:[20,35], activityMin:[15,35],
+        logLines:["Sat out on the open lawn in the park until it started getting cooler."] },
+    ]
+  },
+  library: {
+    id:"library", label:"the Town Library",
+    weekday:false, weekend:true,
+    subLocations:[
+      { id:"reading_room", label:"the reading room", tod:["afternoon"],
+        transitRoundTripMin:[25,40], activityMin:[30,60],
+        logLines:["Spent a while in the reading room at the library. Quiet in there today."] },
+      { id:"library_stacks", label:"the stacks", tod:["afternoon"],
+        transitRoundTripMin:[25,40], activityMin:[20,45],
+        logLines:["Went looking through the stacks at the library. Found something worth borrowing."] },
+    ]
+  },
+};
+
+const OutingEngine = {
+  MIN_WORTHWHILE_MIN: 8, // below this, not worth going anywhere at all
+  current: null, // {hubId, subId, startAt, returnAt, transitMin, activityMin}
+
+  // --- req 1: Available Free Time — minutes until Satomi's next real
+  // obligation (an upcoming class, an upcoming work shift, or bedtime).
+  // Purely a "how long is the window" calculation; it doesn't check
+  // whether she's inside an obligation right now (canStartOuting does).
+  minutesUntilNextObligation(fromMin){
+    DailyPlan.ensureForToday();
+    const candidates = [];
+    DailyPlan.university.forEach(b=>{ if(b.start > fromMin) candidates.push(b.start - fromMin); });
+    if(DailyPlan.work && DailyPlan.work.prepStart > fromMin) candidates.push(DailyPlan.work.prepStart - fromMin);
+    const bedtimeStart = 22*60; // 22:00 — the start of the normal bedtime window (Schedule.isBedtimeEligible)
+    if(fromMin < bedtimeStart) candidates.push(bedtimeStart - fromMin);
+    if(candidates.length===0) candidates.push(120); // generous fallback (e.g. already past 22:00 with nothing else scheduled)
+    return Math.min(...candidates);
+  },
+  availableFreeTimeMin(){ return this.minutesUntilNextObligation(Clock.minutesOfDay()); },
+
+  // --- req 1: schedule constraints — an outing must never start during
+  // class, work, or sleep. (Schedule.candidatePool's Layer 1 already
+  // makes at_university/at_work the ONLY candidates during those hard
+  // anchors, so in practice this is only reachable outside them —
+  // this is the belt-and-suspenders check for direct/debug calls.)
+  canStartOuting(){
+    const nowMin = Clock.minutesOfDay();
+    if(Availability.isSleeping()) return false;
+    if(DailyPlan.activeUniversityBlock(nowMin)) return false;
+    if(DailyPlan.isWithinWorkShift(nowMin) || DailyPlan.isWithinPrepWindow(nowMin)) return false;
+    return true;
+  },
+
+  // --- req 2: hard duration cap by day of week.
+  hardDurationCapMin(){ return Clock.isWeekend() ? 90 : 30; },
+
+  // --- req 2: which Primary Destinations are reachable at all today.
+  eligibleHubs(){
+    const weekend = Clock.isWeekend();
+    return Object.values(PRIMARY_DESTINATIONS).filter(h => weekend ? h.weekend : h.weekday);
+  },
+
+  // --- req 3/4: builds the full set of sub-locations that genuinely
+  // fit inside `availableMin`, each with a rolled (transit + activity)
+  // duration that is GUARANTEED never to exceed the available window,
+  // and a time-of-day weight (req 4: morning/afternoon/evening bias).
+  candidateSubLocations(availableMin){
+    const tod = Clock.timeOfDay();
+    const capMin = Math.min(this.hardDurationCapMin(), availableMin);
+    const out = [];
+    this.eligibleHubs().forEach(hub=>{
+      hub.subLocations.forEach(sub=>{
+        const bestCaseMin = sub.transitRoundTripMin[0] + sub.activityMin[0];
+        if(bestCaseMin > capMin) return; // can't fit even at the floor — excluded (req 3)
+        let transitMin = RNG.intRange(sub.transitRoundTripMin[0], sub.transitRoundTripMin[1]);
+        let activityMinRolled = RNG.intRange(sub.activityMin[0], sub.activityMin[1]);
+        if(transitMin + activityMinRolled > capMin){
+          // Trim activity time first, then transit time, never below
+          // either floor — she still gets there and back, just briefer.
+          const over1 = (transitMin + activityMinRolled) - capMin;
+          activityMinRolled = Math.max(sub.activityMin[0], activityMinRolled - over1);
+          const over2 = (transitMin + activityMinRolled) - capMin;
+          if(over2 > 0) transitMin = Math.max(sub.transitRoundTripMin[0], transitMin - over2);
+        }
+        const totalMin = transitMin + activityMinRolled;
+        if(totalMin > capMin) return; // still doesn't fit even at both floors — excluded (req 3)
+        const todMatch = sub.tod.includes(tod);
+        out.push({ hub, sub, transitMin, activityMinRolled, totalMin, weight: todMatch ? 3 : 0.4 });
+      });
+    });
+    return out;
+  },
+
+  // Cheap feasibility check used by Schedule.candidatePool — an "away"
+  // activity is only ever offered as a candidate when a real outing can
+  // actually be built for it (req 3: never select what won't fit).
+  hasFeasibleOuting(){
+    if(!this.canStartOuting()) return false;
+    const availableMin = this.availableFreeTimeMin();
+    if(availableMin < this.MIN_WORTHWHILE_MIN) return false;
+    return this.candidateSubLocations(availableMin).length > 0;
+  },
+
+  // Picks and starts a concrete outing for the triggering away_* activity.
+  // `awayLength` ("brief"/"normal"/"long") only nudges the odds toward a
+  // nearby vs. farther hub — the hard weekday/weekend + available-time
+  // filtering above always wins regardless of this nudge.
+  beginFor(activity){
+    const availableMin = this.availableFreeTimeMin();
+    if(availableMin < this.MIN_WORTHWHILE_MIN) return null;
+    let candidates = this.candidateSubLocations(availableMin);
+    if(candidates.length===0) return null;
+    const scale = (activity && activity.awayLength) || "normal";
+    candidates = candidates.map(c=>{
+      const farther = c.hub.id !== "neighborhood";
+      let w = c.weight;
+      if(scale==="brief" && !farther) w *= 2.2;
+      if(scale!=="brief" && farther) w *= 1.8;
+      return Object.assign({}, c, {weight:w});
+    });
+    const choice = RNG.weightedPick(candidates, c=>c.weight);
+    this.begin(choice);
+    return choice;
+  },
+  begin(choice){
+    const now = Date.now();
+    this.current = {
+      hubId: choice.hub.id,
+      subId: choice.sub.id,
+      startAt: now,
+      returnAt: now + choice.totalMin*60000,
+      transitMin: choice.transitMin,
+      activityMin: choice.activityMinRolled,
+    };
+  },
+  restore(saved){
+    if(!saved){ this.current = null; return; }
+    this.current = {
+      hubId: saved.hubId, subId: saved.subId,
+      startAt: saved.startAt, returnAt: saved.returnAt,
+      transitMin: saved.transitMin, activityMin: saved.activityMin,
+    };
+  },
+  serialize(){
+    return this.current ? Object.assign({}, this.current) : null;
+  },
+
+  hub(){ return this.current ? PRIMARY_DESTINATIONS[this.current.hubId] : null; },
+  sub(){ const h=this.hub(); return h ? h.subLocations.find(s=>s.id===this.current.subId) : null; },
+
+  // --- req 5/7: while away, only the Primary Destination is ever named,
+  // in a natural (non-HUD, non-countdown) status line.
+  statusLine(){
+    if(!this.current) return null;
+    const h = this.hub();
+    if(!h) return null;
+    const d = new Date(this.current.returnAt);
+    const hh = d.getHours(), mm = String(d.getMinutes()).padStart(2,"0");
+    const period = hh>=12 ? "PM" : "AM";
+    const h12 = ((hh+11)%12)+1;
+    return `Out at ${h.label}; should be back around ${h12}:${mm} ${period}.`;
+  },
+
+  // --- req 6: resolves the outing, writing the Life Log entry — which
+  // is where the specific sub-location is finally revealed — at `atTs`
+  // (the REAL moment she returned, which may be in the past for a
+  // backdated/offline resolution). Only ever writes the sub-location
+  // line; the separate occasional "she's back" physical beat is still
+  // handled by ActivityEngine.setActivity's own wasAway->home transition
+  // (and is skipped entirely for a stale/offline resolution, since that
+  // code path is never reached in that case — see checkMissedReturn).
+  resolve(atTs){
+    if(!this.current) return;
+    const hub = this.hub(), sub = this.sub();
+    const ts = Number.isFinite(atTs) ? atTs : this.current.returnAt;
+    if(hub && sub){
+      Memory.log("activity", RNG.pick(sub.logLines), ts);
+    }
+    this.current = null;
+  },
+
+  // --- req 6: called from OfflineReconstruct. If the outing's real
+  // return time has already passed, resolves it quietly (backdated Life
+  // Log entry, no greeting — ActivityEngine.setActivity's greeting logic
+  // is never reached on this path) and reports true so reconstruction
+  // can move on to deciding what she's doing right now. If she's
+  // genuinely still out, does nothing and reports false so her away
+  // state is left completely untouched.
+  checkMissedReturn(){
+    if(!this.current) return false;
+    if(this.current.returnAt > Date.now()) return false;
+    this.resolve(this.current.returnAt);
+    return true;
+  },
 };
 
 /* ============================================================
@@ -2122,8 +2429,11 @@ const Memory = {
   entries: [], // {id, ts, type, text}
   currentLogDay: new Date().toDateString(),
   _nextId: 1,
-  log(type, text){
-    this.entries.push({id:this._nextId++, ts:Date.now(), type, text});
+  // `ts` optionally backdates the entry (used by OutingEngine.resolve so
+  // a Life Log entry for an outing reflects the moment she actually got
+  // back, not the moment this happens to run — req 6). Defaults to now.
+  log(type, text, ts){
+    this.entries.push({id:this._nextId++, ts:Number.isFinite(ts)?ts:Date.now(), type, text});
     if(this.entries.length>500){
       this.entries.shift();
     }
@@ -2436,6 +2746,19 @@ const OfflineReconstruct = {
       return;
     }
 
+    // Outing system (req 6, "solving missed returns"): if she was out
+    // when the gap started, ask OutingEngine whether that outing's real
+    // return time has already passed. If she's genuinely still out,
+    // leave her exactly as she was — no re-roll, no early recall. If
+    // she's already back, this quietly writes the backdated Life Log
+    // entry (no delayed "just got back" greeting) and reconstruction
+    // falls through below to decide what she's doing right now.
+    if(savedActivity && ActivityEngine.isAwayActivity(savedActivity) && OutingEngine.current){
+      if(!OutingEngine.checkMissedReturn()){
+        return; // still genuinely out — nothing else to reconstruct
+      }
+    }
+
     ActivityEngine.current = null;
     ActivityEngine.currentUntil = 0;
     ActivityEngine.commuteOrigin = null;
@@ -2496,6 +2819,7 @@ const Persistence = {
         awayCooldownUntil: ActivityEngine.awayCooldownUntil || 0,
         commuteOrigin: ActivityEngine.commuteOrigin || null
       },
+      outing: OutingEngine.serialize(),
       // These are behavioral memory buffers. Persisting them makes an
       // export/import continue with the same anti-repeat context instead of
       // behaving like a completely fresh session.
@@ -2620,6 +2944,15 @@ const Persistence = {
       if(p.activity.text !== undefined && p.activity.text !== null && typeof p.activity.text !== "string") return false;
       if(p.activity.commuteOrigin !== undefined && p.activity.commuteOrigin !== null && typeof p.activity.commuteOrigin !== "string") return false;
     }
+    if(p.outing !== undefined && p.outing !== null){
+      if(typeof p.outing !== "object") return false;
+      if(typeof p.outing.hubId !== "string" || !PRIMARY_DESTINATIONS[p.outing.hubId]) return false;
+      const hub = PRIMARY_DESTINATIONS[p.outing.hubId];
+      if(typeof p.outing.subId !== "string" || !hub.subLocations.some(s=>s.id===p.outing.subId)) return false;
+      for(const k of ["startAt","returnAt","transitMin","activityMin"]){
+        if(!Number.isFinite(p.outing[k]) || p.outing[k] < 0) return false;
+      }
+    }
     if(p.dialogue !== undefined){
       if(!p.dialogue || typeof p.dialogue !== "object" || !Array.isArray(p.dialogue.recentLineIds)) return false;
       if(p.dialogue.lastSpokenAt !== undefined && (!Number.isFinite(p.dialogue.lastSpokenAt) || p.dialogue.lastSpokenAt < 0)) return false;
@@ -2673,6 +3006,7 @@ const Persistence = {
           }
         }
       }
+      OutingEngine.restore(p.outing || null);
       if(p.dialogue){
         DialogueEngine.recentLineIds = p.dialogue.recentLineIds.filter(id=>typeof id==="string");
         DialogueEngine.lastSpokenAt = Number.isFinite(p.dialogue.lastSpokenAt) ? p.dialogue.lastSpokenAt : 0;
@@ -3448,6 +3782,11 @@ const Debug = {
       ["commute origin", ActivityEngine.commuteOrigin || "-"],
       ["availability", Availability.isSleeping() ? "sleeping" : Availability.isAway() ? "away ("+(ActivityEngine.current.awayLength||"?")+")" : "home"],
       ["away cooldown", ActivityEngine.inAwayCooldown() ? Math.round((ActivityEngine.awayCooldownUntil-Date.now())/60000)+"m left" : "-"],
+      ["available free time", OutingEngine.availableFreeTimeMin()+" min (cap "+OutingEngine.hardDurationCapMin()+" min)"],
+      ["outing feasible now", OutingEngine.hasFeasibleOuting() ? "yes" : "no"],
+      ["outing — primary dest.", OutingEngine.current ? OutingEngine.hub().label : "-"],
+      ["outing — sub-location (spoiler)", OutingEngine.current ? OutingEngine.sub().label : "-"],
+      ["outing — returns at", OutingEngine.current ? new Date(OutingEngine.current.returnAt).toLocaleTimeString() : "-"],
       ["Birthday", "Feb 8"],
       ["Birthday Greeting", !Birthday.isToday() ? "Not Active" : (Birthday.alreadyGreetedThisYear() ? "Greeted" : (Availability.isHome() ? "Available" : "Not Active (away/asleep)"))],
       ["mood", StateEngine.currentMoodTag()],
@@ -3516,6 +3855,58 @@ const Debug = {
       ["Force Away (Long)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_visiting"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
       ["Force Return Home", ()=>{ const a=CONTENT.activities.find(x=>x.id==="break_stretch"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced return home");} this.render(); }],
       ["Clear Away Cooldown", ()=>{ ActivityEngine.awayCooldownUntil=0; this.note("away cooldown cleared"); this.render(); }],
+      // --- Outing system testing (schedule constraints, weekday/weekend
+      // rules, distance/duration filtering, Life Log, missed returns) ---
+      ["Outing: Show Candidates (console)", ()=>{
+        const availableMin = OutingEngine.availableFreeTimeMin();
+        const list = OutingEngine.candidateSubLocations(availableMin).map(c=>
+          `${c.hub.label} > ${c.sub.label} — transit ${c.transitMin}m + activity ${c.activityMinRolled}m = ${c.totalMin}m (weight ${c.weight.toFixed(2)})`
+        );
+        console.log("Available free time:", availableMin, "min. Hard cap:", OutingEngine.hardDurationCapMin(), "min.");
+        console.log(list.length ? list.join("\n") : "(none fit right now)");
+        this.note("outing candidates logged to console ("+list.length+" fit)");
+      }],
+      ["Outing: Force Start Now", ()=>{
+        if(!OutingEngine.canStartOuting()){ this.note("can't start an outing right now (class/work/sleep)"); this.render(); return; }
+        const trigger = CONTENT.activities.find(x=>x.id==="away_walk") || CONTENT.activities.find(x=>x.category==="away");
+        if(!trigger){ this.note("no away-category activity found"); return; }
+        ActivityEngine.currentUntil = 0;
+        ActivityEngine.setActivity(trigger);
+        if(OutingEngine.current){
+          this.note("outing started -> "+OutingEngine.hub().label+" ("+(Clock.isWeekend()?"weekend":"weekday")+", cap "+OutingEngine.hardDurationCapMin()+"m)");
+        } else {
+          this.note("no sub-location fit the current schedule/time window — stayed home");
+        }
+        this.render();
+      }],
+      ["Outing: Resolve Now (Live Return)", ()=>{
+        if(!OutingEngine.current){ this.note("no outing in progress"); return; }
+        ActivityEngine.currentUntil = 0;
+        ActivityEngine.advanceIfNeeded();
+        this.note("outing resolved live — check Life Log for the revealed sub-location + a 'she's back' beat");
+        this.render();
+      }],
+      ["Outing: Simulate Missed Return (backdated, no greeting)", ()=>{
+        if(!OutingEngine.current){
+          const trigger = CONTENT.activities.find(x=>x.id==="away_bookstore") || CONTENT.activities.find(x=>x.category==="away");
+          if(trigger){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(trigger); }
+        }
+        if(!OutingEngine.current){ this.note("couldn't start a test outing (nothing fits right now)"); this.render(); return; }
+        // Rewind the outing's real return time into the past, exactly like
+        // "the app was closed for a few hours and she's long since back" —
+        // then run the SAME reconstruction path OfflineReconstruct uses.
+        const backdateMs = RNG.range(2,4)*3600000;
+        OutingEngine.current.returnAt = Date.now() - backdateMs;
+        const resolved = OutingEngine.checkMissedReturn();
+        if(resolved){
+          ActivityEngine.current = null; ActivityEngine.currentUntil = 0;
+          ActivityEngine.advanceIfNeeded();
+          this.note("missed return simulated: Life Log entry backdated ~"+Math.round(backdateMs/3600000)+"h, NO delayed greeting played");
+        } else {
+          this.note("resolution failed unexpectedly");
+        }
+        this.render();
+      }],
       // --- Location / commute testing (Priority 4/5) ---
       ["Force Commute -> University", ()=>{ const a=CONTENT.activities.find(x=>x.id==="commute_out"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced commute_out");} this.render(); }],
       ["Force Commute -> Work", ()=>{ const a=CONTENT.activities.find(x=>x.id==="commute_to_work"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced commute_to_work");} this.render(); }],
