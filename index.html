@@ -123,8 +123,16 @@ header.title-block{ text-align:center; margin-bottom:38px; user-select:none; }
   width:6px; height:6px; border-radius:50%; background:var(--accent);
   animation:breathe 4.2s ease-in-out infinite;
   margin:0 auto 2px;
+  transition:background 1.2s ease;
 }
 @keyframes breathe{ 0%,100%{opacity:.35; transform:scale(1);} 50%{opacity:.9; transform:scale(1.4);} }
+/* Quiet companionship: the only visible cue that the player is currently
+   staying with Satomi is this existing breathing dot slowing down and
+   warming slightly — no meter, no badge, no counter. */
+.presence-dot.accompanying{
+  background:var(--accent-bright);
+  animation-duration:7.5s;
+}
 
 .activity-text{
   font-size:17px; color:var(--ink-1); line-height:1.6; max-width:420px;
@@ -530,7 +538,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
   </header>
 
   <main class="stage" id="stage">
-    <div class="presence-dot"></div>
+    <div class="presence-dot" id="presenceDot"></div>
     <div class="activity-text" id="activityText">…</div>
     <div class="dialogue-box">
       <div class="dialogue-text" id="dialogueText"></div>
@@ -4880,6 +4888,11 @@ const Persistence = {
       } : {}),
       dailyPlan: DailyPlan.serialize(),
       birthday: { lastGreetedYear: Birthday.lastGreetedYear },
+      // Deliberately just this one field — see QuietPresence's header
+      // comment for why `active`/`startedAt` are session-only and never
+      // saved. This alone is enough to keep the rare-moment cooldown
+      // honest across reloads/restarts.
+      quietPresence: { lastMomentAt: QuietPresence.lastMomentAt || 0 },
       familyCall: { lastCallDateKey: FamilyCall.lastCallDateKey },
       hiddenTap: { dateKey: HiddenTapEasterEgg.dateKey, triggersToday: HiddenTapEasterEgg.triggersToday },
       log: Memory.entriesForSave(),
@@ -4942,6 +4955,7 @@ const Persistence = {
       if(p.dailyPlan.university !== undefined && !Array.isArray(p.dailyPlan.university)) return false;
     }
     if(p.birthday !== undefined && (!p.birthday || typeof p.birthday !== "object" || (p.birthday.lastGreetedYear !== undefined && !Number.isFinite(p.birthday.lastGreetedYear)))) return false;
+    if(p.quietPresence !== undefined && (!p.quietPresence || typeof p.quietPresence !== "object" || (p.quietPresence.lastMomentAt !== undefined && (!Number.isFinite(p.quietPresence.lastMomentAt) || p.quietPresence.lastMomentAt < 0)))) return false;
     if(p.familyCall !== undefined && (!p.familyCall || typeof p.familyCall !== "object" || (p.familyCall.lastCallDateKey !== undefined && p.familyCall.lastCallDateKey !== null && typeof p.familyCall.lastCallDateKey !== "string"))) return false;
     if(p.hiddenTap !== undefined){
       if(!p.hiddenTap || typeof p.hiddenTap !== "object") return false;
@@ -5104,6 +5118,16 @@ const Persistence = {
       }
       DailyPlan.restoreFromSave(p.dailyPlan);
       Birthday.lastGreetedYear = (p.birthday && typeof p.birthday.lastGreetedYear === "number") ? p.birthday.lastGreetedYear : 0;
+      // Only the cross-session cooldown timestamp is restored. An active
+      // quiet-presence session never survives a reload/restart by design
+      // (see QuietPresence's header comment) — it always reconciles back
+      // to "not accompanying", same as ActivityEngine.current is rebuilt
+      // fresh above rather than trusting a stale in-progress session.
+      QuietPresence.active = false;
+      QuietPresence.startedAt = null;
+      QuietPresence.activityCategoryAtStart = null;
+      QuietPresence.sessionMomentFired = false;
+      QuietPresence.lastMomentAt = (p.quietPresence && Number.isFinite(p.quietPresence.lastMomentAt)) ? p.quietPresence.lastMomentAt : 0;
       FamilyCall.lastCallDateKey = (p.familyCall && typeof p.familyCall.lastCallDateKey === "string") ? p.familyCall.lastCallDateKey : null;
       HiddenTapEasterEgg.dateKey = (p.hiddenTap && typeof p.hiddenTap.dateKey === "string") ? p.hiddenTap.dateKey : null;
       HiddenTapEasterEgg.triggersToday = (p.hiddenTap && Number.isFinite(p.hiddenTap.triggersToday)) ? p.hiddenTap.triggersToday : 0;
@@ -5195,6 +5219,7 @@ const UI = {
     this.els.logList = document.getElementById("logList");
     this.els.interactGrid = document.getElementById("interactGrid");
     this.els.statsList = document.getElementById("statsList");
+    this.els.presenceDot = document.getElementById("presenceDot");
     BookshelfUI.load();
     this.bindNav();
     this.buildInteractOptions();
@@ -5206,6 +5231,11 @@ const UI = {
     const {hh,mm} = Clock.formatted();
     this.els.clock.innerHTML = `${hh}<span class="colon">:</span>${mm}`;
     this.els.date.textContent = Clock.dateString();
+  },
+  // The one visible cue for quiet companionship: the existing breathing
+  // presence dot slows and warms slightly. No meter, no badge, no text.
+  setAccompanying(active){
+    if(this.els.presenceDot) this.els.presenceDot.classList.toggle("accompanying", !!active);
   },
   setActivityText(text, isMicro){
     const el = this.els.activity;
@@ -5360,7 +5390,7 @@ const UI = {
     // by the birthday interaction — same slot, no extra button.
     const fourth = Birthday.isAvailable()
       ? {label:"Wish Satomi a Happy Birthday", hint:"Just for today.", action:()=>Interactions.wishBirthday()}
-      : {label:"Stay quiet", hint:"Just be present.", action:()=>Interactions.stayQuiet()};
+      : {label:"Stay quiet", hint: QuietPresence.active ? "You're already staying with her." : "Just be present.", action:()=>Interactions.stayQuiet()};
     const opts = [
       {label:"Say hello", hint:"A small greeting.", action:()=>Interactions.sayHello()},
       {label:"Encourage her", hint:"Offer a bit of support.", action:()=>Interactions.encourage()},
@@ -5978,6 +6008,50 @@ const ASKHOW_LINES = [
   {text:"I have no idea what I want to eat.", weight:0.3, tier:3, when:ctx=>ctx.s.hunger>40},
 ];
 
+// #QuietPresence: lines Satomi may say during a quiet-companionship
+// session. These are deliberately sparse — most sessions should draw
+// nothing from this pool at all (see QuietPresence.maybeTriggerMoment,
+// which only rolls a chance to speak at all some of the time, and even
+// then often picks a wordless ambient beat over one of these). Same
+// {text, weight, tier, when} shape as the pools above, so it plugs into
+// the existing Interactions.pickLine()/Familiarity gating unchanged.
+const QUIET_LINES = [
+  // tier 0 — available from the very first session
+  {text:"...You can stay, you know.", weight:2},
+  {text:"You don't have to say anything.", weight:2},
+  {text:"Mm.", weight:1.5, terse:true},
+  {text:"I'm almost done with this.", weight:1.5, when:ctx=>ctx.category==="study"||ctx.category==="hobby"},
+  {text:"...Thanks.", weight:1, tier:1},
+  // context-flavored — matched to what she's actually doing
+  {text:"Just... let me finish this page.", weight:1.5, when:ctx=>ctx.category==="study"},
+  {text:"You can listen too, if you want.", weight:1, when:ctx=>ctx.activityId==="listening_music"},
+  {text:"It's nice, having something on in the background.", weight:1, tier:1, when:ctx=>ctx.activityId==="listening_music"},
+  {text:"I'll be done cooking soon.", weight:1, when:ctx=>ctx.category==="meal"},
+  // mood-flavored
+  {text:"I'm glad you're not asking me anything right now.", weight:1.5, terse:true, when:ctx=>ctx.mood==="tired"},
+  {text:"...Thanks for not making this a whole conversation.", weight:1.5, terse:true, when:ctx=>ctx.mood==="stressed"},
+  {text:"This is nice. Just this.", weight:1, when:ctx=>ctx.mood==="relaxed"},
+  // tier 1/2 — a little more familiar
+  {text:"You're unusually quiet today.", weight:1, tier:1},
+  {text:"I don't mind it. The quiet.", weight:1, tier:2},
+  {text:"You know you don't have to ask permission for this, right?", weight:0.6, tier:2},
+  // tier 3 — rare, more sincere than anything above
+  {text:"...I like when it's like this.", weight:0.3, tier:3},
+  {text:"It's not uncomfortable. The silence, I mean.", weight:0.3, tier:3},
+];
+
+// Wordless outcomes for a quiet moment — no dialogue box, just a Life
+// Log line. These are the more common half of maybeTriggerMoment()'s
+// "something happens" branch, since most acknowledgement should read
+// as noticing, not talking.
+const QUIET_AMBIENT_MOMENTS = [
+  "She glances toward you for a moment, then goes back to what she's doing.",
+  "Satomi doesn't look up, but she seems to notice you're there.",
+  "Neither of you says anything, and it doesn't feel like you need to.",
+  "Satomi shifts slightly, like she's settling in with you there.",
+  "She seems comfortable enough not to fill the silence.",
+];
+
 /* ============================================================
    16. PLAYER INTERACTIONS
    ============================================================ */
@@ -6128,9 +6202,15 @@ const Interactions = {
       Memory.log("activity", "She doesn't answer right away — maybe later.");
     }
   },
+  // "Stay quiet" no longer applies an immediate, repeatable stat change.
+  // It begins a quiet-companionship period (see QuietPresence below); any
+  // effect it has on Satomi comes later, rarely, and through that system
+  // rather than from the button press itself. If a session is already
+  // active or was just ended, this is a deliberate no-op — see
+  // QuietPresence.start() for why, and buildInteractOptions() for how the
+  // button's hint reflects that without adding a meter.
   stayQuiet(){
-    Memory.log("activity", "You stay quiet, just present.");
-    StateEngine.apply({socialNeed:-2, stress:-1});
+    QuietPresence.start();
   },
   wishBirthday(){
     // Guard against a stale click (e.g. the panel was left open and she
@@ -6148,6 +6228,135 @@ const Interactions = {
     ]), {interaction:true});
     Persistence.scheduleSave();
     UI.refreshInteractGridIfOpen();
+  }
+};
+
+/* ============================================================
+   16b. QUIET PRESENCE — "Stay quiet" as companionship, not a button
+   that farms stats.
+
+   Opening the app lets the player observe Satomi; choosing "Stay
+   quiet" is the player deliberately choosing to remain beside her
+   without demanding anything. So this holds a small, mostly-transient
+   state machine:
+
+     not accompanying -> start() -> active (companionship) -> tick()
+     naturally ends it (activity changed / she left or went to sleep /
+     the session ran long) -> not accompanying again, with a short
+     cooldown before it can restart.
+
+   While active, Sim.tick() (the same 4s heartbeat everything else in
+   the simulation already rides) calls tick(), which may — rarely, and
+   at most once per session — produce a subtle moment via
+   maybeTriggerMoment(). Most sessions produce nothing at all, which is
+   the intended, valid outcome (see design doc: "the absence of a
+   response is a valid outcome").
+
+   Deliberately session-only: `active`/`startedAt` are NOT persisted,
+   so an app restart or a long background gap simply reconciles back to
+   "not accompanying" rather than resurrecting a stale session (see
+   Persistence.buildPayload/load below). The one thing worth carrying
+   across sessions is `lastMomentAt`, so the cooldown on rare moments
+   can't be reset just by reloading the page.
+   ============================================================ */
+const QuietPresence = {
+  active:false,
+  startedAt:null,
+  activityCategoryAtStart:null,
+  sessionMomentFired:false,
+  endedAt:0,
+  lastMomentAt:0, // persisted — cross-session cooldown on rare moments
+
+  MIN_MS_BEFORE_MOMENT: 45000,     // a session has to sit quietly a while before anything can happen
+  MAX_SESSION_MS: 20*60000,        // presence lapses on its own well before this ever matters in practice
+  RESTART_COOLDOWN_MS: 60000,      // can't immediately re-press after ending — no stacking/spamming
+  MOMENT_COOLDOWN_MS: 5*60000,     // rare moments are rare across sessions too, not just within one
+  MOMENT_ROLL_CHANCE: 0.05,        // checked once per Sim tick (~4s) once eligible
+
+  // Starts a session. Returns false (silently) if one is already active
+  // or the post-session cooldown hasn't elapsed — this is the anti-spam
+  // guard called for in the design: repeated presses cannot stack
+  // sessions or repeatedly retrigger the opening log line/behavior.
+  start(){
+    if(this.active) return false;
+    if(this.endedAt && (Date.now()-this.endedAt) < this.RESTART_COOLDOWN_MS) return false;
+    if(!Availability.isHome()) return false; // nothing to accompany if she isn't here
+    this.active = true;
+    this.startedAt = Date.now();
+    const cur = ActivityEngine.current;
+    this.activityCategoryAtStart = cur ? cur.category : null;
+    this.sessionMomentFired = false;
+    Interactions._noteInteraction("stayQuiet");
+    Memory.log("activity", "You stay quietly beside Satomi.");
+    UI.setAccompanying(true);
+    Persistence.scheduleSave();
+    return true;
+  },
+
+  end(){
+    if(!this.active) return;
+    this.active = false;
+    this.startedAt = null;
+    this.activityCategoryAtStart = null;
+    this.endedAt = Date.now();
+    UI.setAccompanying(false);
+    Persistence.scheduleSave();
+  },
+
+  // Called every Sim.tick(). Ends the session on any of the sensible
+  // lifecycle boundaries called out in the design (activity changed
+  // substantially, she's no longer home, or the session simply ran
+  // long), then gives the "rare moment" a chance to fire.
+  tick(){
+    if(!this.active) return;
+    const cur = ActivityEngine.current;
+    const categoryChanged = this.activityCategoryAtStart!=null && cur && cur.category!==this.activityCategoryAtStart;
+    const noLongerHome = !Availability.isHome();
+    const ranLong = (Date.now()-this.startedAt) > this.MAX_SESSION_MS;
+    if(categoryChanged || noLongerHome || ranLong){
+      this.end();
+      return;
+    }
+    this.maybeTriggerMoment();
+  },
+
+  // At most one of these per session (sessionMomentFired), and at most
+  // one across sessions per MOMENT_COOLDOWN_MS — this is the "small
+  // contextual effect once per meaningful presence period, not once per
+  // button press" the design calls for, not a farmable tick.
+  maybeTriggerMoment(){
+    if(this.sessionMomentFired) return;
+    const elapsed = Date.now()-this.startedAt;
+    if(elapsed < this.MIN_MS_BEFORE_MOMENT) return;
+    if(this.lastMomentAt && (Date.now()-this.lastMomentAt) < this.MOMENT_COOLDOWN_MS) return;
+    if(!RNG.chance(this.MOMENT_ROLL_CHANCE)) return;
+
+    this.sessionMomentFired = true;
+    this.lastMomentAt = Date.now();
+
+    // Most acknowledgements are wordless — a glance, a shift, nothing
+    // said. Only sometimes does she actually say something, and even
+    // that draws from a small, mostly-terse pool rather than guaranteed
+    // dialogue.
+    if(RNG.chance(0.6)){
+      Memory.log("activity", RNG.pick(QUIET_AMBIENT_MOMENTS));
+    } else {
+      const f = StateEngine.flags();
+      const line = Interactions.pickLine(QUIET_LINES, "quiet", {terse: f.highStress||f.lowEnergy});
+      if(line){
+        setTimeout(()=>{ UI.speak(line); }, RNG.range(500,2000));
+        Memory.log("dialogue", "(a quiet moment)");
+      } else {
+        Memory.log("activity", "She doesn't say anything, but it doesn't feel like she has to.");
+      }
+    }
+
+    // Optional, tiny, and gated behind the moment actually firing — not
+    // behind the button press — so it can't be farmed by clicking.
+    if(RNG.chance(0.5)){
+      StateEngine.apply({stress:-1, socialNeed:-1});
+    }
+    Persistence.scheduleSave();
   }
 };
 
@@ -6221,6 +6430,7 @@ const Sim = {
     }
     NewsEngine.maybeTrigger();
     ReadingEngine.maybeReact();
+    QuietPresence.tick();
     UI.updateBookshelfTabState();
     Persistence.scheduleSave();
   }
@@ -6273,6 +6483,9 @@ const Debug = {
       ["bookshelf binge active", BookshelfEngine.isBingeActive ? "yes" : "no"],
       ["Birthday", "Feb 8"],
       ["Birthday Greeting", !Birthday.isToday() ? "Not Active" : (Birthday.alreadyGreetedThisYear() ? "Greeted" : (Availability.isHome() ? "Available" : "Not Active (away/asleep)"))],
+      ["Quiet Presence", QuietPresence.active ? `active (${Math.round((Date.now()-QuietPresence.startedAt)/1000)}s, moment ${QuietPresence.sessionMomentFired?"fired":"pending"})` : "inactive"],
+      ["Quiet Presence restart cooldown", (QuietPresence.endedAt && (Date.now()-QuietPresence.endedAt)<QuietPresence.RESTART_COOLDOWN_MS) ? Math.round((QuietPresence.RESTART_COOLDOWN_MS-(Date.now()-QuietPresence.endedAt))/1000)+"s left" : "ready"],
+      ["Quiet Presence moment cooldown", (QuietPresence.lastMomentAt && (Date.now()-QuietPresence.lastMomentAt)<QuietPresence.MOMENT_COOLDOWN_MS) ? Math.round((QuietPresence.MOMENT_COOLDOWN_MS-(Date.now()-QuietPresence.lastMomentAt))/1000)+"s left" : "ready"],
       ["mood", StateEngine.currentMoodTag()],
       ["energy", Math.round(s.energy)], ["focus", Math.round(s.focus)],
       ["stress", Math.round(s.stress)], ["hunger", Math.round(s.hunger)],
@@ -6324,6 +6537,19 @@ const Debug = {
         UI.tickClock(); UI.refreshInteractGridIfOpen(); this.note("jumped to Feb 8"); this.render();
       }],
       ["Reset Birthday (this year)", ()=>{ Birthday.lastGreetedYear=0; Persistence.scheduleSave(); UI.refreshInteractGridIfOpen(); this.note("birthday greeting reset"); this.render(); }],
+      // --- Quiet Presence testing ---
+      ["Quiet Presence: Start", ()=>{ const ok=QuietPresence.start(); this.note(ok?"quiet presence started":"couldn't start (already active, cooling down, or she's not home)"); UI.refreshInteractGridIfOpen(); this.render(); }],
+      ["Quiet Presence: End", ()=>{ QuietPresence.end(); this.note("quiet presence ended"); UI.refreshInteractGridIfOpen(); this.render(); }],
+      ["Quiet Presence: Force Trigger Moment", ()=>{
+        if(!QuietPresence.active){ this.note("not active — start a session first"); this.render(); return; }
+        QuietPresence.sessionMomentFired=false; QuietPresence.lastMomentAt=0; QuietPresence.startedAt = Date.now()-QuietPresence.MIN_MS_BEFORE_MOMENT-1000;
+        const origChance = Math.random;
+        Math.random = () => 0; // force every RNG.chance()/roll in this call to pass
+        try { QuietPresence.maybeTriggerMoment(); } finally { Math.random = origChance; }
+        this.note("forced a quiet moment");
+        this.render();
+      }],
+      ["Quiet Presence: Reset Cooldowns", ()=>{ QuietPresence.endedAt=0; QuietPresence.lastMomentAt=0; Persistence.scheduleSave(); this.note("quiet presence cooldowns cleared"); this.render(); }],
       ["Force Rain", ()=>{ WeatherEngine.set("light_rain"); this.note("weather -> light_rain"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
       ["Force Storm", ()=>{ WeatherEngine.set("thunderstorm"); this.note("weather -> thunderstorm"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
       ["Clear Weather", ()=>{ WeatherEngine.set("clear"); this.note("weather -> clear"); UI.updateEnvBar(); UI.applyAmbientTheme(); this.render(); }],
