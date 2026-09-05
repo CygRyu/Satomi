@@ -4856,10 +4856,17 @@ const UI = {
     }
     const active = BookshelfEngine.activeBook();
     const queue = BookshelfEngine.queuedBooks();
+    const purchased = BookshelfEngine.purchasedBooks();
     const completed = BookshelfEngine.completedBooks().slice().reverse();
     const fund = BookshelfEngine.savingsProgress();
 
-    if(!active && queue.length===0 && completed.length===0){
+    // NOTE: this must include purchased.length — a book that's been bought
+    // but hasn't started being read yet is neither active, queued, nor
+    // completed, so without this check the panel fell through to the
+    // "Recommend her first book" empty state and the purchased book was
+    // invisible until some other change (e.g. adding a new recommendation)
+    // forced a non-empty render.
+    if(!active && queue.length===0 && purchased.length===0 && completed.length===0){
       el.innerHTML = `<div class="bs-empty"><span class="bs-empty-icon">📚</span>Satomi isn't reading anything right now.<br>Recommend her first book to get started!</div>`
         + `<button class="bs-addbtn" id="bsAddBtn">+ Add Recommendation</button>`;
       document.getElementById("bsAddBtn").onclick = ()=> UI.openAddBookForm();
@@ -4894,7 +4901,7 @@ const UI = {
     // it, and it doesn't show up in "Currently Reading" until an actual
     // reading_book activity calls beginReading(). Surface it here so a
     // purchased title never appears to just vanish from the shelf.
-    const waitingToStart = BookshelfEngine.purchasedBooks();
+    const waitingToStart = purchased;
     if(waitingToStart.length){
       waitingToStart.forEach(b=>{
         const dTitle = b.title || b.bookTitle || b.name || "Untitled";
