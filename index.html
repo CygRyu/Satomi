@@ -248,7 +248,7 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .settings-footer .kofi-link{ display:block; margin-top:6px; font-size:10.5px; }
 
 /* audio settings */
-.audio-settings{ margin-top:22px; padding-top:16px; border-top:1px solid var(--line); transition:border-color var(--transition-slow) ease; }
+.audio-settings{ margin-top:22px; padding-top:16px; transition:border-color var(--transition-slow) ease; }
 .audio-settings-label{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em; color:var(--ink-2); margin-bottom:14px; text-align:center; transition:color var(--transition-slow) ease; }
 .audio-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
 .audio-row:last-child{ margin-bottom:0; }
@@ -412,7 +412,6 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
       <button data-filter="dialogue">Dialogue</button>
       <button data-filter="activity">Activities</button>
       <button data-filter="environment">Environment</button>
-      <button data-filter="major">Life Events</button>
     </div>
     <div id="logList"></div>
     <button class="panel-close" data-close="log">Close</button>
@@ -774,6 +773,7 @@ const ENVIRONMENTAL_EVENTS = [
 // Life Threads are temporarily disabled. The complete engine/data remain in
 // this file so the feature can be revived later by setting this back to true.
 const FEATURES = {
+  // Dormant for now. Set to true later to re-enable Life Events and their UI.
   LIFE_THREADS: false,
 };
 
@@ -2510,7 +2510,6 @@ const UI = {
       ["Days together", days],
       ["Time spent together", hours+" hrs"],
       ["Interactions", Presence.interactions],
-      ["Major events witnessed", Presence.majorEventsWitnessed],
     ];
     this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
   },
