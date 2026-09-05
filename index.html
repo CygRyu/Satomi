@@ -2155,34 +2155,52 @@ const OfflineReconstruct = {
 
 const Persistence = {
   KEY: "satomi_companion_save_v1",
+  SCHEMA_VERSION: 2,
   saveTimer:null,
   isResetting:false,
+  isTransferring:false, // blocks save-on-unload from overwriting an imported save
+
   scheduleSave(){
-    if(this.isResetting) return;
+    if(this.isResetting || this.isTransferring) return;
     clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(()=>this.save(), 800);
   },
-  save(){
-    // A reset triggers a reload, which normally fires beforeunload and could
-    // immediately recreate the save we just deleted. Never persist while a
-    // factory reset is in progress.
-    if(this.isResetting) return;
-    const payload = {
-      state: StateEngine.data,
-      weather: {id:WeatherEngine.currentId, temp:WeatherEngine.temp, lastChange:WeatherEngine.lastChange},
-      audio: {musicVolume:Music.volume, ambientVolume:WeatherAudio.volume},
+
+  buildPayload(){
+    return {
+      schemaVersion: this.SCHEMA_VERSION,
+      state: Object.assign({}, StateEngine.data),
+      weather: {
+        id: WeatherEngine.currentId,
+        temp: WeatherEngine.temp,
+        lastChange: WeatherEngine.lastChange
+      },
+      audio: {
+        musicVolume: Music.volume,
+        ambientVolume: WeatherAudio.volume,
+        musicEnabled: Music.enabled
+      },
       activity: {
         id: ActivityEngine.current ? ActivityEngine.current.id : null,
         until: ActivityEngine.currentUntil,
-        recentIds: ActivityEngine.recentIds,
+        recentIds: Array.isArray(ActivityEngine.recentIds) ? ActivityEngine.recentIds.slice() : [],
         text: ActivityEngine.currentText || null,
         awayCooldownUntil: ActivityEngine.awayCooldownUntil || 0,
-        commuteOrigin: ActivityEngine.commuteOrigin || null,
+        commuteOrigin: ActivityEngine.commuteOrigin || null
       },
-      // Retained only when the feature is enabled; old saves remain compatible.
+      // These are behavioral memory buffers. Persisting them makes an
+      // export/import continue with the same anti-repeat context instead of
+      // behaving like a completely fresh session.
+      dialogue: {
+        recentLineIds: Array.isArray(DialogueEngine.recentLineIds) ? DialogueEngine.recentLineIds.slice() : [],
+        lastSpokenAt: DialogueEngine.lastSpokenAt || 0
+      },
+      environment: {
+        recentIds: Array.isArray(EventEngine.recentIds) ? EventEngine.recentIds.slice() : []
+      },
       ...(FEATURES.LIFE_THREADS ? {
         threadsActive: LifeThreadEngine.active.map(t=>({id:t.id, stageIndex:t.stageIndex, lastProgress:t.lastProgress})),
-        threadsCompleted: LifeThreadEngine.completed,
+        threadsCompleted: LifeThreadEngine.completed.slice()
       } : {}),
       dailyPlan: DailyPlan.serialize(),
       birthday: { lastGreetedYear: Birthday.lastGreetedYear },
@@ -2194,103 +2212,225 @@ const Persistence = {
         daysTogether: Array.from(Presence.daysTogether),
         interactions: Presence.interactions,
         majorEventsWitnessed: Presence.majorEventsWitnessed,
-        totalTimeMs: Presence.totalTimeMs,
+        totalTimeMs: Presence.totalTimeMs
       },
-      savedAt: Date.now(),
+      savedAt: Date.now()
     };
-    try{ localStorage.setItem(this.KEY, JSON.stringify(payload)); }catch(e){ console.warn("save failed", e); }
   },
+
+  save(){
+    if(this.isResetting || this.isTransferring) return false;
+    const payload = this.buildPayload();
+    try{
+      localStorage.setItem(this.KEY, JSON.stringify(payload));
+      this.lastSavedAt = payload.savedAt;
+      return true;
+    }catch(e){
+      console.warn("save failed", e);
+      return false;
+    }
+  },
+
+  // Validate the structure before replacing the live save. This prevents a
+  // syntactically valid but unrelated/corrupt JSON file from becoming the
+  // app's save and causing partial state restoration on the next boot.
+  validatePayload(p){
+    if(!p || typeof p !== "object" || Array.isArray(p)) return false;
+    if(p.schemaVersion !== undefined && (!Number.isInteger(p.schemaVersion) || p.schemaVersion < 1 || p.schemaVersion > this.SCHEMA_VERSION)) return false;
+    // A save must contain the core state and a timestamp. This rejects an
+    // arbitrary JSON object such as {} while still accepting older v1 saves.
+    if(!p.state || typeof p.state !== "object" || Array.isArray(p.state)) return false;
+    if(p.savedAt !== undefined && (!Number.isFinite(p.savedAt) || p.savedAt < 0)) return false;
+    if(p.savedAt === undefined) return false;
+    if(p.threadsActive !== undefined && !Array.isArray(p.threadsActive)) return false;
+    if(p.threadsCompleted !== undefined && !Array.isArray(p.threadsCompleted)) return false;
+    if(p.dailyPlan !== undefined){
+      if(!p.dailyPlan || typeof p.dailyPlan !== "object") return false;
+      if(p.dailyPlan.dateKey !== undefined && p.dailyPlan.dateKey !== null && typeof p.dailyPlan.dateKey !== "string") return false;
+      if(p.dailyPlan.work !== undefined && p.dailyPlan.work !== null){
+        if(typeof p.dailyPlan.work !== "object") return false;
+        for(const k of ["prepStart","shiftStart","shiftEnd"]){
+          if(!Number.isFinite(p.dailyPlan.work[k])) return false;
+        }
+      }
+      if(p.dailyPlan.university !== undefined && !Array.isArray(p.dailyPlan.university)) return false;
+    }
+    if(p.birthday !== undefined && (!p.birthday || typeof p.birthday !== "object" || (p.birthday.lastGreetedYear !== undefined && !Number.isFinite(p.birthday.lastGreetedYear)))) return false;
+    if(p.familyCall !== undefined && (!p.familyCall || typeof p.familyCall !== "object" || (p.familyCall.lastCallDateKey !== undefined && p.familyCall.lastCallDateKey !== null && typeof p.familyCall.lastCallDateKey !== "string"))) return false;
+    if(p.logDay !== undefined && typeof p.logDay !== "string") return false;
+    if(p.log !== undefined){
+      if(!Array.isArray(p.log)) return false;
+      for(const e of p.log){
+        if(!e || typeof e !== "object") return false;
+        if(e.id !== undefined && (!Number.isFinite(e.id) || e.id < 0)) return false;
+        if(e.ts !== undefined && (!Number.isFinite(e.ts) || e.ts < 0)) return false;
+        if(e.type !== undefined && typeof e.type !== "string") return false;
+        if(e.text !== undefined && typeof e.text !== "string") return false;
+      }
+    }
+    if(p.presence !== undefined){
+      if(!p.presence || typeof p.presence !== "object") return false;
+      for(const k of ["interactions","majorEventsWitnessed","totalTimeMs"]){
+        if(p.presence[k] !== undefined && (!Number.isFinite(p.presence[k]) || p.presence[k] < 0)) return false;
+      }
+      if(p.presence.firstOpened !== undefined && p.presence.firstOpened !== null && (!Number.isFinite(p.presence.firstOpened) || p.presence.firstOpened < 0)) return false;
+      if(p.presence.daysTogether !== undefined && !Array.isArray(p.presence.daysTogether)) return false;
+    }
+    if(p.state !== undefined){
+      if(!p.state || typeof p.state !== "object" || Array.isArray(p.state)) return false;
+      const keys = ["energy","focus","stress","hunger","boredom","socialNeed","sleepiness","motivation","mood"];
+      for(const k of keys){
+        if(p.state[k] !== undefined && (!Number.isFinite(p.state[k]) || p.state[k] < 0 || p.state[k] > 100)) return false;
+      }
+    }
+    if(p.weather !== undefined){
+      if(!p.weather || typeof p.weather !== "object") return false;
+      if(p.weather.id !== undefined && !WEATHER_STATES.some(w=>w.id===p.weather.id)) return false;
+      if(p.weather.temp !== undefined && !Number.isFinite(p.weather.temp)) return false;
+      if(p.weather.lastChange !== undefined && (!Number.isFinite(p.weather.lastChange) || p.weather.lastChange < 0)) return false;
+    }
+    if(p.audio !== undefined){
+      if(!p.audio || typeof p.audio !== "object") return false;
+      for(const k of ["musicVolume","ambientVolume"]){
+        if(p.audio[k] !== undefined && (!Number.isFinite(p.audio[k]) || p.audio[k] < 0 || p.audio[k] > 1)) return false;
+      }
+      if(p.audio.musicEnabled !== undefined && typeof p.audio.musicEnabled !== "boolean") return false;
+    }
+    if(p.activity !== undefined){
+      if(!p.activity || typeof p.activity !== "object") return false;
+      if(p.activity.id !== undefined && p.activity.id !== null && !CONTENT.activities.some(a=>a.id===p.activity.id)) return false;
+      for(const k of ["until","awayCooldownUntil"]){
+        if(p.activity[k] !== undefined && (!Number.isFinite(p.activity[k]) || p.activity[k] < 0)) return false;
+      }
+      if(p.activity.recentIds !== undefined && !Array.isArray(p.activity.recentIds)) return false;
+      if(p.activity.text !== undefined && p.activity.text !== null && typeof p.activity.text !== "string") return false;
+      if(p.activity.commuteOrigin !== undefined && p.activity.commuteOrigin !== null && typeof p.activity.commuteOrigin !== "string") return false;
+    }
+    if(p.dialogue !== undefined){
+      if(!p.dialogue || typeof p.dialogue !== "object" || !Array.isArray(p.dialogue.recentLineIds)) return false;
+      if(p.dialogue.lastSpokenAt !== undefined && (!Number.isFinite(p.dialogue.lastSpokenAt) || p.dialogue.lastSpokenAt < 0)) return false;
+    }
+    if(p.environment !== undefined){
+      if(!p.environment || typeof p.environment !== "object" || !Array.isArray(p.environment.recentIds)) return false;
+    }
+    if(p.log !== undefined && !Array.isArray(p.log)) return false;
+    if(p.presence !== undefined && (!p.presence || typeof p.presence !== "object")) return false;
+    if(p.savedAt !== undefined && (!Number.isFinite(p.savedAt) || p.savedAt < 0)) return false;
+    return true;
+  },
+
   load(){
     let raw;
     try{ raw = localStorage.getItem(this.KEY); }catch(e){ return false; }
     if(!raw) return false;
     try{
       const p = JSON.parse(raw);
-      Object.assign(StateEngine.data, p.state||{});
-      if(p.weather){ WeatherEngine.currentId=p.weather.id; WeatherEngine.temp=p.weather.temp; WeatherEngine.lastChange=p.weather.lastChange||Date.now(); }
+      if(!this.validatePayload(p)) throw new Error("invalid save schema");
+
+      if(p.state) Object.keys(StateEngine.data).forEach(k=>{
+        if(Number.isFinite(p.state[k])) StateEngine.data[k] = StateEngine.clamp(p.state[k]);
+      });
+      if(p.weather){
+        if(WEATHER_STATES.some(w=>w.id===p.weather.id)) WeatherEngine.currentId=p.weather.id;
+        if(Number.isFinite(p.weather.temp)) WeatherEngine.temp=p.weather.temp;
+        WeatherEngine.lastChange = Number.isFinite(p.weather.lastChange) ? p.weather.lastChange : Date.now();
+      }
       if(p.audio){
-        if(typeof p.audio.musicVolume==="number") Music.setVolume(p.audio.musicVolume);
-        if(typeof p.audio.ambientVolume==="number") WeatherAudio.setVolume(p.audio.ambientVolume);
+        if(typeof p.audio.musicEnabled === "boolean"){
+          Music.enabled = p.audio.musicEnabled;
+          Music.applyBtn();
+        }
+        if(Number.isFinite(p.audio.musicVolume)) Music.setVolume(p.audio.musicVolume);
+        if(Number.isFinite(p.audio.ambientVolume)) WeatherAudio.setVolume(p.audio.ambientVolume);
       }
       if(p.activity){
-        ActivityEngine.awayCooldownUntil = p.activity.awayCooldownUntil || 0;
-        ActivityEngine.commuteOrigin = p.activity.commuteOrigin || null; // missing on older saves -> null, safe default
+        ActivityEngine.awayCooldownUntil = Number.isFinite(p.activity.awayCooldownUntil) ? p.activity.awayCooldownUntil : 0;
+        ActivityEngine.commuteOrigin = p.activity.commuteOrigin || null;
+        ActivityEngine.current = null;
+        ActivityEngine.currentUntil = 0;
+        ActivityEngine.currentText = null;
+        ActivityEngine.recentIds = Array.isArray(p.activity.recentIds) ? p.activity.recentIds.filter(id=>typeof id==="string") : [];
         if(p.activity.id){
           const act = CONTENT.activities.find(a=>a.id===p.activity.id);
           if(act){
-            // Restore the in-progress activity exactly as it was — a
-            // refresh should feel like glancing back, not a reroll.
-            // (A large real-world gap since savedAt overrides this right
-            // after load(), via OfflineReconstruct — see boot().)
             ActivityEngine.current = act;
-            ActivityEngine.currentUntil = p.activity.until || 0;
-            ActivityEngine.recentIds = p.activity.recentIds || [];
-            ActivityEngine.currentText = p.activity.text || null;
+            ActivityEngine.currentUntil = Number.isFinite(p.activity.until) ? p.activity.until : 0;
+            ActivityEngine.currentText = typeof p.activity.text === "string" ? p.activity.text : null;
           }
         }
       }
+      if(p.dialogue){
+        DialogueEngine.recentLineIds = p.dialogue.recentLineIds.filter(id=>typeof id==="string");
+        DialogueEngine.lastSpokenAt = Number.isFinite(p.dialogue.lastSpokenAt) ? p.dialogue.lastSpokenAt : 0;
+      }
+      if(p.environment){
+        EventEngine.recentIds = p.environment.recentIds.filter(id=>typeof id==="string");
+      }
       if(FEATURES.LIFE_THREADS){
         if(p.threadsActive){
-          LifeThreadEngine.active = p.threadsActive.map(t=>({id:t.id, def:LIFE_THREADS.find(d=>d.id===t.id), stageIndex:t.stageIndex, lastProgress:t.lastProgress})).filter(t=>t.def);
+          LifeThreadEngine.active = p.threadsActive.map(t=>({id:t.id,def:LIFE_THREADS.find(d=>d.id===t.id),stageIndex:t.stageIndex,lastProgress:t.lastProgress})).filter(t=>t.def);
         }
-        LifeThreadEngine.completed = p.threadsCompleted||[];
+        LifeThreadEngine.completed = Array.isArray(p.threadsCompleted) ? p.threadsCompleted.slice() : [];
       } else {
-        // Keep the dormant feature completely inactive even when loading an old save.
-        LifeThreadEngine.active = [];
-        LifeThreadEngine.completed = [];
+        LifeThreadEngine.active=[]; LifeThreadEngine.completed=[];
       }
-      // Missing on older saves → dateKey stays null, so DailyPlan.ensureForToday()
-      // simply generates a fresh plan the first time it's consulted.
       DailyPlan.restoreFromSave(p.dailyPlan);
-      // Missing on older saves → 0, which is never the current year,
-      // so it safely defaults to "not greeted this year".
-      Birthday.lastGreetedYear = (p.birthday && typeof p.birthday.lastGreetedYear==="number") ? p.birthday.lastGreetedYear : 0;
-      // Missing on older saves -> null, the correct safe default ("not
-      // called today" is indistinguishable from "never recorded").
-      FamilyCall.lastCallDateKey = (p.familyCall && p.familyCall.lastCallDateKey) || null;
-      // Older saves may lack id fields — backfill so entries have
-      // something stable to key off of.
+      Birthday.lastGreetedYear = (p.birthday && typeof p.birthday.lastGreetedYear === "number") ? p.birthday.lastGreetedYear : 0;
+      FamilyCall.lastCallDateKey = (p.familyCall && typeof p.familyCall.lastCallDateKey === "string") ? p.familyCall.lastCallDateKey : null;
+
       let maxId = 0;
       Memory.entries = (p.log||[]).map(e=>{
-        const id = typeof e.id==="number" ? e.id : ++maxId;
-        if(id>maxId) maxId = id;
-        return {id, ts:e.ts, type:e.type, text:e.text};
+        const id = typeof e.id === "number" ? e.id : ++maxId;
+        if(id>maxId) maxId=id;
+        return {id,ts:e.ts,type:e.type,text:e.text};
       });
-      Memory._nextId = maxId+1;
+      Memory._nextId=maxId+1;
       Memory.currentLogDay = p.logDay || new Date().toDateString();
       if(p.presence){
-        Presence.firstOpened = p.presence.firstOpened;
-        // 1.15 counted every UI.speak() call as "Conversations".
-        // 1.15 intentionally does not reinterpret that historical number:
-        // older saves start the new, more meaningful interaction counter at 0.
-
-        Presence.daysTogether = new Set(p.presence.daysTogether||[]);
-        Presence.interactions = (typeof p.presence.interactions === "number") ? p.presence.interactions : 0;
-        Presence.majorEventsWitnessed = p.presence.majorEventsWitnessed||0;
-        Presence.totalTimeMs = p.presence.totalTimeMs||0;
+        Presence.firstOpened=p.presence.firstOpened || null;
+        Presence.daysTogether=new Set(Array.isArray(p.presence.daysTogether) ? p.presence.daysTogether : []);
+        Presence.interactions=Number.isFinite(p.presence.interactions) ? p.presence.interactions : 0;
+        Presence.majorEventsWitnessed=Number.isFinite(p.presence.majorEventsWitnessed) ? p.presence.majorEventsWitnessed : 0;
+        Presence.totalTimeMs=Number.isFinite(p.presence.totalTimeMs) ? p.presence.totalTimeMs : 0;
       }
-      // Missing on older saves -> Date.now(), which reads as "no gap",
-      // the correct safe default (nothing to reconstruct for a save
-      // that never recorded when it happened).
-      this.lastSavedAt = p.savedAt || Date.now();
+      this.lastSavedAt = Number.isFinite(p.savedAt) ? p.savedAt : Date.now();
       return true;
-    }catch(e){ console.warn("load failed", e); return false; }
+    }catch(e){
+      console.warn("load failed", e);
+      return false;
+    }
   },
+
   exportJSON(){
-    this.save();
-    return localStorage.getItem(this.KEY);
+    // Export the exact current in-memory state, saved synchronously first so
+    // the downloaded file is never one tick behind the visible app.
+    if(!this.save()) return null;
+    try{
+      return localStorage.getItem(this.KEY);
+    }catch(e){
+      console.warn("export failed", e);
+      return null;
+    }
   },
+
   importJSON(str){
     try{
-      JSON.parse(str); // validate
-      localStorage.setItem(this.KEY, str);
+      const p = JSON.parse(String(str));
+      if(!this.validatePayload(p)) return false;
+      localStorage.setItem(this.KEY, JSON.stringify(p));
+      // Critical: the beforeunload handler must not immediately overwrite the
+      // imported save with the old in-memory state during location.reload().
+      this.isTransferring = true;
+      clearTimeout(this.saveTimer);
       return true;
-    }catch(e){ return false; }
+    }catch(e){
+      console.warn("import failed", e);
+      return false;
+    }
   },
+
   reset(){
-    // Factory reset: cancel pending writes, erase every persistence key used
-    // by this app, and prevent unload/visibility handlers from recreating them.
-    this.isResetting = true;
+    this.isResetting=true;
     clearTimeout(this.saveTimer);
     try{
       localStorage.removeItem(this.KEY);
@@ -2890,6 +3030,10 @@ const Debug = {
    ============================================================ */
 document.getElementById("exportBtn").onclick = ()=>{
   const data = Persistence.exportJSON();
+  if(!data){
+    alert("The save couldn't be exported. Please try again.");
+    return;
+  }
   const blob = new Blob([data], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -2906,7 +3050,8 @@ document.getElementById("importFile").onchange = (e)=>{
       alert("Save imported. Reloading.");
       location.reload();
     } else {
-      alert("That file couldn't be read as a valid save.");
+      alert("That file isn't a valid Satomi save. Your current save was not changed.");
+      e.target.value = "";
     }
   };
   reader.readAsText(file);
