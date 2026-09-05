@@ -552,7 +552,7 @@ const UNIVERSITY_SCHEDULE = {
 const ACTIVITIES = [
   { id:"study_notes", category:"study", text:["Satomi is writing notes in her notebook.","Satomi is carefully copying something from her textbook.","Satomi is reviewing her notes from seminar.","Satomi is reorganizing her seminar notes into something more readable.","Satomi is comparing today's notes with something she wrote earlier.","Satomi is filling in a few gaps in her lecture notes.","Satomi is going back over a section she didn't quite understand."], micro:["Satomi flips to a new page.","Satomi underlines a line twice.","Satomi pauses to reread a sentence.","Satomi taps her pen against the page.","Satomi flips back a few pages.","Satomi circles a word, then writes a note beside it.","Satomi pauses to think before writing anything down.","Satomi crosses out a line and rewrites it."], duration:[240,900], tod:["morning","afternoon","evening"], weekday:"any", effects:{energy:-4,focus:-2,boredom:-3,motivation:-1} },
   { id:"study_reading", category:"study", text:["Satomi is reading an assigned novel for seminar.","Satomi is highlighting a passage.","Satomi is reading the same paragraph for the second time.","Satomi is making a few notes beside a difficult passage.","Satomi is slowly working through this week's reading.","Satomi is comparing two passages from the novel."], micro:["Satomi turns a page slowly.","Satomi rereads the same paragraph.","Satomi dog-ears a page.","Satomi adjusts the bookmark.","Satomi rests her finger on the page while thinking.","Satomi reads a sentence again.","Satomi makes a tiny mark in the margin.","Satomi looks away from the page for a moment."], duration:[300,1200], tod:["afternoon","evening","night"], weekday:"any", effects:{energy:-3,focus:-3,boredom:-4} },
-  { id:"essay_writing", category:"study", text:["Satomi is staring at a mostly blank document.","Satomi is slowly writing her essay.","Satomi is rearranging paragraphs in her essay.","Satomi is trying to find a better way to phrase something.","Satomi is staring at her essay, unsure about the next sentence.","Satomi is slowly turning her scattered notes into an argument."], micro:["Satomi deletes a sentence.","Satomi rereads what she just wrote.","Satomi stretches her fingers.","Satomi highlights a sentence and immediately unhighlights it.","Satomi moves the cursor back and forth across the paragraph.","Satomi types three words, then stops.","Satomi checks one of her references.","Satomi leans back and rereads the whole paragraph."], duration:[200,700], tod:["afternoon","evening","night"], weekday:"any", effects:{energy:-5,focus:-4,stress:+2,motivation:-2} },
+  { id:"essay_writing", category:"study", text:["Satomi is staring at a mostly blank document.","Satomi is slowly writing her essay.","Satomi is rearranging paragraphs in her essay.","Satomi is trying to find a better way to phrase something.","Satomi is staring at her essay, unsure about the next sentence.","Satomi is slowly turning her scattered notes into an argument."], micro:["Satomi deletes a sentence.","Satomi rereads what she just wrote.","Satomi stretches her fingers.","Satomi highlights a sentence and immediately unhighlights it.","Satomi moves the cursor back and forth across the paragraph.","Satomi types three words, then stops.","Satomi checks one of her references.","Satomi leans back and rereads the whole paragraph.","Satomi stretches her wrist after a long stretch of typing."], duration:[200,700], tod:["afternoon","evening","night"], weekday:"any", effects:{energy:-5,focus:-4,stress:+2,motivation:-2} },
   { id:"stats_homework", category:"study", text:["Satomi is struggling through a statistics worksheet."], micro:["Satomi sighs at the page.","Satomi rechecks a formula."], duration:[180,500], tod:["afternoon","evening"], weekday:"any", effects:{energy:-5,focus:-3,stress:+4} },
   { id:"break_stretch", category:"break", text:["Satomi is taking a short break.","Satomi leans back in her chair.","Satomi is taking a moment to do absolutely nothing.","Satomi has stepped away from her desk for a little while.","Satomi is letting her mind wander for a few minutes."], micro:["Satomi rolls her shoulders.","Satomi stares at the ceiling for a moment.","Satomi stretches her arms above her head.","Satomi rolls her neck carefully.","Satomi closes her eyes for a few seconds.","Satomi looks around the room without really focusing on anything.","Satomi takes a slow breath and settles back down."], duration:[60,240], tod:["any"], weekday:"any", effects:{energy:+3,focus:+5,boredom:+1,stress:-2,mood:+1} },
   { id:"tea_making", category:"break", text:["Satomi gets up to make tea.","Satomi is making herself another cup of tea.","Satomi is standing in the kitchen, waiting for the tea to steep.","Satomi is deciding which tea to have."], micro:["Satomi waits for the kettle.","Satomi warms her hands on the cup.","Satomi checks the color of the tea.","Satomi blows gently across the surface.","Satomi takes a small sip, then waits.","Satomi carries the cup back to her desk.","Satomi warms her hands around the cup."], duration:[120,300], tod:["any"], weekday:"any", effects:{energy:+2,hunger:-2,stress:-2,mood:+1} },
@@ -618,26 +618,26 @@ const ACTIVITIES = [
     ], duration:[23400,32400], tod:["night","late_night"], weekday:"any", effects:{sleepiness:-60,energy:+30,stress:-10} },
   { id:"waking_up", category:"routine", text:["Satomi is slowly waking up.","Satomi is still half-asleep, lying in bed for a moment longer.","Satomi's alarm went off a few minutes ago; she's only just stirring.","Satomi stretches and blinks against the morning light."], micro:["Satomi rubs her eyes.","Satomi reaches for her phone to check the time.","Satomi pulls the blanket back over her head for a moment."], duration:[60,240], tod:["morning"], weekday:"any", effects:{sleepiness:-10,energy:+3} },
   { id:"weekend_lazing", category:"break", text:["Satomi is lazing around, in no hurry to do anything.","Satomi is still in pajamas, scrolling idly.","Satomi is having a very slow weekend morning.","Satomi isn't in any hurry to start the day.","Satomi is sitting around in comfortable clothes, doing very little.","Satomi hasn't made any plans for the morning."], micro:["Satomi stretches out on the floor cushion.","Satomi checks the time, then pulls the blanket back up.","Satomi pulls the blanket closer around herself.","Satomi stretches and settles back down.","Satomi looks at the ceiling for a while.","Satomi starts to sit up, then lies back down.",], duration:[300,900], tod:["morning","afternoon"], weekday:"weekend", effects:{energy:+3,boredom:+3,stress:-2,mood:+2} },
-  { id:"meeting_friend", category:"social", awayLength:"normal", text:["Satomi is out meeting a friend."], micro:[], duration:[1200,3000], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-15,stress:-3,energy:-3,mood:+4} },
+  { id:"meeting_friend", category:"social", awayLength:"normal", weatherSensitive:true, text:["Satomi is out meeting a friend."], micro:[], duration:[1200,3000], tod:["afternoon","evening"], weekday:"weekend", effects:{socialNeed:-15,stress:-3,energy:-3,mood:+4} },
 
   // --- occasional outings: Satomi is away from the apartment.
   // Scored deliberately low in ActivityEngine.score() so they stay
   // uncommon; picked through the exact same Schedule/pickNext path
   // as everything else above, so tod/weekday filtering, anti-repeat,
   // and persistence (current id + until timestamp) all come for free. ---
-  { id:"away_downstairs_shop", category:"away", awayLength:"brief", text:["Satomi has gone to grab something from the shop downstairs."], micro:[], duration:[300,1800], tod:["morning","afternoon","evening"], weekday:"any", effects:{hunger:-5} },
-  { id:"away_walk", category:"away", awayLength:"brief", text:["Satomi went out for a short walk."], micro:[], duration:[300,1500], tod:["afternoon","evening"], weekday:"any", effects:{stress:-3,boredom:-2} },
-  { id:"away_coffee", category:"away", awayLength:"brief", text:["Satomi popped out for coffee."], micro:[], duration:[300,1500], tod:["morning","afternoon"], weekday:"any", effects:{energy:+2} },
-  { id:"away_pickup", category:"away", awayLength:"brief", text:["Satomi went to pick something up nearby."], micro:[], duration:[300,1800], tod:["afternoon","evening"], weekday:"any", effects:{} },
-  { id:"away_nearby_shop", category:"away", awayLength:"brief", text:["Satomi is at a nearby shop."], micro:[], duration:[300,1800], tod:["afternoon","evening"], weekday:"any", effects:{} },
+  { id:"away_downstairs_shop", category:"away", awayLength:"brief", weatherSensitive:true, text:["Satomi has gone to grab something from the shop downstairs."], micro:[], duration:[300,1800], tod:["morning","afternoon","evening"], weekday:"any", effects:{hunger:-5} },
+  { id:"away_walk", category:"away", awayLength:"brief", weatherSensitive:true, text:["Satomi went out for a short walk."], micro:[], duration:[300,1500], tod:["afternoon","evening"], weekday:"any", effects:{stress:-3,boredom:-2} },
+  { id:"away_coffee", category:"away", awayLength:"brief", weatherSensitive:true, text:["Satomi popped out for coffee."], micro:[], duration:[300,1500], tod:["morning","afternoon"], weekday:"any", effects:{energy:+2} },
+  { id:"away_pickup", category:"away", awayLength:"brief", weatherSensitive:true, text:["Satomi went to pick something up nearby."], micro:[], duration:[300,1800], tod:["afternoon","evening"], weekday:"any", effects:{} },
+  { id:"away_nearby_shop", category:"away", awayLength:"brief", weatherSensitive:true, text:["Satomi is at a nearby shop."], micro:[], duration:[300,1800], tod:["afternoon","evening"], weekday:"any", effects:{} },
   { id:"away_library", category:"away", awayLength:"normal", text:["Satomi is studying at the library."], micro:[], duration:[1800,6000], tod:["afternoon"], weekday:"weekday", effects:{focus:+3,boredom:-2} },
-  { id:"away_errands", category:"away", awayLength:"normal", text:["Satomi is out running errands."], micro:[], duration:[1800,5400], tod:["afternoon"], weekday:"any", effects:{} },
-  { id:"away_lunch_out", category:"away", awayLength:"normal", text:["Satomi went out to get lunch."], micro:[], duration:[1800,4200], tod:["afternoon"], weekday:"any", effects:{hunger:-30,energy:+5} },
-  { id:"away_campus", category:"away", awayLength:"normal", text:["Satomi is spending some time around campus."], micro:[], duration:[1800,5400], tod:["morning","afternoon"], weekday:"weekday", effects:{socialNeed:-3} },
+  { id:"away_errands", category:"away", awayLength:"normal", weatherSensitive:true, text:["Satomi is out running errands."], micro:[], duration:[1800,5400], tod:["afternoon"], weekday:"any", effects:{} },
+  { id:"away_lunch_out", category:"away", awayLength:"normal", weatherSensitive:true, text:["Satomi went out to get lunch."], micro:[], duration:[1800,4200], tod:["afternoon"], weekday:"any", effects:{hunger:-30,energy:+5} },
+  { id:"away_campus", category:"away", awayLength:"normal", weatherSensitive:true, text:["Satomi is spending some time around campus."], micro:[], duration:[1800,5400], tod:["morning","afternoon"], weekday:"weekday", effects:{socialNeed:-3} },
   { id:"away_bookstore", category:"away", awayLength:"normal", text:["Satomi wandered into a bookstore and lost track of time."], micro:[], duration:[1800,5400], tod:["afternoon"], weekday:"weekend", effects:{boredom:-4,stress:-2} },
   { id:"away_afternoon_library", category:"away", awayLength:"long", text:["Satomi is spending the whole afternoon at the library."], micro:[], duration:[7200,12600], tod:["afternoon"], weekday:"weekday", effects:{focus:+5,energy:-4} },
-  { id:"away_visiting", category:"away", awayLength:"long", text:["Satomi went to visit someone for the afternoon."], micro:[], duration:[7200,14400], tod:["afternoon"], weekday:"weekend", effects:{socialNeed:-10,stress:-3} },
-  { id:"away_across_tokyo", category:"away", awayLength:"long", text:["Satomi went somewhere across Tokyo and will be out for a while."], micro:[], duration:[7200,14400], tod:["afternoon"], weekday:"weekend", effects:{energy:-5} },
+  { id:"away_visiting", category:"away", awayLength:"long", weatherSensitive:true, text:["Satomi went to visit someone for the afternoon."], micro:[], duration:[7200,14400], tod:["afternoon"], weekday:"weekend", effects:{socialNeed:-10,stress:-3} },
+  { id:"away_across_tokyo", category:"away", awayLength:"long", weatherSensitive:true, text:["Satomi went somewhere across Tokyo and will be out for a while."], micro:[], duration:[7200,14400], tod:["afternoon"], weekday:"weekend", effects:{energy:-5} },
 ];
 
 // --- ISSUE #7 "context matters": lightweight text-variant pools for
@@ -670,6 +670,27 @@ const MEAL_FLAVOR = {
   },
 };
 
+// --- commute flavor: same idea as MEAL_FLAVOR above, just for the two
+// commute activities when the weather outside is actively bad. Purely
+// cosmetic text swaps — pickActivityText() below reaches for these
+// before falling back to the activity's own plain `text` pool, so
+// scoring/anti-repeat/persistence are all untouched. A mandatory
+// commitment (a shift, a lecture) still happens either way; this only
+// changes how leaving the apartment looks and reads when it's raining. ---
+const COMMUTE_FLAVOR = {
+  rain: [
+    "Satomi grabs her umbrella by the door before heading out.",
+    "Satomi checks the sky one more time, then heads out with her umbrella up.",
+    "Satomi pulls her hood up and steps out into the rain.",
+    "Satomi waits under the awning a moment, then heads out anyway.",
+  ],
+  arriveHomeRain: [
+    "Satomi hurries the last stretch home, shaking the rain off her umbrella at the door.",
+    "Satomi steps inside, damp from the walk back.",
+    "Satomi is glad to be back before it started coming down harder.",
+  ],
+};
+
 // --- dialogue: explicit lines with contextual weighting ---
 const DIALOGUE = [
   // self_talk
@@ -689,12 +710,15 @@ const DIALOGUE = [
   {id:"st11",category:"self_talk",mood:["any"],context:["fightingSleepToFinish"],text:["Just one more thing, then bed.","Okay, five more minutes.","I should really sleep. ...after this."],weight:4},
 
   // environment_reaction
-  {id:"er01",category:"environment_reaction",mood:["any"],context:["weather:light_rain","weather:heavy_rain"],text:["Oh, it's raining.","I hope I don't need to go out later.","I like the sound of rain, actually."],weight:5},
-  {id:"er02",category:"environment_reaction",mood:["any"],context:["weather:thunderstorm"],text:["That was loud.","I don't love thunderstorms.","Hope the power doesn't go out."],weight:4},
+  {id:"er01",category:"environment_reaction",mood:["any"],context:["weather:light_rain","weather:heavy_rain"],text:["Oh, it's raining.","I hope I don't need to go out later.","I like the sound of rain, actually.","Guess I'm staying in today.","So much for going out later."],weight:5},
+  {id:"er02",category:"environment_reaction",mood:["any"],context:["weather:thunderstorm"],text:["That was loud.","I don't love thunderstorms.","Hope the power doesn't go out.","Definitely not going out in this.","No walk today, that's for sure."],weight:4},
   {id:"er03",category:"environment_reaction",mood:["any"],context:["env:motorcycle"],text:["That was loud.","Someone's in a hurry."],weight:3},
   {id:"er04",category:"environment_reaction",mood:["any"],context:["env:phone_notification"],text:["Oh.","Who's texting now."],weight:3},
   {id:"er05",category:"environment_reaction",mood:["any"],context:["weather:cold"],text:["It's cold today.","I should turn the heater on."],weight:3},
-  {id:"er06",category:"environment_reaction",mood:["any"],context:["weather:hot"],text:["It's too hot for this.","I need something cold to drink."],weight:3},
+  {id:"er06",category:"environment_reaction",mood:["any"],context:["weather:hot"],text:["It's too hot for this.","I need something cold to drink.","Maybe I'll just stay in where it's cooler."],weight:3},
+  {id:"er07",category:"environment_reaction",mood:["any"],context:["weather:heavy_rain","hungry"],text:["I'll just see what's left in the fridge instead of going out.","Not walking to the store in this — I'll manage with what's here.","I'll do the shopping tomorrow once it clears up."],weight:4},
+  {id:"er08",category:"environment_reaction",mood:["any"],context:["prep_for_work","weather:heavy_rain"],text:["Better grab the umbrella today.","I might wait a few minutes to see if this eases up.","Guess I'm leaving a little early because of the rain."],weight:4},
+  {id:"er09",category:"environment_reaction",mood:["any"],context:["prep_for_work","weather:thunderstorm"],text:["I really don't want to walk to work in this.","Hopefully it settles down before I have to leave.","At least the café's a short walk, even in this."],weight:4},
 
   // player_direct
   {id:"pd01",category:"player_direct",mood:["any"],context:["any"],text:["You're still there, huh.","Don't you get bored, just sitting there?","It's nice having you around, even if you don't say much.","Quiet today, aren't we.","You always seem to show up when I'm doing something boring.","I don't mind the company.","Sometimes it's easier to concentrate when someone is quietly there.","I wonder what you were doing before you came here."],weight:2},
@@ -710,7 +734,9 @@ const DIALOGUE = [
 
   // work
   {id:"work01",category:"work",mood:["any"],context:["prep_for_work","at_work"],text:["I have a shift later.","Hope it's not too busy tonight.","My manager keeps rescheduling the shift board, it's confusing.","I wonder if it'll be busy tonight.","I hope I get a decent break.","I should bring something to eat before my shift.","At least the evening usually goes by quickly.","I still haven't gotten used to closing shifts.","I wonder who's working tonight.","I should probably check the schedule again."],weight:4},
-  {id:"work02",category:"work",mood:["tired"],context:["return_from_work"],text:["That shift ran long.","My feet hurt.","At least I get a bit of extra pay this week."],weight:3},
+  {id:"work02",category:"work",mood:["tired"],context:["return_from_work"],text:["That shift ran long.","My feet hurt.","At least I get a bit of extra pay this week.","My feet are killing me...","Closing shift was so chaotic tonight.","I'm so glad that's over.","I just want to sit down for a minute."],weight:5},
+  {id:"work03",category:"work",mood:["any"],context:["return_from_work"],text:["Home, finally.","Okay. I'm not moving for a bit.","Give me a second before I do anything else."],weight:3},
+  {id:"uni02",category:"university",mood:["any"],context:["fromUniversity"],text:["Today's lectures felt endless.","My brain feels a little fried after that seminar.","Long day on campus today.","I don't think I absorbed much in that last lecture."],weight:4},
 
   // food
   {id:"food01",category:"food",mood:["any"],context:["hungry"],text:["I'm getting hungry.","What should I even make tonight.","I really want onigiri right now."],weight:4},
@@ -1253,6 +1279,12 @@ const WeatherEngine = {
     WeatherAudio.setWeather(id);
   },
   isRaining(){ return ["light_rain","heavy_rain","thunderstorm"].includes(this.currentId); },
+  // Adverse enough that an optional outdoor plan (a walk, a coffee run,
+  // a weekend outing) stops being appealing — used to gate `weatherSensitive`
+  // activities out of the candidate pool below. Deliberately narrower than
+  // isRaining(): light_rain alone doesn't cancel plans, a proper downpour
+  // or storm does — and a heat spike counts the same way for the same reason.
+  isAdverse(){ return ["heavy_rain","thunderstorm","hot"].includes(this.currentId); },
   // ISSUE #10: called once from OfflineReconstruct after a real gap in
   // play, so weather doesn't just sit frozen at whatever it was when the
   // tab closed. This walks the SAME transition graph/interval model as
@@ -1432,6 +1464,12 @@ const Schedule = {
       // branches above — outside their real window, they're impossible.
       if(a.id==="at_university" || a.id==="at_work") return false;
       if(a.category==="away" && !outingFeasible) return false;
+      // Optional outdoor plans quietly drop out of the running once the
+      // weather turns bad — she never "decides" this out loud, the pool
+      // just no longer offers a rained-out walk/errand as a candidate,
+      // so whatever gets picked instead reads as the natural indoor
+      // alternative (tea, a book, tidying up, the library/bookstore).
+      if(a.weatherSensitive && WeatherEngine.isAdverse()) return false;
 
       // --- Layer 2: soft anchors — real, but not the only option.
       if(a.id==="prep_for_work") return DailyPlan.isWithinPrepWindow(nowMin);
@@ -1484,6 +1522,26 @@ const GENERIC_MICRO = {
   sleepy: [
     "Satomi's eyes drift half-closed for a moment.",
     "Satomi blinks slowly.",
+  ],
+  // Ordinary physical upkeep — not tied to any hidden stat crossing a
+  // threshold, just the small things a body does during a long seated
+  // stretch at home. Kept rare (see microUpdate's comfortEligible gate)
+  // so it reads as an occasional beat, not a running commentary.
+  comfort: [
+    "Satomi adjusts her chair.",
+    "Satomi shifts to get more comfortable.",
+    "Satomi ties her hair back.",
+    "Satomi takes a sip of water.",
+    "Satomi rolls her shoulders back.",
+  ],
+  // Only surfaces during commute_out/commute_to_work/commute_home while
+  // it's actually raining (see microUpdate) — small, practical gestures
+  // rather than commentary on the weather itself.
+  weatherPrep: [
+    "Satomi double-checks she has her umbrella.",
+    "Satomi glances at the sky before stepping out.",
+    "Satomi pulls her hood up.",
+    "Satomi shakes a bit of rain off her sleeve.",
   ],
 };
 
@@ -1758,6 +1816,16 @@ const ActivityEngine = {
       if(nowMin < DailyPlan.work.shiftStart && RNG.chance(0.5)) return RNG.pick(MEAL_FLAVOR.dinner.beforeWork);
       if(nowMin >= DailyPlan.work.shiftEnd && this.commuteOrigin==="cafe" && RNG.chance(0.6)) return RNG.pick(MEAL_FLAVOR.dinner.afterWork);
     }
+    // Weather-adapted commute flavor: the trip itself is still mandatory
+    // (a lecture or a shift doesn't get skipped for rain), but how she
+    // heads out — and how she arrives back — reads differently when
+    // it's actually raining outside.
+    if((activity.id==="commute_out" || activity.id==="commute_to_work") && WeatherEngine.isRaining() && RNG.chance(0.65)){
+      return RNG.pick(COMMUTE_FLAVOR.rain);
+    }
+    if(activity.id==="commute_home" && WeatherEngine.isRaining() && RNG.chance(0.5)){
+      return RNG.pick(COMMUTE_FLAVOR.arriveHomeRain);
+    }
     return RNG.pick(activity.text);
   },
   setActivity(activity){
@@ -1875,6 +1943,15 @@ const ActivityEngine = {
     if(f.highBoredom && !focusedWork) GENERIC_MICRO.boredom.forEach(t=>pool.push({text:t, weight:1.3}));
     if(f.lowEnergy) GENERIC_MICRO.lowEnergy.forEach(t=>pool.push({text:t, weight:1.3}));
     if(StateEngine.data.sleepiness>70) GENERIC_MICRO.sleepy.forEach(t=>pool.push({text:t, weight:1.1}));
+    // Comfort/posture beats: only for seated, at-home stretches, and only
+    // sometimes — a low flat chance keeps this from showing every tick,
+    // since real fidgeting like this is occasional, not constant.
+    const comfortEligible = ["study","work","hobby","break","chore"].includes(this.current.category) && Availability.isHome();
+    if(comfortEligible && RNG.chance(0.25)) GENERIC_MICRO.comfort.forEach(t=>pool.push({text:t, weight:1}));
+    // Weather-prep beats: only while she's actually mid-commute and it's
+    // raining — a mandatory trip still happens, it just looks different.
+    const onRainyCommute = ["commute_out","commute_to_work","commute_home"].includes(this.current.id) && WeatherEngine.isRaining();
+    if(onRainyCommute) GENERIC_MICRO.weatherPrep.forEach(t=>pool.push({text:t, weight:1.8}));
     const chosen = RNG.weightedPick(pool, x=>x.weight);
     const text = chosen ? chosen.text : RNG.pick(this.current.micro);
     this.currentText = text;
@@ -2449,6 +2526,10 @@ const DialogueEngine = {
     if(f.pushingThroughFatigue) tags.push("pushingThroughFatigue");
     if(f.likelyToAbandonStudy) tags.push("likelyToAbandonStudy");
     if(StateEngine.recentlyInteracted("encourage")) tags.push("afterEncourage");
+    // Post-activity carryover: lets dialogue reflect where she just came
+    // from during the commute_home leg itself, the same way return_from_work
+    // already does once she's actually back — mirrors it for university.
+    if(ActivityEngine.current && ActivityEngine.current.id==="commute_home" && ActivityEngine.commuteOrigin==="university") tags.push("fromUniversity");
     return tags;
   },
   scoreLine(line){
