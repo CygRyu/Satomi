@@ -228,6 +228,26 @@ nav.tabbar button.active{ border-top-color:var(--accent); }
 .log-text.dialogue{ font-family:var(--font-display); color:var(--ink-0); font-style:italic; }
 .log-text.major{ color:var(--accent-bright); font-weight:500; }
 .log-empty{ text-align:center; color:var(--ink-2); font-size:13px; padding:30px 0; }
+/* Real-world location badges inside Life Log entries — subtle inline
+   tag, not a full pill, so it reads as "part of the sentence" rather
+   than a UI chrome element competing with .log-marker. */
+.log-location-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  padding:0 6px 0 4px;
+  margin:0 1px;
+  border-radius:6px;
+  background:rgba(217,119,6,0.12);
+  border:1px solid rgba(217,119,6,0.30);
+  color:#E69A33;
+  font-size:.93em;
+  font-weight:500;
+  text-decoration:none;
+  white-space:nowrap;
+  transition:background var(--transition-slow) ease, border-color var(--transition-slow) ease;
+}
+.log-location-badge:hover{ background:rgba(217,119,6,0.22); border-color:rgba(217,119,6,0.5); }
 
 /* interact */
 .interact-grid{ display:flex; flex-direction:column; gap:10px; }
@@ -5909,7 +5929,7 @@ const UI = {
       const marker = isMajor ? `<span class="log-marker">MAJOR</span>` : "";
       return `<div class="log-entry ${isMajor?"major":""}">`
         + `<div class="log-entry-head"><span class="log-time">${dateStr}${hh}:${mm}</span>${marker}</div>`
-        + `<div class="log-text ${cls}">${escapeHtml(e.text)}</div></div>`;
+        + `<div class="log-text ${cls}">${tagRealLocations(e.text)}</div></div>`;
     };
     list.innerHTML = entries.slice(0,150).map(renderEntry).join("");
   },
@@ -5943,6 +5963,61 @@ const UI = {
   }
 };
 function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+/* ============================================================
+   LIFE LOG — real-world location tagging (render-time only).
+   Purely a display-layer pass over renderLog()'s entry text — the
+   stored Memory.entries text is never touched, so save data, the
+   log-type filter, and everything else about entries is unaffected.
+
+   Whitelist-only: every phrase here is a genuine, identifiable real
+   place that already exists in this game's own outing/geography data
+   (see PRIMARY_DESTINATIONS above) — not a generic pattern-match over
+   arbitrary capitalized words, so vague text ("a used record shop",
+   "the streets by the little theater") is never mistagged. Ordered
+   longest/most-specific phrase first, since the regex below picks the
+   first alternative that matches at a given position — "Ueno Park"
+   must be tried before bare "Ueno" or it would only ever match the
+   shorter substring.
+   ============================================================ */
+const REAL_LOCATIONS = [
+  { match:"Harmonica Yokocho", query:"Harmonica Yokocho, Kichijoji, Tokyo" },
+  { match:"Inokashira Pond", query:"Inokashira Park Pond, Tokyo" },
+  { match:"Nakamichi-dori", query:"Nakamichi-dori, Kichijoji, Tokyo" },
+  { match:"Sun Road", query:"Sun Road, Kichijoji, Tokyo" },
+  { match:"Shimokitazawa", query:"Shimokitazawa, Tokyo" },
+  { match:"Ueno Park", query:"Ueno Park, Tokyo" },
+  { match:"Ueno Station", query:"Ueno Station, Tokyo" },
+  { match:"Mitaka Station", query:"Mitaka Station, Tokyo" },
+  { match:"Akihabara", query:"Akihabara, Tokyo" },
+  { match:"Asakusa", query:"Asakusa, Tokyo" },
+  { match:"Kichijoji", query:"Kichijoji, Tokyo" },
+  { match:"Mitaka", query:"Mitaka, Tokyo" },
+  { match:"Ueno", query:"Ueno, Tokyo" },
+];
+const REAL_LOCATION_RE = new RegExp(
+  "\\b(" + REAL_LOCATIONS.map(l=>l.match.replace(/[-\/\\^$*+?.()|[\]{}]/g,"\\$&")).join("|") + ")\\b",
+  "gi"
+);
+// Escapes+tags in one pass over the RAW text (never the pre-escaped
+// string), so matching isn't thrown off by HTML entities, then
+// escapes every non-matched fragment exactly as escapeHtml() already
+// did — original wording, casing and punctuation is fully preserved,
+// only real place names get wrapped.
+function tagRealLocations(text){
+  REAL_LOCATION_RE.lastIndex = 0;
+  let out = "", lastIndex = 0, m;
+  while((m = REAL_LOCATION_RE.exec(text))){
+    out += escapeHtml(text.slice(lastIndex, m.index));
+    const hit = m[0];
+    const loc = REAL_LOCATIONS.find(l=>l.match.toLowerCase()===hit.toLowerCase());
+    const url = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(loc.query);
+    out += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="log-location-badge">📍${escapeHtml(hit)}</a>`;
+    lastIndex = REAL_LOCATION_RE.lastIndex;
+  }
+  out += escapeHtml(text.slice(lastIndex));
+  return out;
+}
 
 const Panels = {
   open(name){
