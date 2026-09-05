@@ -386,7 +386,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
     <div class="date-line" id="dateLine"></div>
   </header>
 
-  <main class="stage">
+  <main class="stage" id="stage">
     <div class="presence-dot"></div>
     <div class="activity-text" id="activityText">…</div>
     <div class="dialogue-box">
@@ -1796,6 +1796,83 @@ const FamilyCall = {
 };
 
 /* ============================================================
+   8d. HIDDEN TAP EASTER EGG — a secret, undocumented rapid-tap/
+   click gesture on the main stage. Not part of the Interact menu:
+   there's no button, hint, or UI affordance for this at all. It
+   piggybacks entirely on existing systems — Familiarity.tier() for
+   which dialogue pool applies, UI.speak()/Presence.interactions for
+   the actual response, Persistence for the daily counter — rather
+   than introducing a parallel dialogue/counting mechanism.
+   Daily diminishing odds + hard cap live here; the tap-counting
+   itself (thresholds, idle reset) lives in the DOM listener set up
+   near the bottom of the file, right next to the other hidden
+   (debug-unlock) gesture, for the same reason that one lives there.
+   ============================================================ */
+const HiddenTapEasterEgg = {
+  dateKey: null,
+  triggersToday: 0,
+  // Chance for the 1st/2nd/3rd successful trigger of the day. Once
+  // triggersToday reaches PROB_TABLE.length (the daily cap), currentChance()
+  // returns 0 regardless of this table — there is no need for an explicit
+  // trailing 0 entry.
+  PROB_TABLE: [0.30, 0.15, 0.05],
+  MAX_PER_DAY: 3,
+  _keyFor(d){ return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); },
+  ensureToday(){
+    const key = this._keyFor(Clock.now());
+    if(this.dateKey !== key){
+      this.dateKey = key;
+      this.triggersToday = 0;
+    }
+  },
+  currentChance(){
+    this.ensureToday();
+    if(this.triggersToday >= this.MAX_PER_DAY) return 0;
+    return this.PROB_TABLE[this.triggersToday] || 0;
+  },
+  // Tier 1 & 2 (Familiarity.tier() 0-2): subtle, slightly confused —
+  // she barely registers it. Tier 3+: warm, familiar, still platonic.
+  LOW_LINES: [
+    "Huh? I think I heard something...",
+    "Ah, yes?",
+    "Did you say something?",
+    "Hm? Did something happen?",
+    "...Yes?",
+    "Oh — is someone there?",
+  ],
+  WARM_LINES: [
+    "Hmm? Need a quick break?",
+    "I'm right here if you need anything.",
+    "Still keeping me company, huh?",
+    "Take your time, I'm not going anywhere.",
+    "Mm, still around?",
+    "No rush — I'll be here.",
+  ],
+  pickLine(){
+    const tier = Familiarity.tier();
+    const pool = tier>=3 ? this.WARM_LINES : this.LOW_LINES;
+    return RNG.pick(pool);
+  },
+  // Called once the tap-counting listener sees a completed rapid-tap
+  // sequence. Returns false (silently, no state change) whenever she
+  // isn't actually here to notice, the daily cap is reached, or the
+  // roll simply misses — a "failed" attempt never counts against the
+  // cap and never advances the day's odds.
+  attempt(){
+    if(!Availability.isHome()) return false;
+    const chance = this.currentChance();
+    if(chance<=0) return false;
+    if(!RNG.chance(chance)) return false;
+    this.triggersToday++;
+    Persistence.scheduleSave();
+    const text = this.pickLine();
+    UI.speak(text, {interaction:true});
+    Memory.log("dialogue", text);
+    return true;
+  }
+};
+
+/* ============================================================
    9. DIALOGUE ENGINE
    ============================================================ */
 const DialogueEngine = {
@@ -2436,6 +2513,7 @@ const Persistence = {
       dailyPlan: DailyPlan.serialize(),
       birthday: { lastGreetedYear: Birthday.lastGreetedYear },
       familyCall: { lastCallDateKey: FamilyCall.lastCallDateKey },
+      hiddenTap: { dateKey: HiddenTapEasterEgg.dateKey, triggersToday: HiddenTapEasterEgg.triggersToday },
       log: Memory.entriesForSave(),
       logDay: Memory.currentLogDay,
       presence: {
@@ -2488,6 +2566,11 @@ const Persistence = {
     }
     if(p.birthday !== undefined && (!p.birthday || typeof p.birthday !== "object" || (p.birthday.lastGreetedYear !== undefined && !Number.isFinite(p.birthday.lastGreetedYear)))) return false;
     if(p.familyCall !== undefined && (!p.familyCall || typeof p.familyCall !== "object" || (p.familyCall.lastCallDateKey !== undefined && p.familyCall.lastCallDateKey !== null && typeof p.familyCall.lastCallDateKey !== "string"))) return false;
+    if(p.hiddenTap !== undefined){
+      if(!p.hiddenTap || typeof p.hiddenTap !== "object") return false;
+      if(p.hiddenTap.dateKey !== undefined && p.hiddenTap.dateKey !== null && typeof p.hiddenTap.dateKey !== "string") return false;
+      if(p.hiddenTap.triggersToday !== undefined && (!Number.isFinite(p.hiddenTap.triggersToday) || p.hiddenTap.triggersToday < 0)) return false;
+    }
     if(p.logDay !== undefined && typeof p.logDay !== "string") return false;
     if(p.log !== undefined){
       if(!Array.isArray(p.log)) return false;
@@ -2608,6 +2691,8 @@ const Persistence = {
       DailyPlan.restoreFromSave(p.dailyPlan);
       Birthday.lastGreetedYear = (p.birthday && typeof p.birthday.lastGreetedYear === "number") ? p.birthday.lastGreetedYear : 0;
       FamilyCall.lastCallDateKey = (p.familyCall && typeof p.familyCall.lastCallDateKey === "string") ? p.familyCall.lastCallDateKey : null;
+      HiddenTapEasterEgg.dateKey = (p.hiddenTap && typeof p.hiddenTap.dateKey === "string") ? p.hiddenTap.dateKey : null;
+      HiddenTapEasterEgg.triggersToday = (p.hiddenTap && Number.isFinite(p.hiddenTap.triggersToday)) ? p.hiddenTap.triggersToday : 0;
 
       let maxId = 0;
       Memory.entries = (p.log||[]).map(e=>{
@@ -3702,6 +3787,51 @@ const Splash = {
   debugZone.style.userSelect = "none";
   debugZone.style.webkitUserSelect = "none";
   debugZone.style.touchAction = "manipulation";
+})();
+
+/* Hidden tap easter egg:
+   Rapid tap/click 4+ times within ~2s on the main stage (the activity/
+   dialogue area only — never the nav bar, panels, or the music toggle,
+   since those are separate elements entirely outside #stage). A pause
+   of more than 1.5s between taps resets the count to zero immediately;
+   so does simply not reaching the threshold within the ~2s window.
+   Nothing here is persisted mid-sequence, so it can never carry over
+   an idle gap or a page reload — only completed sequences ever reach
+   HiddenTapEasterEgg.attempt(), which owns the daily odds/cap. */
+(function setupHiddenTapEasterEgg(){
+  const stage = document.getElementById("stage");
+  if(!stage) return;
+
+  const TAP_THRESHOLD = 4;
+  const IDLE_RESET_MS = 1500; // pause longer than this and the count resets
+  const WINDOW_MS = 2000;     // the whole sequence must land inside this span
+
+  let tapTimes = [];
+  let idleTimer = null;
+
+  const reset = ()=>{
+    tapTimes = [];
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  };
+
+  stage.addEventListener("pointerdown", (e)=>{
+    if(e.pointerType === "mouse" && e.button !== 0) return; // primary button/touch only
+
+    const now = Date.now();
+    // The very first tap of a stale/expired sequence starts a fresh one,
+    // rather than ever letting old taps quietly count toward a new pass.
+    if(tapTimes.length>0 && (now-tapTimes[0]) > WINDOW_MS) tapTimes = [];
+    tapTimes.push(now);
+
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(reset, IDLE_RESET_MS);
+
+    if(tapTimes.length >= TAP_THRESHOLD){
+      reset();
+      HiddenTapEasterEgg.attempt(); // no-ops quietly on a miss/cap/away — see its own comments
+    }
+  });
 })();
 document.getElementById("debugClose").onclick = ()=> Debug.toggle();
 window.addEventListener("keydown", (e)=>{
