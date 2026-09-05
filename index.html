@@ -2099,6 +2099,20 @@ const ActivityEngine = {
   // meals. Distinguishes "possible right now" (handled by `tod` in
   // Schedule.candidatePool, unchanged) from "especially appropriate
   // right now" (this), without ever hard-gating a meal off the table.
+  // Gradual "how late into the night is it" ramp used to make
+  // choosing `sleeping` progressively more likely the later it gets,
+  // rather than the flat sleepiness-threshold cliff this replaces.
+  // Deliberately continuous (no hard cutoff): 0 well before the normal
+  // bedtime window, rising smoothly across it, at its highest deep into
+  // the small hours. Measured from 18:00 (well before anyone would
+  // normally go to bed) to 04:00 the next morning, eased so the ramp is
+  // gentle right as the window opens and steeper as the night wears on.
+  sleepLatenessFactor(nowMin){
+    const minutesSince6pm = ((nowMin - 18*60) + 1440) % 1440; // 0 at 18:00, counts forward past midnight
+    const span = 10*60; // 18:00 -> 04:00: the full window this ramp covers
+    const t = Math.max(0, Math.min(1, minutesSince6pm/span));
+    return t*t; // ease-in: low in early evening, high by the middle of the night
+  },
   mealWindowBonus(activity, s){
     if(!activity.pref) return 0;
     const nowMin = Clock.minutesOfDay();
@@ -2147,7 +2161,14 @@ const ActivityEngine = {
     if(activity.category==="break" && (s.energy<35 || s.focus<35)) score += 3;
     if(activity.id==="getting_sleepy" && s.sleepiness>60) score += 3;
     if(activity.id==="preparing_bed" && s.sleepiness>65) score += 4;
-    if(activity.id==="sleeping" && s.sleepiness>75) score += 6;
+    if(activity.id==="sleeping"){
+      // The later it gets, the more likely she is to actually go to
+      // sleep — a smooth ramp rather than the old flat "+6 once
+      // sleepiness>75" cliff. Sleepiness still matters, just as a
+      // smaller additional nudge rather than an all-or-nothing gate.
+      score += 6*this.sleepLatenessFactor(Clock.minutesOfDay());
+      if(s.sleepiness>75) score += 2;
+    }
 
     // --- motivation, in bands (see idea #5: this used to just be a
     // single ">40" check with a flat +1.5 to study). A stat literally
@@ -2260,6 +2281,23 @@ const ActivityEngine = {
 
     const preferredWake = now.getTime() + preferredHours*3600000;
     return Math.max(60, Math.round((Math.min(preferredWake, latestWake.getTime()) - now.getTime())/1000));
+  },
+  // Scales sleep's recovery effects by how long she actually slept,
+  // rather than always applying the same fixed amounts regardless of
+  // duration. The original fixed values (sleepiness:-60, energy:+30,
+  // stress:-10) represented what a roughly 8-hour night was worth;
+  // that's used as the reference point here. A short/interrupted sleep
+  // (e.g. one cut close to the latest-wake ceiling in
+  // computeSleepDurationSec()) recovers proportionally less; a longer
+  // one recovers a bit more. Floored so even a brief sleep isn't
+  // worthless, and capped a little above 1x so oversleeping doesn't
+  // scale up indefinitely — StateEngine.apply()'s existing 0-100 clamp
+  // still catches any literal over/underflow either way.
+  sleepRecoveryEffects(durSec){
+    const REFERENCE_HOURS = 8;
+    const hours = durSec/3600;
+    const factor = Math.max(0.2, Math.min(1.15, hours/REFERENCE_HOURS));
+    return { sleepiness:-60*factor, energy:30*factor, stress:-10*factor };
   },
   advanceIfNeeded(){
     // Sleep is inviolable: once she's asleep, nothing — not even a
@@ -2471,7 +2509,7 @@ const ActivityEngine = {
     this.currentUntil = Date.now() + durSec*1000;
     this.recentIds.push(activity.id);
     if(this.recentIds.length>6) this.recentIds.shift();
-    StateEngine.apply(activity.effects);
+    StateEngine.apply(activity.id==="sleeping" ? this.sleepRecoveryEffects(durSec) : activity.effects);
     StateEngine.memory.lastActivityCategory = activity.category || null;
     StateEngine.memory.lastActivityId = activity.id || null;
     // ISSUE #9: record today's mother call so its score collapses for
