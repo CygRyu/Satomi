@@ -3614,6 +3614,40 @@ const GENRE_LABELS = {
 };
 function capWord(s){ return s ? String(s).charAt(0).toUpperCase()+String(s).slice(1) : s; }
 
+// Small self-contained title/author pool for Satomi's *own* autonomous
+// book picks — kept separate from ReadingEngine's READING_CONTENT because
+// that pool is keyed by a different genre taxonomy (mystery/fantasy/scifi/
+// slice_of_life/thriller/poetry/biography) than BOOK_GENRES, which is what
+// the Bookshelf (and its "Added by" filter/labels) actually uses. This
+// reuses the exact same book-object shape/lifecycle as a player
+// recommendation — it's just where an autonomous title/author comes from.
+const AUTONOMOUS_BOOK_POOL = {
+  "fiction": {
+    titles: ["The Quiet Correspondence", "Paper Boats", "What the Tide Left", "A Room Facing East"],
+    authors: ["Mei Okada", "Lucas Ferrand", "Ines Calloway", "Haruto Segawa"],
+  },
+  "mystery": {
+    titles: ["The Second Umbrella", "A Ledger of Small Lies", "The Locksmith's Daughter", "Nine Missed Calls"],
+    authors: ["K. T. Takahashi", "Evelyn Vance", "Ren Kobashi", "Noa Ashford"],
+  },
+  "sci-fi/fantasy": {
+    titles: ["The Memory Engine", "Winter of the Paper Crown", "Low Earth Static", "The Cartographer's Debt"],
+    authors: ["Aira Lin", "Toma Higashi", "Owen Farsight", "S. J. Rowan"],
+  },
+  "self-help": {
+    titles: ["Small Better Habits", "The Unhurried Life", "Room to Breathe", "Starting Again, Gently"],
+    authors: ["Dana Whitcombe", "Naomi Okafor", "Marguerite Okonkwo", "Els Larsen"],
+  },
+  "romance": {
+    titles: ["Two Trains, One Platform", "The Corner Bookstore", "Letters to No One", "Everything After Spring"],
+    authors: ["Clara Bennett", "Yuki Amano", "Beatrice Lund", "Hana Mori"],
+  },
+  "slice-of-life": {
+    titles: ["Notes from a Small Kitchen", "Three Streets Over", "A Year at the Corner Stand", "The Rainy Day Bookshop"],
+    authors: ["Hana Mori", "S. Miller", "Beatrice Lund", "Yuki Amano"],
+  },
+};
+
 const BookshelfEngine = {
   savingsJpy: 0,
   books: [], // Book objects — see addRecommendation() for shape
@@ -3622,6 +3656,18 @@ const BookshelfEngine = {
   // Debug-only override for the Familiarity tier this system reads as
   // "intimacy level" — null means "use the real Familiarity.tier()".
   debugTierOverride: null,
+
+  // --- autonomous-purchase state -----------------------------------------
+  // `savingsJpy` above is Satomi's *general* Book Fund now — it keeps
+  // accumulating from completed shifts whether or not a player
+  // recommendation is queued, and autonomous purchases draw from the same
+  // pool. This timestamp is a persistent real-time cooldown gating how
+  // often she's even allowed to roll for an autonomous purchase, so it
+  // can't fire the instant funds happen to cross a threshold.
+  lastAutonomousPurchaseAt: 0,
+  AUTONOMOUS_COOLDOWN_MS: 20*3600000, // ~20 real hours between autonomous rolls
+  AUTONOMOUS_CHANCE: 0.05, // per eligible activity boundary, once cooldown has passed
+  AUTONOMOUS_MIN_COST: 1000, // cheapest costFor() tier — the floor for even considering it
 
   tier(){ return this.debugTierOverride!=null ? this.debugTierOverride : Familiarity.tier(); },
   maxSlots(){ return [0,1,2,3][Math.min(this.tier(),3)]; },
@@ -3717,10 +3763,22 @@ const BookshelfEngine = {
 
   topQueuedBook(){ return this.queuedBooks()[0] || null; },
 
+  // Represents the Book Fund meter in both states the UI needs:
+  //  - a player recommendation is queued -> she's saving toward it, and
+  //    that title is shown as the target (unchanged from before).
+  //  - nothing is queued -> she's still saving (general Book Fund), just
+  //    without a known title yet, so `book` is null and callers should
+  //    fall back to generic "saving for her next book" language. This
+  //    never surfaces the hidden autonomous-purchase target/threshold.
   savingsProgress(){
     const top = this.topQueuedBook();
-    if(!top) return null;
-    return { book: top, pct: Math.min(100, Math.round((this.savingsJpy/top.jpyCost)*100)) };
+    if(top){
+      return { book: top, pct: Math.min(100, Math.round((this.savingsJpy/top.jpyCost)*100)), general: false };
+    }
+    // No known target — show progress toward the cheapest real book tier
+    // as a general milestone. This is just the existing, already-public
+    // costFor() floor, not a preview of any autonomous purchase logic.
+    return { book: null, pct: Math.min(100, Math.round((this.savingsJpy/this.AUTONOMOUS_MIN_COST)*100)), general: true };
   },
 
   readyToPurchase(){
@@ -3730,7 +3788,9 @@ const BookshelfEngine = {
 
   // Called once per completed part-time shift (see the return_from_work
   // hook in ActivityEngine.setActivity). Hidden currency — only ever
-  // surfaced to the player as the Book Fund progress bar.
+  // surfaced to the player as the Book Fund progress bar. This is
+  // Satomi's general Book Fund now, so it accumulates the same way
+  // whether or not a player recommendation happens to be queued.
   earnFromShift(){
     this.savingsJpy += this.JPY_PER_SHIFT;
     Persistence.scheduleSave();
@@ -3741,22 +3801,109 @@ const BookshelfEngine = {
   // checked on every activity change (see ActivityEngine.setActivity).
   // Deliberately loose about which categories count as "free time"
   // rather than building a whole new outing type for a bookstore run.
-  // Once funds are ready, the purchase now fires deterministically (100%)
-  // on the first activity change that has "enough time" — i.e. isn't one
-  // of the blocked/away categories below — instead of rolling odds.
+  // A queued, funded player recommendation is always the priority: it
+  // still fires deterministically (100%) the first time she hits an
+  // eligible boundary. Only when there's no ready recommendation does she
+  // get a (rare) chance to autonomously pick something for herself out of
+  // the same general Book Fund — see maybeAutonomousPurchase() below.
   maybeTriggerPurchase(activity){
-    if(!this.readyToPurchase()) return;
     if(!activity) return;
     const blockedCategories = ["work","university","sleep"];
     if(blockedCategories.includes(activity.category)) return;
     if(ActivityEngine.isAwayActivity(activity)) return;
-    const book = this.topQueuedBook();
+
+    if(this.readyToPurchase()){
+      const book = this.topQueuedBook();
+      if(!book) return;
+      this.savingsJpy -= book.jpyCost;
+      book.status = "purchased";
+      book.datePurchased = Date.now();
+      Memory.log("major", `Satomi visited the bookstore and bought "${book.title}"!`);
+      if(RNG.chance(0.5)) UI.speak(`I finally got "${book.title}" today. I've been wanting to start it.`);
+      Persistence.scheduleSave();
+      UI.refreshBookshelfIfOpen();
+      return;
+    }
+
+    this.maybeAutonomousPurchase();
+  },
+
+  // Weights BOOK_GENRES by Satomi's evolving taste: a baseline nudge
+  // toward her established favorites, plus a soft bonus for genres she's
+  // personally rated well in completed books so far. Nothing here is
+  // deterministic — it only tilts the odds — and none of it is surfaced
+  // to the player before (or really even after) a purchase happens.
+  autonomousGenreWeight(genre){
+    let w = 1;
+    if(FAVORITE_BOOK_GENRES.includes(genre)) w += 0.5;
+    const rated = this.completedBooks().filter(b=>b.genre===genre && b.satomiRating!=null);
+    if(rated.length){
+      const avg = rated.reduce((s,b)=>s+b.satomiRating,0)/rated.length;
+      w += Math.max(0, avg-3) * 0.6;
+    }
+    return Math.max(0.1, w);
+  },
+
+  pickAutonomousGenre(){
+    return RNG.weightedPick(BOOK_GENRES.map(g=>({id:g})), x=>this.autonomousGenreWeight(x.id)).id;
+  },
+
+  // Generates a book Satomi could actually afford right now, biased
+  // toward her current taste, rather than rolling an arbitrary/expensive
+  // book and failing the purchase. Picks among the cost tiers her current
+  // Book Fund can cover, so a cheaper natural pick can leave savings
+  // remaining afterward exactly like a player recommendation would.
+  generateAutonomousBook(){
+    const tiers = [
+      { maxCost:1000, pageRange:[120,199] },
+      { maxCost:2000, pageRange:[200,400] },
+      { maxCost:3500, pageRange:[401,540] },
+    ];
+    const affordable = tiers.filter(t=>t.maxCost <= this.savingsJpy);
+    if(!affordable.length) return null;
+    const tier = RNG.pick(affordable);
+    const pages = RNG.intRange(tier.pageRange[0], tier.pageRange[1]);
+    const genre = this.pickAutonomousGenre();
+    const pool = AUTONOMOUS_BOOK_POOL[genre] || AUTONOMOUS_BOOK_POOL["fiction"];
+    return {
+      id: "bk_"+Date.now()+"_"+Math.floor(Math.random()*1e6),
+      title: RNG.pick(pool.titles),
+      author: RNG.pick(pool.authors),
+      totalPages: pages,
+      genre,
+      complexity: RNG.pick(["light","moderate","dense"]),
+      pacing: RNG.pick(["fast","slow"]),
+      jpyCost: this.costFor(pages),
+      currentPage: 0,
+      status: "purchased",
+      userNote: "",
+      addedBy: "Satomi",
+      datePurchased: Date.now(), dateStarted: null, dateFinished: null,
+      satomiRating: null, satomiReview: null,
+      sessionsCount: 0, stressSamples: [],
+    };
+  },
+
+  // Rare, cooldown-gated roll for Satomi buying herself a book out of her
+  // general Book Fund — same shape as ReadingEngine.maybeReact/NewsEngine.
+  // maybeTrigger. Only reachable from maybeTriggerPurchase() once there's
+  // no ready player recommendation, so a queued recommendation is never
+  // pre-empted by this. Passing the cooldown/probability check doesn't
+  // guarantee a purchase — it still needs an affordable tier — and the
+  // cooldown only resets on an actual purchase, so this can't fire the
+  // instant funds cross a threshold.
+  maybeAutonomousPurchase(){
+    if(!this.unlocked()) return;
+    if(this.savingsJpy < this.AUTONOMOUS_MIN_COST) return;
+    if(Date.now()-this.lastAutonomousPurchaseAt < this.AUTONOMOUS_COOLDOWN_MS) return;
+    if(!RNG.chance(this.AUTONOMOUS_CHANCE)) return;
+    const book = this.generateAutonomousBook();
     if(!book) return;
+    this.lastAutonomousPurchaseAt = Date.now();
     this.savingsJpy -= book.jpyCost;
-    book.status = "purchased";
-    book.datePurchased = Date.now();
-    Memory.log("major", `Satomi visited the bookstore and bought "${book.title}"!`);
-    if(RNG.chance(0.5)) UI.speak(`I finally got "${book.title}" today. I've been wanting to start it.`);
+    this.books.push(book);
+    Memory.log("major", `Satomi picked up a book called "${book.title}" at a bookstore.`);
+    if(RNG.chance(0.5)) UI.speak(`I ended up picking up "${book.title}" today — it just caught my eye.`);
     Persistence.scheduleSave();
     UI.refreshBookshelfIfOpen();
   },
@@ -3890,12 +4037,14 @@ const BookshelfEngine = {
   },
 
   serialize(){
-    return { savingsJpy:this.savingsJpy, isBingeActive:this.isBingeActive, books:this.books.map(b=>Object.assign({},b)) };
+    return { savingsJpy:this.savingsJpy, isBingeActive:this.isBingeActive, lastAutonomousPurchaseAt:this.lastAutonomousPurchaseAt||0, books:this.books.map(b=>Object.assign({},b)) };
   },
   restore(saved){
-    if(!saved || typeof saved!=="object"){ this.savingsJpy=0; this.isBingeActive=false; this.books=[]; return; }
+    if(!saved || typeof saved!=="object"){ this.savingsJpy=0; this.isBingeActive=false; this.lastAutonomousPurchaseAt=0; this.books=[]; return; }
     this.savingsJpy = Number.isFinite(saved.savingsJpy) && saved.savingsJpy>=0 ? saved.savingsJpy : 0;
     this.isBingeActive = !!saved.isBingeActive;
+    // Safe default for older saves that predate autonomous purchases.
+    this.lastAutonomousPurchaseAt = Number.isFinite(saved.lastAutonomousPurchaseAt) && saved.lastAutonomousPurchaseAt>=0 ? saved.lastAutonomousPurchaseAt : 0;
     this.books = Array.isArray(saved.books) ? saved.books.filter(b=>b && typeof b==="object" && typeof b.id==="string" && typeof b.title==="string").map(b=>{
       const totalPages = Number.isFinite(b.totalPages) && b.totalPages>0 ? b.totalPages : 100;
       return {
@@ -5086,8 +5235,18 @@ const UI = {
     const fund = BookshelfEngine.savingsProgress();
 
     if(all.length===0){
-      el.innerHTML = `<div class="bs-empty"><span class="bs-empty-icon">📚</span>Satomi isn't reading anything right now.<br>Recommend her first book to get started!</div>`
+      let emptyHtml = "";
+      if(fund){
+        const fundLabel = fund.general ? "Saving for her next book" : `Book Fund → "${escapeHtml(fund.book.title)}"`;
+        emptyHtml += `<div class="bs-fund-row">
+          <span class="bs-fund-label">${fundLabel}</span>
+          <div class="bs-fund-track"><div class="bs-fund-fill" style="width:${fund.pct}%"></div></div>
+          <span class="bs-fund-pct">${fund.pct}%</span>
+        </div>`;
+      }
+      emptyHtml += `<div class="bs-empty"><span class="bs-empty-icon">📚</span>Satomi isn't reading anything right now.<br>Recommend her first book to get started!</div>`
         + `<button class="bs-addbtn" id="bsAddBtn">+ Add Recommendation</button>`;
+      el.innerHTML = emptyHtml;
       document.getElementById("bsAddBtn").onclick = ()=> UI.openAddBookForm();
       return;
     }
@@ -5124,10 +5283,14 @@ const UI = {
     }
 
     // --- Book Fund: visible, but deliberately understated so it never
-    // competes with the current book or the library list below it. ---
+    // competes with the current book or the library list below it. Shows
+    // the queued recommendation as the target when one exists; otherwise
+    // falls back to general "saving for her next book" language rather
+    // than implying the money only exists for a specific recommendation. ---
     if(fund){
+      const fundLabel = fund.general ? "Saving for her next book" : `Book Fund → "${escapeHtml(fund.book.title)}"`;
       html += `<div class="bs-fund-row">
-        <span class="bs-fund-label">Book Fund → "${escapeHtml(fund.book.title)}"</span>
+        <span class="bs-fund-label">${fundLabel}</span>
         <div class="bs-fund-track"><div class="bs-fund-fill" style="width:${fund.pct}%"></div></div>
         <span class="bs-fund-pct">${fund.pct}%</span>
       </div>`;
@@ -5319,7 +5482,7 @@ const UI = {
       row("Complexity", capWord(b.complexity)),
       row("Pacing", capWord(b.pacing)),
       row("Total pages", b.totalPages),
-      row("Recommended by", b.addedBy),
+      row("Added by", b.addedBy),
     ].join("");
 
     // 4. dates & reading history
@@ -5903,7 +6066,8 @@ const Debug = {
       ["currently reading", ReadingEngine.book ? `"${ReadingEngine.book.title}" by ${ReadingEngine.book.author} (${ReadingEngine.book.genre}) — p.${ReadingEngine.book.pagesRead}/${ReadingEngine.book.totalPages}` : "-"],
       ["books finished (leisure)", ReadingEngine.finishedCount],
       ["bookshelf tier / slots", BookshelfEngine.tier()+" ("+BookshelfEngine.queuedBooks().length+"/"+BookshelfEngine.maxSlots()+" used)"+(BookshelfEngine.debugTierOverride!=null?" [forced]":"")],
-      ["bookshelf savings", "¥"+BookshelfEngine.savingsJpy + (BookshelfEngine.topQueuedBook()? " / ¥"+BookshelfEngine.topQueuedBook().jpyCost+" needed" : "")],
+      ["bookshelf savings", "¥"+BookshelfEngine.savingsJpy + (BookshelfEngine.topQueuedBook()? " / ¥"+BookshelfEngine.topQueuedBook().jpyCost+" needed" : " (general Book Fund)")],
+      ["bookshelf autonomous cooldown", (Date.now()-BookshelfEngine.lastAutonomousPurchaseAt < BookshelfEngine.AUTONOMOUS_COOLDOWN_MS) ? Math.round((BookshelfEngine.AUTONOMOUS_COOLDOWN_MS-(Date.now()-BookshelfEngine.lastAutonomousPurchaseAt))/3600000)+"h left" : "ready"],
       ["bookshelf active book", BookshelfEngine.activeBook() ? `"${BookshelfEngine.activeBook().title}" — p.${BookshelfEngine.activeBook().currentPage}/${BookshelfEngine.activeBook().totalPages}` : "-"],
       ["bookshelf purchased (queued to read)", BookshelfEngine.purchasedBooks().map(b=>b.title).join(", ") || "-"],
       ["bookshelf completed", BookshelfEngine.completedBooks().length],
@@ -6098,6 +6262,21 @@ const Debug = {
       ["Bookshelf: Unlock All Recommendation Slots", ()=>{ BookshelfEngine.debugTierOverride = 3; this.note("bookshelf slots forced to max (tier 3)"); UI.refreshBookshelfIfOpen(); this.render(); }],
       ["Bookshelf: Force Trigger \"Binge Reading\" Mode", ()=>{ BookshelfEngine.forceBingeNext = true; this.note("next reading session will binge (if a book is active)"); this.render(); }],
       ["Bookshelf: Reset / Clear All Books", ()=>{ if(confirm("Clear all bookshelf books and savings?")){ BookshelfEngine.books=[]; BookshelfEngine.savingsJpy=0; BookshelfEngine.isBingeActive=false; this.note("bookshelf cleared"); Persistence.scheduleSave(); UI.refreshBookshelfIfOpen(); this.render(); } }],
+      ["Bookshelf: Force Satomi Autonomous Purchase", ()=>{
+        // Routes through the real autonomous path rather than duplicating
+        // its logic — just clears the gates (cooldown/funds/roll) first so
+        // the underlying maybeAutonomousPurchase() call actually succeeds.
+        BookshelfEngine.lastAutonomousPurchaseAt = 0;
+        if(BookshelfEngine.savingsJpy < BookshelfEngine.AUTONOMOUS_MIN_COST) BookshelfEngine.savingsJpy = BookshelfEngine.AUTONOMOUS_MIN_COST;
+        const before = BookshelfEngine.books.length;
+        const origChance = Math.random;
+        Math.random = () => 0; // force RNG.chance() to pass for this one call
+        try { BookshelfEngine.maybeAutonomousPurchase(); } finally { Math.random = origChance; }
+        const added = BookshelfEngine.books.length > before ? BookshelfEngine.books[BookshelfEngine.books.length-1] : null;
+        this.note(added ? "forced autonomous purchase: "+added.title : "autonomous purchase did not fire (still gated)");
+        UI.refreshBookshelfIfOpen();
+        this.render();
+      }],
       ["Reset Save", ()=>{ if(confirm("Reset all save data?")){ Persistence.reset(); location.reload(); } }],
     ];
   },
