@@ -484,6 +484,7 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
 
 <audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
 <audio id="bgMusicSleep" src="sleep_music.mp3" loop preload="auto"></audio>
+<audio id="newsRingtone" src="news_ringtone.mp3" preload="auto"></audio>
 <audio id="audioLightRain" src="light_rain.mp3" loop preload="auto"></audio>
 <audio id="audioHeavyRain" src="heavy_rain.mp3" loop preload="auto"></audio>
 <audio id="audioThunderstorm" src="thunderstorm.mp3" loop preload="auto"></audio>
@@ -630,6 +631,10 @@ textarea.debug-io{ width:100%; height:80px; background:#0e0f11; color:#c9e6c9; b
       <div class="audio-row">
         <label for="ambientVolumeSlider">Ambient Sounds</label>
         <input type="range" id="ambientVolumeSlider" min="0" max="100" value="55">
+      </div>
+      <div class="audio-row">
+        <label for="newsRingtoneToggle">News Ringtone</label>
+        <input type="checkbox" id="newsRingtoneToggle" checked>
       </div>
     </div>
     <button class="settings-btn" id="exportBtn">Export save data</button>
@@ -3346,6 +3351,7 @@ const NewsEngine = {
       UI.speak(line);
       Memory.log("dialogue", line);
       Memory.log("news", news.content);
+      NewsRingtone.play(); // fires exactly once, right where the News entry is actually committed
     }, RNG.range(1400,3200));
   },
 };
@@ -4512,6 +4518,68 @@ const Music = {
 };
 
 /* ============================================================
+   13b2. NEWS RINGTONE — a short one-shot cue, not a loop like
+   Music/WeatherAudio. Same folder/path convention as music.mp3
+   (bare filename, no path prefix) and the same localStorage-backed
+   on/off + gesture-unlock pattern as Music, scaled down for a
+   single non-looping <audio> element. Playback is triggered from
+   exactly one place: NewsEngine.playReaction(), right where a News
+   entry is actually committed via Memory.log("news", ...) — never
+   from rendering/polling/generation/loading/importing.
+   ============================================================ */
+const NewsRingtone = {
+  KEY: "satomi_news_ringtone_pref",
+  enabled: true,
+  el: null,
+  checkbox: null,
+  _resumeBound: false,
+  init(){
+    this.el = document.getElementById("newsRingtone");
+    this.checkbox = document.getElementById("newsRingtoneToggle");
+    let pref;
+    try{ pref = localStorage.getItem(this.KEY); }catch(e){ pref = null; }
+    this.enabled = (pref === null) ? true : (pref === "1"); // default ON
+    if(this.checkbox){
+      this.checkbox.checked = this.enabled;
+      this.checkbox.onchange = ()=> this.setEnabled(this.checkbox.checked);
+    }
+  },
+  setEnabled(v){
+    this.enabled = !!v;
+    try{ localStorage.setItem(this.KEY, this.enabled ? "1" : "0"); }catch(e){}
+    if(this.checkbox) this.checkbox.checked = this.enabled;
+  },
+  // Called once, right as a new News entry is recorded. Respects the
+  // setting and quietly does nothing if it's off or the element isn't
+  // ready yet.
+  play(){
+    if(!this.enabled || !this.el) return;
+    this.el.currentTime = 0;
+    const p = this.el.play();
+    if(p && p.catch){
+      // Same autoplay-unlock pattern as Music: if the browser blocks it
+      // (shouldn't normally happen here, since News only ever fires deep
+      // into an active session, well after the splash/first-tap gesture),
+      // arm a one-time retry on the next tap/click/keypress rather than
+      // losing the cue entirely.
+      p.catch(()=>{ this._armResumeOnGesture(); });
+    }
+  },
+  _armResumeOnGesture(){
+    if(this._resumeBound) return;
+    this._resumeBound = true;
+    const resume = ()=>{
+      document.removeEventListener("pointerdown", resume);
+      document.removeEventListener("keydown", resume);
+      this._resumeBound = false;
+      this.play();
+    };
+    document.addEventListener("pointerdown", resume, {once:true});
+    document.addEventListener("keydown", resume, {once:true});
+  }
+};
+
+/* ============================================================
    13c. WEATHER AMBIENT AUDIO
    Drives ambient loops off WeatherEngine's existing state/ids —
    no parallel weather system. Only reacts when the weather id
@@ -5622,13 +5690,16 @@ const UI = {
     ];
     this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
   },
-  // Reflects current volumes onto the sliders. Only ever touches the
-  // slider's displayed value — never fires oninput, never restarts audio.
+  // Reflects current volumes/toggles onto the settings controls. Only
+  // ever touches displayed values — never fires oninput/onchange, never
+  // restarts or triggers audio.
   syncAudioSliders(){
     const m = document.getElementById("musicVolumeSlider");
     const a = document.getElementById("ambientVolumeSlider");
+    const n = document.getElementById("newsRingtoneToggle");
     if(m) m.value = Math.round(Music.volume*100);
     if(a) a.value = Math.round(WeatherAudio.volume*100);
+    if(n) n.checked = NewsRingtone.enabled;
   }
 };
 function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
@@ -6680,6 +6751,7 @@ function boot(){
   buildDust();
   Music.init();
   WeatherAudio.init();
+  NewsRingtone.init();
   const hadSave = Persistence.load();
   UI.syncAudioSliders(); // reflect any restored volumes now that load() has run
   Memory.checkDayRollover();
