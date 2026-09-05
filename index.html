@@ -876,15 +876,18 @@ const COMMUTE_FLAVOR = {
   ],
 };
 
-// --- reading content: procedurally assembled book/material identity for
-// the `study_reading` (course reading) and `reading_book` (leisure) hobby
-// activities. Purely a text/flavor layer, same spirit as MEAL_FLAVOR and
-// COMMUTE_FLAVOR above — it never overrides an activity's own `effects`,
-// it only gives ActivityEngine.pickActivityText() something specific to
-// say instead of the generic pool, and gives ReadingEngine somewhere to
-// pull genre-appropriate micro-reactions and spoken reactions from. See
-// ReadingEngine (10b) for how a leisure book persists across multiple
-// reading_book sessions until she actually finishes it. ---
+// --- reading content: procedurally assembled material identity for the
+// `study_reading` (course reading) hobby activity. Purely a text/flavor
+// layer, same spirit as MEAL_FLAVOR and COMMUTE_FLAVOR above — it never
+// overrides an activity's own `effects`, it only gives
+// ActivityEngine.pickActivityText() something specific to say instead of
+// the generic pool, and gives ReadingEngine somewhere to pull
+// topic-appropriate micro-reactions and spoken reactions from.
+// NOTE: this used to also hold genre pools (titles/authors/plotHooks/etc.)
+// for ReadingEngine's spontaneous leisure-book system. That system has
+// been removed entirely — see BookshelfEngine (10b) and TasteEngine (10d)
+// for the sole remaining book-reading pathway — so only the `academic`
+// shape remains here. ---
 const READING_CONTENT = {
   academic: {
     topics: [
@@ -917,147 +920,7 @@ const READING_CONTENT = {
       "Satomi jots a word in the margin.",
     ],
   },
-  mystery: {
-    titles: ["The Glass Clockwork", "Silent Night at Blackwood Manor", "The Third Key", "A Ledger of Small Lies", "The Last Ferry to Kurenai"],
-    authors: ["Evelyn Vance", "K. T. Takahashi", "Julian Mercer", "Noa Ashford", "Ren Kobashi"],
-    plotHooks: [
-      "where an investigator reopens a twenty-year-old cold case in a snowbound village.",
-      "following a detective who uncovers a secret room hidden inside a clock tower.",
-      "revolving around a missing diary that holds the key to a family inheritance.",
-      "about a librarian who finds a coded message tucked inside a returned book.",
-      "following a reporter chasing a decades-old disappearance on a small island.",
-    ],
-    readingMoods: ["engrossed", "suspenseful", "wary"],
-    pageRange: [260, 380],
-    pagesPerMinuteRange: [0.9, 1.3], // page-turner pacing
-    micro: [
-      "Satomi's eyes go wide at something on the page.",
-      "Satomi flips back a page to double-check a detail.",
-      "Satomi narrows her eyes, clearly trying to guess who did it.",
-      "Satomi turns the page quickly, barely pausing.",
-    ],
-  },
-  fantasy: {
-    titles: ["Chronicles of the Wind Weaver", "The Starlight Market", "Oath of the Iron Realm", "The Cartographer's Debt", "Winter of the Paper Crown"],
-    authors: ["S. J. Rowan", "Maelis Thorne", "R. K. Sterling", "Ines Calloway", "Toma Higashi"],
-    plotHooks: [
-      "about a wandering cartographer mapping forgotten islands guarded by mythical beasts.",
-      "following an apprentice potion-maker who accidentally opens a gateway to another realm.",
-      "detailing an underground rebellion inside a city built entirely of brass and glass.",
-      "about a minor noble who inherits a crown no one else wants to claim.",
-      "following a librarian tasked with cataloguing books that rewrite themselves overnight.",
-    ],
-    readingMoods: ["cozy", "captivated", "wistful"],
-    pageRange: [340, 520], // fantasy doorstoppers
-    pagesPerMinuteRange: [0.5, 0.8], // denser worldbuilding, slower going
-    micro: [
-      "Satomi's gaze drifts off the page for a second, like she's picturing it.",
-      "A soft smile crosses her face as she keeps reading.",
-      "Satomi lingers on a page longer than she needs to.",
-      "Satomi traces a fingertip along the edge of the page, thinking.",
-    ],
-  },
-  scifi: {
-    titles: ["Echoes from Sector 7", "The Memory Engine", "Orbital Solitude", "Low Earth Static", "The Last Broadcast from Callisto"],
-    authors: ["C. H. Vance", "Aira Lin", "D. M. Vance", "Priya Nakashima", "Owen Farsight"],
-    plotHooks: [
-      "exploring a deep-space station where the AI companion begins archiving lost human memories.",
-      "following a rogue mechanic repairing derelict satellites on the edge of the solar system.",
-      "about a terraforming crew discovering unusual signals beneath an ice moon's crust.",
-      "about a linguist trying to translate a message that arrived decades before it was sent.",
-      "following the last technician aboard a slow generational ship nearing its destination.",
-    ],
-    readingMoods: ["pensive", "curious", "unsettled"],
-    pageRange: [280, 420],
-    pagesPerMinuteRange: [0.6, 0.9],
-    micro: [
-      "Satomi's gaze drifts off the page for a second, like she's picturing it.",
-      "Satomi rereads a paragraph, turning something over in her head.",
-      "A small, thoughtful frown crosses her face.",
-      "Satomi lingers on a page longer than she needs to.",
-    ],
-  },
-  slice_of_life: {
-    titles: ["The Sunday Teahouse", "Notes from a Small Kitchen", "The Rainy Day Bookshop", "Three Streets Over", "A Year at the Corner Stand"],
-    authors: ["Hana Mori", "Clara Bennett", "S. Miller", "Yuki Amano", "Beatrice Lund"],
-    plotHooks: [
-      "a quiet story about a baker restoring an old wooden coffee shop in a seaside town.",
-      "following a group of roommates navigating post-graduation life and weekend cooking.",
-      "revolving around a secondhand bookstore that leaves handwritten notes inside used novels.",
-      "about a florist who learns her regular customers' lives through the arrangements they order.",
-      "following a night-shift train cleaner and the small kindnesses she notices along her route.",
-    ],
-    readingMoods: ["relaxed", "cozy", "nostalgic"],
-    pageRange: [200, 320],
-    pagesPerMinuteRange: [0.7, 1.0],
-    micro: [
-      "Satomi exhales slowly and sinks a little further into her seat.",
-      "Satomi leans back, completely unhurried.",
-      "Satomi smiles faintly to herself and keeps reading.",
-      "Satomi rests the book against her knees for a moment before continuing.",
-    ],
-  },
-  thriller: {
-    titles: ["The Quiet Ward", "Signal Loss", "Nine Days in Hakodate", "The Understudy"],
-    authors: ["Marcus Aldine", "Sana Ishii", "Devon Rourke", "L. F. Whitmore"],
-    plotHooks: [
-      "about a translator who realizes the document she's working on isn't meant to be finished.",
-      "following a night-shift hospital clerk who notices the same visitor logged under three names.",
-      "about a stand-in actress who starts receiving messages meant for the star she's replacing.",
-      "following a courier who is asked to deliver a package one street too far from the address.",
-    ],
-    readingMoods: ["tense", "on edge", "engrossed"],
-    pageRange: [280, 400],
-    pagesPerMinuteRange: [1.0, 1.4], // fastest pace — can't put it down
-    micro: [
-      "Satomi grips the book a little tighter without noticing.",
-      "Satomi glances toward her own door for half a second, then huffs at herself.",
-      "Satomi turns the page fast, barely breathing.",
-      "Satomi's shoulders are up near her ears; she doesn't notice until she shifts.",
-    ],
-  },
-  poetry: {
-    titles: ["Small Weather", "Fieldnotes for a Quiet Year", "The Unhurried Hours", "Salt and Streetlight"],
-    authors: ["Imre Solberg", "Chiyo Ezaki", "Naomi Okafor", "Tobias Wren"],
-    plotHooks: [
-      "a slim collection built around the small, easily missed moments of an ordinary week.",
-      "a set of poems written from train windows during a single commuting season.",
-      "a quiet sequence about a house slowly emptying out one room at a time.",
-      "a collection tracing one coastal town through each of its four seasons.",
-    ],
-    readingMoods: ["reflective", "quiet", "wistful"],
-    pageRange: [70, 140], // slim collection
-    pagesPerMinuteRange: [0.25, 0.4], // savored, not rushed
-    micro: [
-      "Satomi reads the same short poem twice before moving on.",
-      "Satomi rests her finger on the page for a while without turning it.",
-      "Satomi mouths a line under her breath without quite meaning to.",
-      "Satomi closes the book around one finger, thinking.",
-    ],
-  },
-  biography: {
-    titles: ["Letters I Never Sent", "The Long Way to Kyoto", "A Life in Ordinary Rooms", "Fieldwork"],
-    authors: ["Marguerite Okonkwo", "Haruto Segawa", "Dana Whitcombe", "Els Larsen"],
-    plotHooks: [
-      "a memoir about a translator's decades spent moving between three countries and languages.",
-      "an account of a retired teacher's year cataloguing her late mother's letters.",
-      "a memoir following a field biologist's quiet, unglamorous decades studying river otters.",
-      "an essay collection about growing up in a family that ran a small print shop.",
-    ],
-    readingMoods: ["thoughtful", "moved", "quiet"],
-    pageRange: [220, 340],
-    pagesPerMinuteRange: [0.5, 0.75],
-    micro: [
-      "Satomi looks up from the page, somewhere else for a moment.",
-      "Satomi rereads a line, like it landed somewhere unexpected.",
-      "Satomi is quiet for a while, just holding the book open.",
-      "Satomi glances toward her phone, like she's thinking of her mother.",
-    ],
-  },
 };
-// convenience: every leisure genre key, i.e. every READING_CONTENT key
-// except "academic" (which has its own shape and its own code path).
-const READING_LEISURE_GENRES = Object.keys(READING_CONTENT).filter(g=>g!=="academic");
 
 // --- news templates: procedurally assembled phone-notification articles
 // she occasionally reads in full while checking her phone. Each category
@@ -2380,14 +2243,17 @@ const ActivityEngine = {
     // generic pool, most of the time — leaves a little room (15%/30%) for
     // the plain fallback line so it doesn't feel mechanically identical
     // every single time. Either way the book/session itself is always
-    // established here, so page progress (applyLeisureProgress) and
-    // genre-specific micro-reactions stay consistent regardless of which
-    // text variant gets displayed. Effects/duration are untouched either
-    // way (still whatever ACTIVITIES defines for this activity).
+    // established here, so page progress (BookshelfEngine.applyProgress)
+    // stays consistent regardless of which text variant gets displayed.
+    // Effects/duration are untouched either way (still whatever
+    // ACTIVITIES defines for this activity).
     if(activity.id==="reading_book"){
-      const bsSpecific = (BookshelfEngine.hasActiveBook() || BookshelfEngine.purchasedBooks().length) ? BookshelfEngine.beginReading() : null;
-      const specific = bsSpecific || ReadingEngine.beginLeisure();
-      return RNG.chance(0.85) ? specific : RNG.pick(activity.text);
+      // BookshelfEngine is the sole book-reading pathway now (the old
+      // ReadingEngine spontaneous leisure-book system has been removed).
+      // If there's nothing purchased/in-progress on the shelf, this just
+      // falls back to the activity's own generic text pool below.
+      const specific = (BookshelfEngine.hasActiveBook() || BookshelfEngine.purchasedBooks().length) ? BookshelfEngine.beginReading() : null;
+      return specific && RNG.chance(0.85) ? specific : RNG.pick(activity.text);
     }
     if(activity.id==="study_reading"){
       const specific = ReadingEngine.beginAcademic();
@@ -2481,8 +2347,10 @@ const ActivityEngine = {
       durSec = activity.id==="sleeping" ? this.computeSleepDurationSec() : RNG.range(activity.duration[0], activity.duration[1]);
       text = this.pickActivityText(activity, prev);
       if(activity.id==="reading_book"){
+        // No fallback to a spontaneous leisure book anymore — with no
+        // active bookshelf book, a reading_book session just has nothing
+        // to advance (see BookshelfEngine, the sole reading pathway now).
         if(BookshelfEngine.hasActiveBook()) BookshelfEngine.applyProgress(durSec);
-        else ReadingEngine.applyLeisureProgress(durSec);
       }
       // Background economy: a completed shift quietly adds to her book fund.
       if(activity.id==="return_from_work") BookshelfEngine.earnFromShift();
@@ -3399,87 +3267,19 @@ const NewsEngine = {
    supplies pickActivityText()/microUpdate() with something concrete
    to say, and occasionally has her react out loud to it.
 
-   Leisure books persist across multiple reading_book sessions —
-   she's "currently reading" something, same as a real person, rather
-   than starting a brand new novel every evening. Each session's
-   randomly-rolled duration (the same durSec ActivityEngine already
-   rolls to decide how long the activity displays for) converts to a
-   number of pages at a genre-appropriate pace, so a 6-minute session
-   and a 20-minute session genuinely read differently. A book is
-   "finished" only once real accumulated pages cross its total page
-   count — not a flat random chance — and each completion is counted
-   in `finishedCount`, surfaced in the Settings panel as "Books
-   finished". Academic material is rerolled fresh every session
-   instead, since assigned readings genuinely change chapter to
-   chapter/week to week, and course reading doesn't track pages.
+   Academic material is rerolled fresh every session, since assigned
+   readings genuinely change chapter to chapter/week to week, and
+   course reading doesn't track pages. This module used to also own a
+   spontaneous leisure-book system (its own procedural novels,
+   independent of BookshelfEngine) — that has been removed entirely.
+   BookshelfEngine is now the sole authoritative source of actual
+   books, for both player recommendations and Satomi's own autonomous
+   purchases — see BookshelfEngine (10b) and TasteEngine (10d).
    ============================================================ */
 const ReadingEngine = {
-  book: null,     // {genre, title, author, hook, mood, totalPages, pagesRead} — the leisure book in progress, or null
-  session: null,  // {kind:"leisure"|"academic", ...} — the *current* activity instance's flavor, or null when not reading
-  finishedCount: 0, // lifetime count of leisure books finished — shown in Settings
+  session: null,  // {kind:"academic", ...} — the *current* activity instance's flavor, or null when not reading
   lastReactAt: 0,
   reactMinGapMs: 10*60*1000, // real minutes between spoken in-book reactions
-
-  // --- leisure book lifecycle -------------------------------------------
-  pickGenre(){
-    // Slight bias toward cozier genres late at night, toward mystery/
-    // thriller in the evening, no real bias otherwise — nothing here is
-    // meant to be a hard rule, just a gentle nudge.
-    const tod = Clock.timeOfDay();
-    const pool = READING_LEISURE_GENRES.map(g=>({ id:g, w:1 }));
-    pool.forEach(p=>{
-      if(tod==="night" || tod==="late_night"){
-        if(["slice_of_life","poetry","fantasy"].includes(p.id)) p.w = 1.6;
-        if(p.id==="thriller") p.w = 0.6;
-      }
-      if(tod==="evening" && ["mystery","thriller"].includes(p.id)) p.w = 1.4;
-    });
-    return RNG.weightedPick(pool, x=>x.w).id;
-  },
-
-  startNewBook(){
-    const genre = this.pickGenre();
-    const pool = READING_CONTENT[genre];
-    this.book = {
-      genre,
-      title: RNG.pick(pool.titles),
-      author: RNG.pick(pool.authors),
-      hook: RNG.pick(pool.plotHooks),
-      mood: RNG.pick(pool.readingMoods),
-      totalPages: RNG.intRange(pool.pageRange[0], pool.pageRange[1]),
-      pagesRead: 0,
-    };
-    Memory.log("activity", `Satomi starts reading "${this.book.title}" by ${this.book.author}.`);
-    return this.book;
-  },
-
-  // Called from ActivityEngine.pickActivityText() when a reading_book
-  // session begins. Guarantees a book exists and a session is recorded —
-  // display text is a separate 85%-of-the-time roll made by the caller,
-  // but the book itself, and its page progress, always advance regardless
-  // of which text variant gets shown (see applyLeisureProgress below).
-  beginLeisure(){
-    const isNewBook = !this.book;
-    if(isNewBook) this.startNewBook();
-    const b = this.book;
-    this.session = { kind:"leisure", genre:b.genre };
-    if(isNewBook){
-      return `Satomi is reading "${b.title}" by ${b.author}, ${b.hook}`;
-    }
-    // Continuing a book already in progress — vary the opening line so it
-    // doesn't just repeat the same full description every sitting.
-    const pagesLeft = Math.max(0, b.totalPages - b.pagesRead);
-    const nearEnd = pagesLeft > 0 && pagesLeft <= 25;
-    const continuing = nearEnd ? [
-      `Satomi picks "${b.title}" back up — she's close to the end now.`,
-      `Satomi settles in with "${b.title}"; just a little left to go.`,
-    ] : [
-      `Satomi picks "${b.title}" back up where she left off.`,
-      `Satomi is back to "${b.title}", curling up with it again.`,
-      `Satomi settles in to keep reading "${b.title}".`,
-    ];
-    return RNG.pick(continuing);
-  },
 
   // Called from ActivityEngine.pickActivityText() when a study_reading
   // session begins. Always fresh material — no continuity, no page
@@ -3496,111 +3296,56 @@ const ReadingEngine = {
     return `Satomi is reviewing ${material.materialType} ${material.topic}, specifically focusing on ${material.content}.`;
   },
 
-  // --- realistic time-on-page --------------------------------------------
-  // Called once from ActivityEngine.setActivity(), right after a
-  // reading_book session's duration (durSec) has already been randomly
-  // rolled from the activity's own [min,max] range in ACTIVITIES — so the
-  // "how long did she actually spend reading" number is exactly the same
-  // one driving how long the activity displays for, nothing invented on
-  // the side. That many real minutes, at a genre-appropriate pace (nudged
-  // slower when she's tired or unfocused), is how many pages she gets
-  // through this sitting. When she crosses the book's total page count,
-  // it's finished — a real completion, not a flat random chance.
-  applyLeisureProgress(durSec){
-    const b = this.book;
-    if(!b) return;
-    const minutes = durSec / 60;
-    const pool = READING_CONTENT[b.genre];
-    let pace = RNG.range(pool.pagesPerMinuteRange[0], pool.pagesPerMinuteRange[1]);
-    const f = StateEngine.flags();
-    if(f.lowEnergy) pace *= 0.75;      // tired reading is slower going
-    if(f.highFocus) pace *= 1.15;      // absorbed reading moves faster
-    const pagesThisSession = Math.max(1, Math.round(minutes * pace));
-    b.pagesRead = Math.min(b.totalPages, b.pagesRead + pagesThisSession);
-    if(b.pagesRead >= b.totalPages){
-      this.finishedCount++;
-      Memory.log("major", `Satomi finishes reading "${b.title}".`);
-      if(RNG.chance(0.6)) UI.speak(`I finally finished it. "${b.title}"... I'm glad I picked it up.`);
-      this.book = null;
-    }
-  },
-
-  // Genre/topic-appropriate micro-action pool, blended into
+  // Topic-appropriate micro-action pool, blended into
   // ActivityEngine.microUpdate()'s weighted pool on top of the activity's
   // own generic micro lines (see that function for how weighting works).
   microPool(){
-    if(!this.session) return [];
-    if(this.session.kind==="academic") return READING_CONTENT.academic.micro;
-    return READING_CONTENT[this.session.genre].micro || [];
+    if(!this.session || this.session.kind!=="academic") return [];
+    return READING_CONTENT.academic.micro;
   },
 
   eligible(){
-    return !!this.session && !!ActivityEngine.current && ["reading_book","study_reading"].includes(ActivityEngine.current.id);
+    return !!this.session && !!ActivityEngine.current && ActivityEngine.current.id==="study_reading";
   },
 
-  // Occasional short spoken reaction naming the book/topic directly —
-  // same rare, cooldown-gated shape as NewsEngine.maybeTrigger, so it
-  // reads as an occasional real moment rather than constant narration.
+  // Occasional short spoken reaction naming the topic directly — same
+  // rare, cooldown-gated shape as NewsEngine.maybeTrigger, so it reads as
+  // an occasional real moment rather than constant narration.
   maybeReact(){
     if(!this.eligible()) return false;
     if(Date.now()-this.lastReactAt < this.reactMinGapMs) return false;
     if(!RNG.chance(0.12)) return false;
     this.lastReactAt = Date.now();
-    let line;
-    if(this.session.kind==="academic"){
-      const tired = StateEngine.flags().lowEnergy;
-      const lines = tired
-        ? [`This chapter is taking forever...`, `I really need to finish this section before tonight.`, `Two more pages and I'm taking a break.`]
-        : [`Okay, this part actually makes sense.`, `I should remember this for the exam.`, `Huh — I didn't expect that.`];
-      line = RNG.pick(lines);
-    } else if(this.book) {
-      const b = this.book;
-      const pagesLeft = Math.max(0, b.totalPages - b.pagesRead);
-      const generic = [
-        `I did not see that coming.`,
-        `I should recommend this to Mio.`,
-        `Just a little more, then I'll stop for tonight.`,
-        `This part of "${b.title}" is really good.`,
-      ];
-      if(pagesLeft > 0 && pagesLeft <= 15) generic.push(`Only a few pages left in "${b.title}" — I might just finish it tonight.`);
-      line = RNG.pick(generic);
-    } else {
-      return false;
-    }
+    const tired = StateEngine.flags().lowEnergy;
+    const lines = tired
+      ? [`This chapter is taking forever...`, `I really need to finish this section before tonight.`, `Two more pages and I'm taking a break.`]
+      : [`Okay, this part actually makes sense.`, `I should remember this for the exam.`, `Huh — I didn't expect that.`];
+    const line = RNG.pick(lines);
     UI.speak(line);
     Memory.log("dialogue", line);
     return true;
   },
 
+  // Nothing here persists across sessions anymore (the academic session
+  // is transient, cleared whenever the activity changes) — these are kept
+  // as harmless no-ops so Persistence's existing save/restore calls don't
+  // need special-casing, and so old saves with a `reading` block (from the
+  // removed leisure system) still load without error.
   serialize(){
-    return { book: this.book ? Object.assign({}, this.book) : null, finishedCount: this.finishedCount };
+    return {};
   },
   restore(saved){
-    this.finishedCount = (saved && Number.isFinite(saved.finishedCount) && saved.finishedCount >= 0) ? saved.finishedCount : 0;
-    if(!saved || !saved.book){ this.book = null; return; }
-    const b = saved.book;
-    const validCore = typeof b.genre==="string" && READING_LEISURE_GENRES.includes(b.genre) &&
-       typeof b.title==="string" && typeof b.author==="string" &&
-       typeof b.hook==="string" && typeof b.mood==="string";
-    if(validCore){
-      const totalPages = Number.isFinite(b.totalPages) && b.totalPages > 0 ? b.totalPages : RNG.intRange(...READING_CONTENT[b.genre].pageRange);
-      const pagesRead = Number.isFinite(b.pagesRead) && b.pagesRead >= 0 ? Math.min(b.pagesRead, totalPages) : 0;
-      this.book = { genre:b.genre, title:b.title, author:b.author, hook:b.hook, mood:b.mood, totalPages, pagesRead };
-    } else {
-      this.book = null;
-    }
+    this.session = null;
   },
 };
 
 /* ============================================================
    10b. BOOKSHELF ENGINE — player recommendations, background JPY
-   savings, auto-purchase, and reading lifecycle for player-picked
-   books. Layers on top of ReadingEngine rather than replacing it:
-   whenever a reading_book activity fires, ActivityEngine prefers a
-   Bookshelf book that's already purchased/in-progress, and only
-   falls back to ReadingEngine's own procedural picker when the
-   player hasn't recommended (and funded) anything yet — see the
-   reading_book branch in ActivityEngine.pickActivityText/setActivity.
+   savings, auto-purchase, and reading lifecycle for actual books.
+   This is now the sole book-reading pathway in the game: both player
+   recommendations and Satomi's own autonomous purchases go through
+   `books` here, and every completion feeds TasteEngine (10d) — see
+   the reading_book branch in ActivityEngine.pickActivityText/setActivity.
    ============================================================ */
 const BOOK_GENRES = ["fiction","mystery","sci-fi/fantasy","self-help","romance","slice-of-life"];
 // Genres Satomi naturally gravitates toward — used both for the auto
@@ -3615,12 +3360,10 @@ const GENRE_LABELS = {
 function capWord(s){ return s ? String(s).charAt(0).toUpperCase()+String(s).slice(1) : s; }
 
 // Small self-contained title/author pool for Satomi's *own* autonomous
-// book picks — kept separate from ReadingEngine's READING_CONTENT because
-// that pool is keyed by a different genre taxonomy (mystery/fantasy/scifi/
-// slice_of_life/thriller/poetry/biography) than BOOK_GENRES, which is what
-// the Bookshelf (and its "Added by" filter/labels) actually uses. This
-// reuses the exact same book-object shape/lifecycle as a player
-// recommendation — it's just where an autonomous title/author comes from.
+// book picks, keyed by BOOK_GENRES — the same taxonomy the Bookshelf (and
+// its "Added by" filter/labels) actually uses. This reuses the exact same
+// book-object shape/lifecycle as a player recommendation — it's just
+// where an autonomous title/author comes from.
 const AUTONOMOUS_BOOK_POOL = {
   "fiction": {
     titles: ["The Quiet Correspondence", "Paper Boats", "What the Tide Left", "A Room Facing East"],
@@ -3645,6 +3388,214 @@ const AUTONOMOUS_BOOK_POOL = {
   "slice-of-life": {
     titles: ["Notes from a Small Kitchen", "Three Streets Over", "A Year at the Corner Stand", "The Rainy Day Bookshop"],
     authors: ["Hana Mori", "S. Miller", "Beatrice Lund", "Yuki Amano"],
+  },
+};
+
+/* ============================================================
+   10d. TASTE ENGINE — a lightweight, mostly-invisible genre-evolution
+   layer sitting on top of BookshelfEngine (the sole authoritative
+   book-reading pathway — see 10b). It learns ONLY from books that are
+   actually completed, regardless of how they were acquired (player
+   recommendation vs. Satomi's own autonomous purchase), and only ever
+   nudges — never decides — two things:
+     1. which genre Satomi's autonomous purchases lean toward
+        (BookshelfEngine.autonomousGenreWeight/pickAutonomousGenre), and
+     2. (if/when a future spontaneous self-directed pick exists) which
+        genre such a pick leans toward.
+   It NEVER touches whether a player-recommended book is read, NEVER
+   interrupts a book in progress, and is invisible to normal players —
+   see setAffinity/simulateReads/setFatigue/resetTastes/evaluateScores
+   below for the debug-only surface. ============================================================ */
+const TASTE_GENRES = BOOK_GENRES.slice(); // canonical taste genres — currently identical to BOOK_GENRES
+const TASTE_DEFAULTS = {
+  genreAffinities: {
+    "fiction": 0.8,
+    "mystery": 0.6,
+    "sci-fi/fantasy": 0.5,
+    "self-help": 0.2,
+    "romance": 0.2,
+    "slice-of-life": 0.7
+  },
+  recentGenres: [],
+  genreFatigue: { genre: null, streak: 0 }
+};
+
+const TasteEngine = {
+  learningRate: 0.08,
+  decayRate: 0.015,
+  fatigueThreshold: 3,
+  recentGenresMax: 5,
+  baseline: 0.2, // affinity genres settle toward with little recent exposure
+
+  genreAffinities: Object.assign({}, TASTE_DEFAULTS.genreAffinities),
+  recentGenres: [],
+  genreFatigue: { genre: null, streak: 0 },
+
+  // Maps a book (of whatever shape) onto one of the canonical taste
+  // genres, without ever mutating the book's own genre metadata. Every
+  // current BookshelfEngine book already uses BOOK_GENRES == TASTE_GENRES,
+  // so this is mostly a validation/fallback net for anything malformed or
+  // from a future source that doesn't share the exact same taxonomy.
+  normalizeBookGenre(book){
+    if(book && typeof book.genre==="string" && TASTE_GENRES.includes(book.genre)) return book.genre;
+    return "fiction"; // least-disruptive fallback
+  },
+
+  clampAffinity(v){ return Math.min(1, Math.max(0, Number.isFinite(v) ? v : this.baseline)); },
+
+  // --- the ONE centralized completion hook --------------------------------
+  // Call this exactly once, only when a book has actually been completed
+  // (see BookshelfEngine.finishBook's tasteProcessed guard). Purchasing,
+  // queuing, starting, resuming, or making partial progress on a book must
+  // never reach this — only real completion teaches the taste system.
+  processBookRead(book){
+    const genre = this.normalizeBookGenre(book);
+    this._learn(genre);
+    this._updateFatigue(genre);
+    this._updateRecent(genre);
+    Persistence.scheduleSave();
+  },
+
+  // Diminishing-returns update: the completed genre moves toward a
+  // stronger preference (with progressively less effect the closer it
+  // already is to the ceiling), while every other genre gently decays
+  // back toward baseline. Bounded to [0,1]; nothing grows unboundedly and
+  // nothing is wiped out by a single unrelated book.
+  _learn(genre){
+    const cur = this.genreAffinities[genre] ?? this.baseline;
+    const diminishing = Math.max(0, 1 - cur);
+    this.genreAffinities[genre] = this.clampAffinity(cur + this.learningRate * diminishing);
+    TASTE_GENRES.forEach(g=>{
+      if(g===genre) return;
+      const v = this.genreAffinities[g] ?? this.baseline;
+      this.genreAffinities[g] = this.clampAffinity(v + (this.baseline - v) * this.decayRate);
+    });
+  },
+
+  _updateFatigue(genre){
+    if(this.genreFatigue.genre === genre) this.genreFatigue.streak += 1;
+    else { this.genreFatigue.genre = genre; this.genreFatigue.streak = 1; }
+  },
+
+  _updateRecent(genre){
+    this.recentGenres.push(genre);
+    if(this.recentGenres.length > this.recentGenresMax) this.recentGenres.shift();
+  },
+
+  // Soft, capped penalty once the same genre streak crosses the fatigue
+  // threshold — never zeroes a genre out, just makes it progressively
+  // less likely for a little while.
+  fatiguePenaltyFor(genre){
+    if(this.genreFatigue.genre !== genre) return 0;
+    const over = this.genreFatigue.streak - (this.fatigueThreshold - 1);
+    if(over <= 0) return 0;
+    return Math.min(0.6, over * 0.15);
+  },
+
+  // Small repetition penalty from recent completions — genres that
+  // showed up very recently are slightly less likely, weighted so more
+  // recent mentions matter a bit more than older ones in the window.
+  recentPenaltyFor(genre){
+    let penalty = 0;
+    this.recentGenres.forEach((g, i)=>{
+      if(g!==genre) return;
+      const recency = (i+1) / this.recentGenres.length;
+      penalty += 0.08 * recency;
+    });
+    return Math.min(0.35, penalty);
+  },
+
+  // Affinity as a multiplicative weight, kept in a modest, always-positive
+  // range so it tilts spontaneous/autonomous odds without ever fully
+  // deciding them (a strong dislike still leaves real, if small, weight).
+  affinityWeight(genre){
+    const a = this.genreAffinities[genre] ?? this.baseline;
+    return 0.4 + a;
+  },
+
+  // Combines an existing base/contextual weight (whatever the caller
+  // already computes from its own established preference system) with
+  // affinity, fatigue, and recent-repetition — for use with a weighted/
+  // probabilistic pick, never a highest-score-wins selection.
+  weightedScore(genre, baseWeight, contextMultiplier){
+    let w = (Number.isFinite(baseWeight) ? baseWeight : 1) * (Number.isFinite(contextMultiplier) ? contextMultiplier : 1) * this.affinityWeight(genre);
+    w -= this.fatiguePenaltyFor(genre) * w;
+    w -= this.recentPenaltyFor(genre) * w;
+    return Math.max(0.02, w);
+  },
+
+  // --- persistence ---------------------------------------------------------
+  serialize(){
+    return {
+      genreAffinities: Object.assign({}, this.genreAffinities),
+      recentGenres: this.recentGenres.slice(),
+      genreFatigue: Object.assign({}, this.genreFatigue),
+    };
+  },
+  restore(saved){
+    if(!saved || typeof saved!=="object"){
+      this.genreAffinities = Object.assign({}, TASTE_DEFAULTS.genreAffinities);
+      this.recentGenres = [];
+      this.genreFatigue = { genre:null, streak:0 };
+      return;
+    }
+    const ga = {};
+    TASTE_GENRES.forEach(g=>{
+      const v = saved.genreAffinities && Number.isFinite(saved.genreAffinities[g]) ? saved.genreAffinities[g] : TASTE_DEFAULTS.genreAffinities[g];
+      ga[g] = this.clampAffinity(v);
+    });
+    this.genreAffinities = ga;
+    this.recentGenres = Array.isArray(saved.recentGenres) ? saved.recentGenres.filter(g=>TASTE_GENRES.includes(g)).slice(-this.recentGenresMax) : [];
+    const fg = saved.genreFatigue;
+    if(fg && typeof fg==="object" && (fg.genre===null || TASTE_GENRES.includes(fg.genre)) && Number.isFinite(fg.streak) && fg.streak>=0){
+      this.genreFatigue = { genre: fg.genre, streak: fg.streak };
+    } else {
+      this.genreFatigue = { genre:null, streak:0 };
+    }
+  },
+
+  // --- debug-only surface (never exposed in normal player UI) -------------
+  resetTastes(){ this.restore(null); },
+  setAffinity(genre, value){
+    if(!TASTE_GENRES.includes(genre)) return false;
+    this.genreAffinities[genre] = this.clampAffinity(Number(value));
+    Persistence.scheduleSave();
+    return true;
+  },
+  // Simulates completing `count` books of the given canonical genre
+  // through the exact same processBookRead() path a real completion
+  // uses — no fake bookshelf entries needed.
+  simulateReads(genre, count){
+    if(!TASTE_GENRES.includes(genre)) return false;
+    const n = Math.max(1, Math.floor(Number(count)||1));
+    for(let i=0;i<n;i++) this.processBookRead({ genre });
+    return true;
+  },
+  setFatigue(genre, streak){
+    if(genre!==null && !TASTE_GENRES.includes(genre)) return false;
+    this.genreFatigue = { genre, streak: Math.max(0, Math.floor(Number(streak)||0)) };
+    Persistence.scheduleSave();
+    return true;
+  },
+  // Returns the full breakdown (base/affinity/context/fatigue/recent/
+  // final score) per genre — developer-only insight into what a
+  // weighted pick would currently do. baseWeights/contextMultipliers are
+  // optional {genre:number} maps; both default to 1 for a plain snapshot.
+  evaluateScores(baseWeights, contextMultipliers){
+    const bw = baseWeights || {};
+    const cm = contextMultipliers || {};
+    const out = {};
+    TASTE_GENRES.forEach(g=>{
+      const base = bw[g] ?? 1;
+      const ctx = cm[g] ?? 1;
+      out[g] = {
+        base, affinity: this.genreAffinities[g] ?? this.baseline, context: ctx,
+        fatiguePenalty: this.fatiguePenaltyFor(g),
+        recentPenalty: this.recentPenaltyFor(g),
+        score: this.weightedScore(g, base, ctx),
+      };
+    });
+    return out;
   },
 };
 
@@ -3705,6 +3656,7 @@ const BookshelfEngine = {
       datePurchased: null, dateStarted: null, dateFinished: null,
       satomiRating: null, satomiReview: null,
       sessionsCount: 0, stressSamples: [],
+      tasteProcessed: false, // internal — guards TasteEngine against double-counting a completion
     };
     this.books.push(book);
     Persistence.scheduleSave();
@@ -3841,6 +3793,12 @@ const BookshelfEngine = {
       const avg = rated.reduce((s,b)=>s+b.satomiRating,0)/rated.length;
       w += Math.max(0, avg-3) * 0.6;
     }
+    // Dynamic taste (TasteEngine) nudges this further on top of her
+    // established preferences — affinity/fatigue/recent-repetition only
+    // ever tilt the odds, never lock in a single guaranteed genre. This
+    // only changes WHICH genre gets autonomously purchased, not whether/
+    // how-often the purchase itself happens.
+    w = TasteEngine.weightedScore(genre, w, 1);
     return Math.max(0.1, w);
   },
 
@@ -3881,6 +3839,7 @@ const BookshelfEngine = {
       datePurchased: Date.now(), dateStarted: null, dateFinished: null,
       satomiRating: null, satomiReview: null,
       sessionsCount: 0, stressSamples: [],
+      tasteProcessed: false, // internal — guards TasteEngine against double-counting a completion
     };
   },
 
@@ -3908,7 +3867,7 @@ const BookshelfEngine = {
     UI.refreshBookshelfIfOpen();
   },
 
-  // --- reading lifecycle, parallel to ReadingEngine.beginLeisure/applyLeisureProgress ---
+  // --- reading lifecycle (the sole book-reading pathway — see TasteEngine, 10d) ---
   beginReading(){
     let book = this.activeBook();
     const isNew = !book;
@@ -3984,6 +3943,13 @@ const BookshelfEngine = {
     const {rating, review} = this.generateRatingReview(book);
     book.satomiRating = rating;
     book.satomiReview = review;
+    // The one and only point a completed book teaches TasteEngine anything
+    // — guarded so calling finishBook twice on the same book (e.g. a debug
+    // action re-finishing an already-completed book) can't double-count it.
+    if(!book.tasteProcessed){
+      TasteEngine.processBookRead(book);
+      book.tasteProcessed = true;
+    }
     Memory.log("major", `Satomi finishes reading "${book.title}". (${rating.toFixed(1)}★)`);
     if(RNG.chance(0.6)) UI.speak(review);
   },
@@ -4067,6 +4033,10 @@ const BookshelfEngine = {
         satomiReview: typeof b.satomiReview==="string" ? b.satomiReview : null,
         sessionsCount: Number.isFinite(b.sessionsCount) ? b.sessionsCount : 0,
         stressSamples: Array.isArray(b.stressSamples) ? b.stressSamples.slice(-60) : [],
+        // Old saves predate TasteEngine — default false is safe even for
+        // already-completed books, since nothing re-invokes finishBook()
+        // on a book that isn't currently "reading".
+        tasteProcessed: !!b.tasteProcessed,
       };
     }) : [];
   }
@@ -4692,6 +4662,7 @@ const Persistence = {
       outing: OutingEngine.serialize(),
       reading: ReadingEngine.serialize(),
       bookshelf: BookshelfEngine.serialize(),
+      taste: TasteEngine.serialize(),
       // These are behavioral memory buffers. Persisting them makes an
       // export/import continue with the same anti-repeat context instead of
       // behaving like a completely fresh session.
@@ -4911,6 +4882,10 @@ const Persistence = {
       OutingEngine.restore(p.outing || null);
       ReadingEngine.restore(p.reading || null);
       BookshelfEngine.restore(p.bookshelf || null);
+      // Backward-compatible: older saves have no `taste` block at all —
+      // TasteEngine.restore(null) falls back to sensible defaults rather
+      // than breaking the rest of the import.
+      TasteEngine.restore(p.taste || null);
       if(p.dialogue){
         DialogueEngine.recentLineIds = p.dialogue.recentLineIds.filter(id=>typeof id==="string");
         DialogueEngine.lastSpokenAt = Number.isFinite(p.dialogue.lastSpokenAt) ? p.dialogue.lastSpokenAt : 0;
@@ -5538,7 +5513,7 @@ const UI = {
       ["Days together", days],
       ["Time spent together", hours+" hrs"],
       ["Interactions", Presence.interactions],
-      ["Books finished", ReadingEngine.finishedCount],
+      ["Books finished", BookshelfEngine.completedBooks().length],
     ];
     this.els.statsList.innerHTML = rows.map(([k,v])=>`<div class="stat-row"><span>${k}</span><span>${v}</span></div>`).join("");
   },
@@ -6063,14 +6038,15 @@ const Debug = {
       ["outing — primary dest.", OutingEngine.current ? OutingEngine.hub().label : "-"],
       ["outing — sub-location (spoiler)", OutingEngine.current ? OutingEngine.sub().label : "-"],
       ["outing — returns at", OutingEngine.current ? new Date(OutingEngine.current.returnAt).toLocaleTimeString() : "-"],
-      ["currently reading", ReadingEngine.book ? `"${ReadingEngine.book.title}" by ${ReadingEngine.book.author} (${ReadingEngine.book.genre}) — p.${ReadingEngine.book.pagesRead}/${ReadingEngine.book.totalPages}` : "-"],
-      ["books finished (leisure)", ReadingEngine.finishedCount],
       ["bookshelf tier / slots", BookshelfEngine.tier()+" ("+BookshelfEngine.queuedBooks().length+"/"+BookshelfEngine.maxSlots()+" used)"+(BookshelfEngine.debugTierOverride!=null?" [forced]":"")],
       ["bookshelf savings", "¥"+BookshelfEngine.savingsJpy + (BookshelfEngine.topQueuedBook()? " / ¥"+BookshelfEngine.topQueuedBook().jpyCost+" needed" : " (general Book Fund)")],
       ["bookshelf autonomous cooldown", (Date.now()-BookshelfEngine.lastAutonomousPurchaseAt < BookshelfEngine.AUTONOMOUS_COOLDOWN_MS) ? Math.round((BookshelfEngine.AUTONOMOUS_COOLDOWN_MS-(Date.now()-BookshelfEngine.lastAutonomousPurchaseAt))/3600000)+"h left" : "ready"],
       ["bookshelf active book", BookshelfEngine.activeBook() ? `"${BookshelfEngine.activeBook().title}" — p.${BookshelfEngine.activeBook().currentPage}/${BookshelfEngine.activeBook().totalPages}` : "-"],
       ["bookshelf purchased (queued to read)", BookshelfEngine.purchasedBooks().map(b=>b.title).join(", ") || "-"],
       ["bookshelf completed", BookshelfEngine.completedBooks().length],
+      ["taste (affinities)", TASTE_GENRES.map(g=>`${g}:${TasteEngine.genreAffinities[g].toFixed(2)}`).join(" ")],
+      ["taste (fatigue)", TasteEngine.genreFatigue.genre ? `${TasteEngine.genreFatigue.genre} x${TasteEngine.genreFatigue.streak}` : "-"],
+      ["taste (recent)", TasteEngine.recentGenres.join(", ") || "-"],
       ["bookshelf binge active", BookshelfEngine.isBingeActive ? "yes" : "no"],
       ["Birthday", "Feb 8"],
       ["Birthday Greeting", !Birthday.isToday() ? "Not Active" : (Birthday.alreadyGreetedThisYear() ? "Greeted" : (Availability.isHome() ? "Available" : "Not Active (away/asleep)"))],
@@ -6140,8 +6116,7 @@ const Debug = {
       ["Force Away (Long)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="away_visiting"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced away: "+a.id);} this.render(); }],
       ["Force Return Home", ()=>{ const a=CONTENT.activities.find(x=>x.id==="break_stretch"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced return home");} this.render(); }],
       ["Clear Away Cooldown", ()=>{ ActivityEngine.awayCooldownUntil=0; this.note("away cooldown cleared"); this.render(); }],
-      ["Force Reading (leisure)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="reading_book"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced reading_book -> "+(ReadingEngine.book?ReadingEngine.book.title:"?"));} this.render(); }],
-      ["Force Finish Current Book", ()=>{ if(ReadingEngine.book){ const t=ReadingEngine.book.title; ReadingEngine.finishedCount++; ReadingEngine.book=null; this.note("finished (forced): "+t);} else { this.note("no book in progress"); } this.render(); }],
+      ["Force Reading (bookshelf)", ()=>{ const a=CONTENT.activities.find(x=>x.id==="reading_book"); if(a){ ActivityEngine.currentUntil=0; ActivityEngine.setActivity(a); this.note("forced reading_book -> "+(BookshelfEngine.activeBook()?BookshelfEngine.activeBook().title:"?"));} this.render(); }],
       // --- Outing system testing (schedule constraints, weekday/weekend
       // rules, distance/duration filtering, Life Log, missed returns) ---
       ["Outing: Show Candidates (console)", ()=>{
@@ -6277,6 +6252,15 @@ const Debug = {
         UI.refreshBookshelfIfOpen();
         this.render();
       }],
+      // --- Taste system testing (developer-only; never surfaced to players) ---
+      ...TASTE_GENRES.map(g=>[
+        "Taste: +3 Reads — "+g,
+        ()=>{ TasteEngine.simulateReads(g, 3); this.note("simulated 3x "+g+" completions -> affinity "+TasteEngine.genreAffinities[g].toFixed(2)); this.render(); }
+      ]),
+      ["Taste: Set Max Affinity (Mystery)", ()=>{ TasteEngine.setAffinity("mystery", 1); this.note("mystery affinity forced -> 1.00"); this.render(); }],
+      ["Taste: Force Fatigue (Mystery x4)", ()=>{ TasteEngine.setFatigue("mystery", 4); this.note("mystery fatigue forced -> streak 4"); this.render(); }],
+      ["Taste: Log Evaluated Scores (console)", ()=>{ console.log(TasteEngine.evaluateScores()); this.note("taste scores logged to console"); }],
+      ["Taste: Reset", ()=>{ TasteEngine.resetTastes(); this.note("taste state reset to defaults"); Persistence.scheduleSave(); this.render(); }],
       ["Reset Save", ()=>{ if(confirm("Reset all save data?")){ Persistence.reset(); location.reload(); } }],
     ];
   },
